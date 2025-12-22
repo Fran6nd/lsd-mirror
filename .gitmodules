@@ -1,0 +1,3 @@
+[submodule "src/pvx"]
+	path = src/pvx
+	url = https://codeberg.org/totallynotaburner/pvx.git

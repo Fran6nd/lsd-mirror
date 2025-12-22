@@ -1,0 +1,29 @@
+-- team_block_colors.lua -- Remove the players' freedom of choice for block colors
+local mod = {};
+
+-- TODO: to c
+SPECTATOR=255
+
+-- TODO: remove superfluous packet sending from core
+function mod.on_color_change(pid, color)
+	set_color(pid, get_team_color(get_team(pid)));
+end
+
+-- TODO: should i send a color packet right before block/line to keep things in sync?
+-- if so, that should really be part of core
+function mod.spawn_player(pid)
+	next_call("spawn_player", mod.spawn_player)(pid);
+	-- TODO: should set_color ignore if there's no change in color?
+	-- TODO: yes
+	-- TODO: but what about the random dead person who places blocks?
+	-- TODO: he's not dead to the server if he's doing that
+	-- TODO: but still, dead people could have script-triggered block places -- shouldn't ignore dead people without user action
+
+	-- ignore spectators
+	if (get_team(pid) ~= SPECTATOR) then
+		-- TODO: should there be a dedicated get_player_color func? don't make it too easy to confuse with block color though
+		set_color(pid, get_team_color(get_team(pid)));
+	end
+end
+
+return mod;

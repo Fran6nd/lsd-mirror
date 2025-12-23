@@ -704,6 +704,45 @@ static void crestock(plid pid, struct State *st) {
 		CBAIL("restock: %s", luaL_checkstring(l, -1));
 }
 
+
+static int lmove_intel(lua_State *l) {
+	unsigned team = luaL_checknumber(l, 1);
+	fvec3 pos = get_fvec3(l, 2);
+
+	f.move_intel(team, pos, st);
+	return 0;
+}
+
+static void cmove_intel(unsigned team, fvec3 pos, struct State *st) {
+	lua_getglobal(l, "move_intel");
+
+	lua_pushnumber(l, team);
+	/* TODO: l arg discrepency between get_fvec3, push_fvec3 */
+	push_fvec3(pos);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("move_intel: %s", luaL_checkstring(l, -1));
+}
+
+static int get_intelloc(lua_State *l) {
+	size_t i;
+
+	lua_newtable(l);
+	for (i=0;i<2;i++) {
+		lua_pushnumber(l, i+1);
+		/* TODO: intelplayers -> intelholders */
+		if (st->globals.intelplayers[i] != -1)
+			lua_pushnumber(l, st->globals.intelplayers[i]);
+		else if (st->globals.intelpos[i].x == HUGE_VAL && st->globals.intelpos[i].y == HUGE_VAL && st->globals.intelpos[i].z == HUGE_VAL)
+			lua_pushnil(l);
+		else
+			push_fvec3(st->globals.intelpos[i]);
+		lua_settable(l, -3);
+	}
+
+	return 1;
+}
+
 static int get_position(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 	push_fvec3(st->p[pid].pos);
@@ -787,7 +826,9 @@ static const struct luaL_Reg funcs[] = {
 	{"drop_intel", ldrop_intel},
 	{"send_state_ctf", lsend_state_ctf},
 	{"restock", lrestock},
+	{"move_intel", lmove_intel},
 
+	{"get_intelloc", get_intelloc},
 	{"get_position", get_position},
 	{"get_orientation", get_orientation},
 	{"get_inputs", get_inputs},

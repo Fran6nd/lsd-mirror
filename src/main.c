@@ -7,6 +7,7 @@
 #include "budgetvxl.h"
 #include "cull.h"
 #include "demoncore.h"
+#include "sandbox.h"
 
 #include <unistd.h>
 #include <sys/stat.h>
@@ -455,7 +456,7 @@ void detonate_grenade(size_t index, struct State *st) {
 
 	/* TODO: cast2 -> pvx.so */
 	for (i=0;i<MAX_PLAYERS;i++) {
-		if (!st->p[i].alive || st->p[i].team == nade.team)
+		if (!st->p[i].alive || (st->p[i].team == nade.team && nade.pid != i))
 			continue;
 
 		if (dist1(st->p[i].pos.x, nade.pos.x) >= 16 ||
@@ -726,7 +727,7 @@ void send_state_ctf(plid pid, plid from, const char teamname[][10], const color 
 	sta.gamemodeData.ctfStateData.team1Score = teamscore[0];
 	sta.gamemodeData.ctfStateData.team2Score = teamscore[1];
 	sta.gamemodeData.ctfStateData.captureLimit = maxscore;
-	sta.gamemodeData.ctfStateData.heldIntels = 0;
+	sta.gamemodeData.ctfStateData.heldIntels = (holders[0] != -1) | ((holders[1] != -1) << 1);
 	/* TODO: use holders instead of heldintels? */
 	/* TODO: what happens if 255 holds an intel */
 	if (holders[0] != -1) {
@@ -1775,6 +1776,8 @@ void send_intel_drop(plid pid, fvec3 pos, plid from, struct State *st) {
 void capture_intel(plid pid, unsigned winning, struct State *st) {
 	/* Hope nobody tries this on a spectator. */
 	st->globals.teamscore[st->p[pid].team]++;
+	st->p[pid].score += 10;
+	st->globals.intelplayers[!st->p[pid].team] = -1;
 
 	/* TODO: map load should clear this? */
 	/* TODO: state on map load should have customizable default score */
@@ -1787,15 +1790,35 @@ void capture_intel(plid pid, unsigned winning, struct State *st) {
 }
 
 void pickup_intel(plid pid, struct State *st) {
-	st->globals.intelplayers[st->p[pid].team] = pid;
+	st->globals.intelplayers[!st->p[pid].team] = pid;
 	st->f.send_intel_pickup(PID_BROADCAST, pid, st);
 }
 
 /* TODO: or accept team? */
+/* TODO: why doesn't capture set a position, just drop? */
+/* TODO: shove a position on capture */
 void drop_intel(plid pid, fvec3 pos, struct State *st) {
-	st->globals.intelplayers[st->p[pid].team] = -1;
-	st->globals.intelpos[st->p[pid].team] = pos;
+	st->globals.intelplayers[!st->p[pid].team] = -1;
+	st->globals.intelpos[!st->p[pid].team] = pos;
 	st->f.send_intel_drop(PID_BROADCAST, pos, pid, st);
+}
+
+void send_move_object(plid pid, fvec3 pos, unsigned id, unsigned team, struct State *st) {
+	struct PacketMoveObject ob;
+
+	ob.packetID = PacketTypeMoveObject;
+	ob.objectID = id;
+	ob.team = team;
+	ob.pos = pos;
+
+	SEND(pid, ob);
+}
+
+void move_intel(unsigned team, fvec3 pos, struct State *st) {
+	st->globals.intelplayers[team] = -1;
+	st->globals.intelpos[team] = pos;
+	/* "object" */
+	st->f.send_move_object(PID_BROADCAST, pos, team, 0, st);
 }
 
 void on_crap_packet(plid pid, ENetPacket *packet, struct State *st) {
@@ -1852,12 +1875,7 @@ int main(void) {
 	struct State *st;
 	fvec3 hidden = {HUGE_VAL, HUGE_VAL, HUGE_VAL};
 
-#ifdef __OpenBSD__
-	/*unveil("./maps/", "r");
-	unveil(NULL, NULL);
-
-	pledge("stdio rpath inet", "");*/
-#endif
+	sandbox();
 
 	st = calloc(1, sizeof(struct State));
 	if (st == NULL)
@@ -1873,6 +1891,8 @@ int main(void) {
 	addr.port = 32777;
 
 	st->host = bringup_host(&addr);
+	if (st->host == NULL)
+		ERR("bringup_host");
 	st->host->peers[0].data = st;
 	st->host->intercept = intercept;
 
@@ -1935,6 +1955,8 @@ int main(void) {
 	st->f.send_state_tc = send_state_tc;
 	st->f.send_restock = send_restock;
 	st->f.restock = restock;
+	st->f.move_intel = move_intel;
+	st->f.send_move_object = send_move_object;
 
 	/*st->globals.fog[0] = 255;
 	st->globals.fog[1] = 200;

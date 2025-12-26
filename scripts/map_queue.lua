@@ -1,0 +1,72 @@
+-- map_queue.lua -- Pops the next map from a queue, and if the queue is empty picks a map from a different queue
+local mod = {};
+local nextqueue = {};
+-- TODO: list dirs in lua?
+-- TODO: hook into initial map load
+getcfg("map_queue", {
+	"maps/hallway.vxl",
+	"maps/hallweeb.vxl",
+	"maps/normandie.vxl",
+	"maps/war.vxl",
+});
+local map_queue_idx = 1;
+
+local function get_next_map()
+	local map;
+
+	if (#nextqueue > 0) then
+		return table.remove(nextqueue);
+	end
+
+	-- TODO: support *clean* push/pull from map_queue -- should start at the map after the last played one, even if the last played one's index changes
+	map = map_queue[map_queue_idx];
+
+	map_queue_idx = map_queue_idx + 1;
+	if (map_queue_idx > #map_queue) then
+		map_queue_idx = 1;
+	end
+
+	return map;
+end
+
+-- TODO: cleanup
+-- TODO: should there be a hook for player disconnect/boot to limbo? on_unjoined?
+-- TODO: should you combine the boot/load into one function?
+-- TODO: what if the map is trash (not real/invalid/EOF)
+function mod.on_game_end()
+	boot_players_to_limbo();
+	load_map_from_file(get_next_map());
+end
+
+-- TODO: should it be legal to put a space or 30 before the command name? because we have that right now
+-- TODO: how to specify a command takes no args?
+-- TODO: should /showrotation be able to set rotation? (a la /mapqueue)
+local cmd = {name={"showrotation", "mapqueue"}};
+function cmd.func(pid)
+	for _,y in ipairs(map_queue) do
+		send_chat(pid, y, 2, 0);
+	end
+end
+register_command(cmd);
+
+local cmd = {name="queuemap"};
+function cmd.func(pid, argv)
+	table.insert(nextqueue, argv[1]);
+end
+register_command(cmd);
+
+-- TODO: on_game_end -> end_game?
+local cmd = {name="advance"};
+function cmd.func(pid)
+	on_game_end();
+end
+register_command(cmd);
+
+local cmd = {name="loadmap"};
+function cmd.func(pid, argv)
+	table.insert(nextqueue, argv[1]);
+	on_game_end();
+end
+register_command(cmd);
+
+return mod;

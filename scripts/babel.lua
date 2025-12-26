@@ -1,9 +1,11 @@
 -- babel.lua -- The gamemode where nobody can cooperate
 local mod = {};
-local intelloc = {x=256, y=256, z=1};
+local drop_timeout = 0;
+--local intelloc = {x=256, y=256, z=1};
 
 -- TODO: team starts at 0 or 1?
 -- TODO: i think some places use 0 and others use 1, unify that
+-- TODO: probably use 0 since player IDs start at 0 too? but lua uses 1. . .
 function get_tent_position(team)
 	local x = {};
 	x[0] = {x=128, y=256, z=62};
@@ -25,46 +27,60 @@ local plat_start = {x=256-size.x/2, y=256-size.y/2}
 local plat_end = {x=255+size.x/2, y=255+size.y/2}
 local plat_z = 1;
 
+local function within(point, start, endp)
+	return point >= start and point <= endp;
+end
+
+-- Within or adjacent.
+local function adjacent(point, start, endp)
+	return point >= start - 1 and point <= endp + 1;
+end
+
+local function on_corner(point, start, endp)
+	return point == start - 1 or point == endp + 1;
+end
+
+local function within_xy(pos, start, endp)
+	return within(pos.x, start.x, endp.x) and within(pos.y, start.y, endp.y);
+end
+
+local function adjacent_xy(pos, start, endp)
+	return adjacent(pos.x, start.x, endp.x) and adjacent(pos.y, start.y, endp.y);
+end
+
+local function on_corner_xy(pos, start, endp, off)
+	return on_corner(pos.x, start.x, endp.x) and on_corner(pos.y, start.y, endp.y);
+end
+
 local function legal_pos(pos, type)
-	-- TODO: discrepencies between 0, 1, 2
-	if (type == 0 or type == 1) then
-		if ((pos.x == plat_start.x - 1 or pos.x == plat_end.x + 1) and (pos.y == plat_start.y - 1 or pos.y == plat_end.y + 1)) then
+	if (type == 0) then
+		if (on_corner_xy(pos, plat_start, plat_end)) then
 			return true;
 		end
 
-		if (pos.z == plat_z and
-		    pos.x >= plat_start.x - 1 and pos.x <= plat_end.x + 1 and
-		    pos.y >= plat_start.y - 1 and pos.y <= plat_end.y + 1) then
+		if (pos.z == plat_z and adjacent_xy(pos, plat_start, plat_end)) then
 			return false;
 		end
 
-		if (pos.z >= plat_z   - 1 and pos.z <= plat_z + 1 and
-		    pos.x >= plat_start.x and pos.x <= plat_end.x and
-		    pos.y >= plat_start.y and pos.y <= plat_end.y ) then
+		if (adjacent(pos.z, plat_z, plat_z) and within_xy(pos, plat_start, plat_end)) then
+			return false;
+		end
+	end
+
+	if (type == 1) then
+		if (pos.z == plat_z and within_xy(pos, plat_start, plat_end)) then
 			return false;
 		end
 	end
 
 	if (type == 2) then
-		if ((pos.x == plat_start.x - 1 or pos.x == plat_end.x + 1) and (pos.y == plat_start.y - 1 or pos.y == plat_end.y + 1)) then
-			return true;
-		end
-
-		if (pos.z >= plat_z   - 1 and pos.z <= plat_z + 1 and
-		    pos.x >= plat_start.x and pos.x <= plat_end.x and
-		    pos.y >= plat_start.y and pos.y <= plat_end.y ) then
+		if (adjacent(pos.z, plat_z, plat_z) and within_xy(pos, plat_start, plat_end)) then
 			return false;
 		end
 	end
 
 	if (type == 3) then
-		if ((pos.x == plat_start.x - 2 or pos.x == plat_end.x + 2) and (pos.y == plat_start.y - 2 or pos.y == plat_end.y + 2)) then
-			return true;
-		end
-
-		if (pos.z >= plat_z       - 1 and pos.z <= plat_z     + 1 and
-		    pos.x >= plat_start.x - 1 and pos.x <= plat_end.x + 1 and
-		    pos.y >= plat_start.y - 1 and pos.y <= plat_end.y + 1) then
+		if (adjacent(pos.z, plat_z, plat_z) and adjacent_xy(pos, plat_start, plat_end)) then
 			return false;
 		end
 	end
@@ -75,11 +91,11 @@ end
 -- TODO: don't bother with building over solid stuff (unless it's a different color -- probably block over all on load but not platform destroy)
 -- TODO: handle ridiculous blockaction queueing?
 local function build_platform()
-	set_color(32, {b=255, g=255, r=0});
+	set_color(PID_COLOR_ANONYMOUS, {b=255, g=255, r=0});
 
 	for y=plat_start.y,plat_end.y do
 		for x=plat_start.x,plat_end.x do
-			block_action({x=x, y=y, z=plat_z}, 0, 32);
+			block_action({x=x, y=y, z=plat_z}, 0, PID_COLOR_ANONYMOUS);
 		end
 	end
 end
@@ -89,10 +105,12 @@ end
 -- Try to prevent platform destruction
 -- TODO: if platform gets nuked after one of these anyway, fix it
 function mod.block_action(pos, type, from)
-	--if (legal_pos(pos, type)) then
-		--next_call("block_action", mod.block_action)(pos, type, from);
-	--end
-	next_call("block_action", mod.block_action)(pos, type, from);
+	-- TODO: this was commented out before
+	-- TODO: add func to paint blocks
+	if (legal_pos(pos, type) or type == 0) then
+		next_call("block_action", mod.block_action)(pos, type, from);
+	end
+	--next_call("block_action", mod.block_action)(pos, type, from);
 end
 
 -- TODO: don't do this stop_exec thing, hook into some cannot_do_this thing
@@ -123,9 +141,37 @@ function within_cylinder(pos, cylinderpos, radius, bottom, top)
 	return true;
 end
 
+-- TODO: probably take a team as arg instead? though, the score. . .
+function mod.capture_intel(pid, winning)
+	next_call("capture_intel", mod.capture_intel)(pid, winning);
+
+	move_intel(0, {x=256, y=256, z=plat_z});
+	local team = get_team(pid);
+	if (team == 0) then
+		move_intel(1, {x=math.huge, y=math.huge, z=math.huge});
+	end
+		-- TODO: special handling for intel 0,1 and their positions. . .
+		-- TODO: probably don't need to move #1 back? except for recently-connected players. . .
+		-- TODO: how do recently-connected players handle that?
+end
+
+local function get_1intel()
+	local intelloc = get_intelloc();
+
+	if (intelloc[1] == nil) then
+		intelloc = intelloc[2];
+	else
+		intelloc = intelloc[1];
+	end
+
+	return intelloc;
+end
+
 -- TODO: get, set intel position
 function mod.tick()
 	next_call("tick", mod.tick)();
+
+	local intelloc = get_1intel();
 
 	-- Don't do anything if someone is holding the intel
 	-- TODO: do tents instead
@@ -134,11 +180,13 @@ function mod.tick()
 	-- TODO: add hook get_tent_position(pid, team, st)? yes, with a pid
 	if (type(intelloc) == "number") then
 		if (within_cylinder(get_position(intelloc), get_tent_position(get_team(intelloc)), 3, 1, -4)) then
-			capture_intel(intelloc);
+			-- TODO: unhardcode, make wrapper for capture_intel
+			capture_intel(intelloc, get_team_score(get_team(intelloc))+1 >= 24);
 			-- TODO: put that intel back and maybe hook capture
-			intelloc = {x=256, y=256, z=1};
+			--intelloc = {x=256, y=256, z=1};
 		end
-	else for i=0,MAX_PLAYERS-1 do
+	elseif (get_time() >= drop_timeout) then for i=0,MAX_PLAYERS-1 do
+		--print(intelloc);
 		if (not is_alive(i)) then
 			goto continue;
 		end
@@ -150,13 +198,33 @@ function mod.tick()
 		-- TODO: provide send_state_{ctf,tc} func which has args for each thing
 		-- TODO: babel can probably do with either more or less than 1 (maybe 0 or 2 or 3)
 		if (within_cylinder(get_position(i), intelloc, 3, 1, -4)) then
+			--print(i, "pickup", intelloc);
 			pickup_intel(i);
+			if (get_team(i) == 0) then
+				move_intel(0, {x=math.huge, y=math.huge, z=math.huge});
+			end
+			break;
 			-- TODO: hook pickup_intel?
-			intelloc = i;
+			--intelloc = i;
 		end
 
 		::continue::
 	end end
+end
+
+local function putback_intel()
+	local intelloc = get_intelloc();
+	if (type(intelloc[1]) == "number") then
+		drop_intel(intelloc[1], {x=256, y=256, z=plat_z});
+	else
+		move_intel(0, {x=256, y=256, z=plat_z});
+	end
+	if (type(intelloc[2]) == "number") then
+		-- TODO: make drop_intel/move_intel accept nil
+		drop_intel(intelloc[2], {x=math.huge, y=math.huge, z=math.huge});
+	else
+		move_intel(1, {x=math.huge, y=math.huge, z=math.huge});
+	end
 end
 
 -- TODO: don't build if server hasn't loaded a map
@@ -164,13 +232,16 @@ end
 -- TODO: what happens if i load it *while* the map is loading?
 function mod.on_load()
 	build_platform();
+	putback_intel();
 end
 
 -- TODO: intel position callback on map load?
 -- TODO: hook after load and before send
 function mod.load_map_from_file(path)
 	next_call("load_map_from_file", mod.load_map_from_file)(path);
+	-- TODO: don't send packets for this. . .
 	build_platform();
+	putback_intel();
 end
 
 -- TODO: fog color should definitely be hooked into core probably
@@ -189,21 +260,49 @@ function mod.send_state_ctf(pid, from, teamname, teamcolor, fog, teamscore, maxs
 	else
 		loc2[1] = intelloc;
 	end
-	next_call("send_state_ctf", mod.send_state_ctf)(pid, from, teamname, teamcolor, fog, teamscore, maxscore, loc2, {get_tent_position(0), get_tent_position(1)});
+	--next_call("send_state_ctf", mod.send_state_ctf)(pid, from, teamname, teamcolor, fog, teamscore, maxscore, loc2, {get_tent_position(0), get_tent_position(1)});
+	next_call("send_state_ctf", mod.send_state_ctf)(pid, from, teamname, teamcolor, fog, teamscore, maxscore, _intelloc, {get_tent_position(0), get_tent_position(1)});
 end
 
-function mod.kill(pid, type, by)
-	next_call("kill", mod.kill)(pid, type, by);
+local function try_drop(pid)
+	local intelloc = get_1intel();
 	if (intelloc == pid) then
-		-- TODO: gravity
-		intelloc = get_position(intelloc);
+		-- TODO: gravity for ctf
+		-- TODO: what happens if the intel is dropped under the platform? should it always drop at player? only to a certain height? never?
+		local intelloc = get_position(intelloc);
 		intelloc.x = math.floor(intelloc.x) + 0.5;
 		intelloc.y = math.floor(intelloc.y) + 0.5;
-		intelloc.z = math.ceil(intelloc.z);
+		--intelloc.z = math.ceil(intelloc.z);
+		intelloc.z = plat_z;
+
+		if (intelloc.x < plat_start.x or intelloc.x > plat_end.x+1 or
+		    intelloc.y < plat_start.y or intelloc.y > plat_end.y+1) then
+			intelloc.x = 256;
+			intelloc.y = 256;
+		end
 		-- TODO: plumb all this junk into core already
 		-- TODO: drop_intel func which takes only team or pid -- let the gamemode deal with it
 		drop_intel(pid, intelloc);
+		drop_timeout = get_time() + 2;
+		return true;
 	end
+
+	return false;
+end
+
+local cmd = {name="drop"};
+function cmd.func(pid)
+	if (not try_drop(pid)) then
+		send_chat(pid, "You're not holding the intel!", 2, 0);
+		-- TODO: add delay before intel pickup, maybe put in dedicated script
+	end
+end
+register_command(cmd);
+
+-- Drop intel on kill, disconnect, etc.
+function mod.after_player_destroy(pid)
+	next_call("after_player_destroy", mod.after_player_destroy)(pid);
+	try_drop(pid);
 end
 
 function mod.on_unload()

@@ -20,18 +20,6 @@
  * not sure the gamemodes.py one is ever called
  * tc has drop_flag
  */
-/* TODO: is it easier to trigger climb when moving backwards? (probably no) */
-/* TODO: do i need PID_INVALID? */
-//#define PID_INVALID -MAX_PLAYERS
-/* For blocks and block lines when no player has placed them */
-#define PID_COLOR_ANONYMOUS 32
-/* TODO: merge broadcast and broadcast_except? */
-#define PID_BROADCAST MAX_PLAYERS
-#define PID_BROADCAST_EXCEPT(pid) (-(pid)-1)
-#define PID_BROADCAST_TEAM(team) (MAX_PLAYERS + 1 + team)
-/* Quite the mouthful. */
-#define PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(team, pid) (-(MAX_PLAYERS + team | pid << 16))
-#define PID_BROADCAST_EXCEPT_TEAM(team) PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(team, 256)
 
 /* Tick rate in Hz. Every tick physics and such is calculated. */
 #define TICKRATE 60
@@ -128,7 +116,7 @@ int send_packet_flags(plid pid, const void *data, size_t length, unsigned flags,
 
 	if (pid == PID_BROADCAST)
 		enet_host_broadcast(st->host, 0, packet);
-	else if (pid > MAX_PLAYERS) { /* PID_BROADCAST_EXCEPT_TEAM */
+	else if (pid > MAX_PLAYERS) { /* PID_BROADCAST_TEAM */
 		plid i;
 
 		for (i=0;i<MAX_PLAYERS;i++) {
@@ -187,9 +175,6 @@ void set_fog(color color, struct State *st) {
 
 	SEND(PID_BROADCAST, cf);
 }
-
-//int32_t move_player(struct Player *p, float secondsSinceLastUpdate, const uint8_t *solidData, int wrap);
-//int move_grenade(struct Grenade *grenade, float secondsSinceLastUpdate, const uint8_t *solidData, int correct);
 
 /* TODO: what if i'm the last player ID? i don't need my own position */
 void send_player_update(plid pid, struct State *st) {
@@ -509,9 +494,24 @@ void on_reload(plid pid, unsigned mag, unsigned reserve, struct State *st) {
 	st->f.send_reload(PID_BROADCAST_EXCEPT(pid), 255, 255, pid, st);
 }
 
+#if 1
 void tick_player_physics(plid pid, float timeDelta, struct State *st) {
 	move_player(st->p+pid, timeDelta, st->globals.map.solidData, 0); /* TODO: LOOP_PHYSICS (as a script?) */
 }
+#else
+/* Experiment with physics looping */
+void tick_player_physics(plid pid, float timeDelta, struct State *st) {
+	/* TODO: better method of wrap detection? */
+	/* TODO: just handle wrapping here, silly goose. . . */
+	fvec3 oldpos = st->p[pid].pos;
+	move_player(st->p+pid, timeDelta, st->globals.map.solidData, 1); /* TODO: LOOP_PHYSICS (as a script?) */
+	if ((oldpos.x < 128 && st->p[pid].pos.x > 384) ||
+	    (oldpos.x > 384 && st->p[pid].pos.x < 128) ||
+	    (oldpos.y < 128 && st->p[pid].pos.y > 384) ||
+	    (oldpos.y > 384 && st->p[pid].pos.y < 128))
+		st->f.set_position(pid, st->p[pid].pos, st);
+}
+#endif
 
 void tick(struct State *st) {
 	size_t i;
@@ -693,6 +693,7 @@ void send_compressed_map(plid pid, struct State *st) {
 void send_map(plid pid, struct State *st) {
 	struct PacketMapStart ms;
 	size_t buflen;
+	plid i;
 
 	ms.packetID = PacketTypeMapStart;
 	ms.mapSize = 0;
@@ -700,7 +701,14 @@ void send_map(plid pid, struct State *st) {
 	SEND(pid, ms);
 	send_compressed_map(pid, st);
 
-	st->f.send_state(pid, st);
+	/* TODO: use an iterator for broadcast macros */
+	/* TODO: should the iterator be moved to send_state? */
+	if (pid == PID_BROADCAST) {
+		for (i=0;i<MAX_PLAYERS;i++)
+			if (st->host->peers[i].state == ENET_PEER_STATE_CONNECTED)
+				st->f.send_state(i, st);
+	} else
+		st->f.send_state(pid, st);
 }
 #endif
 
@@ -847,6 +855,8 @@ void on_disconnect(plid pid, struct State *st) {
 
 	st->p[pid].connected = 0;
 	st->p[pid].alive = 0;
+
+	st->f.after_player_destroy(pid, st);
 }
 
 #define CAT2(x,y) x##y
@@ -907,6 +917,7 @@ int stuck_in_a_block(fvec3 pos, struct State *st) {
 #define COMBINED_SPEED_LIMIT 32.16
 
 /* TODO: does spawning affect openspades' position send time? didn't i already mention this somewhere? */
+/* TODO: horizontal speed limit inexplicably being screwed at 94-ish min with openspades (most seen: 115.501671) */
 #define HORIZONTAL_SPEED_LIMIT_SQR 111.82 /* Nominally 108.16 */
 #define COMBINED_SPEED_LIMIT_SQR 1069.46 /* Usually 1034.2656, except when it's not */
 
@@ -921,6 +932,8 @@ int stuck_in_a_block(fvec3 pos, struct State *st) {
 #define NADE_HVEL_LIMIT_SQR 1.755625
 #define NADE_DVEL_LIMIT_SQR 4
 #define NADE_UVEL_LIMIT_SQR 1.8496
+
+#define NOT_THE_SAME_POSITION(p1, p2) (p1.x != p2.x || p1.y != p2.y || p1.z != p2.z)
 
 int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 	st->crappacketname = "?";
@@ -943,7 +956,8 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		SBAD(PACKET.pos.z > 62.65);
 		/* TODO: make it suck less */
 		/* TODO: should it be last agreed or regular flavor? */
-		SBAD(stuck_in_a_block(st->p[pid].lastagreedpos, st) && stuck_in_a_block(PACKET.pos, st));
+		/* TODO: was_ever_not_in_a_block_since_lastagreedpos heuristic? */
+		SBAD(stuck_in_a_block(st->p[pid].lastagreedpos, st) && stuck_in_a_block(st->p[pid].pos, st) && stuck_in_a_block(PACKET.pos, st) && NOT_THE_SAME_POSITION(PACKET.pos, st->p[pid].pos));
 		if (PACKET.pos.z - st->p[pid].lastagreedpos.z > DOWNWARD_SPEED_LIMIT) LOG("dist1: %f", PACKET.pos.z - st->p[pid].lastagreedpos.z);
 		SBAD(PACKET.pos.z - st->p[pid].lastagreedpos.z > DOWNWARD_SPEED_LIMIT);
 		SBAD(st->p[pid].lastagreedpos.z - PACKET.pos.z > UPWARD_SPEED_LIMIT);
@@ -1232,6 +1246,7 @@ void on_join(plid pid, unsigned team, unsigned weapon, const char *name, struct 
 
 	/* at this point the player is still not alive */
 	st->p[pid].connected = 1;
+	st->p[pid].score = 0;
 	st->p[pid].newteam = team;
 	st->p[pid].newweapon = weapon;
 	strcpy(st->p[pid].name, name);
@@ -1276,7 +1291,7 @@ float highest_point_spawn(int32_t x, int32_t y, struct State *st) {
 	if (z == 63)
 		z = 64;
 
-	z -= 2.25;
+	z -= 2.251;
 	
 	return z;
 }
@@ -1413,7 +1428,6 @@ void load_map_from_file(const char *path, struct State *st) {
 	char err[PVX_ERRBUF_SIZE];
 	void *buf;
 	ssize_t size;
-	plid i;
 
 	buf = map_file(path, &size);
 
@@ -1434,11 +1448,30 @@ void load_map_from_file(const char *path, struct State *st) {
 	munmap(buf, size);
 
 	/* TODO: don't bother if nobody is home, and deal with compression, reusing the loaded vxl instead of making a new one, whatever */
-	/* TODO: broadcast_map? we can't put PID_BROADCAST into send_map because of the state sending */
+	/* TODO: what the hell does the previous TODO mean? */
+	st->f.send_map(PID_BROADCAST, st);
+}
+
+/* You probably want to call this after game end and before map load. TODO: you can figure it out */
+/* TODO: rename since it clears score too */
+void boot_players_to_limbo(struct State *st) {
+	plid i;
+
+	st->globals.teamscore[0] = 0;
+	st->globals.teamscore[1] = 0;
 	for (i=0;i<MAX_PLAYERS;i++) {
-		if (st->p[i].connected)
-			st->f.send_map(i, st);
+		st->p[i].connected = 0;
+		st->p[i].alive = 0;
+
+		st->f.after_player_destroy(i, st);
 	}
+}
+
+/* Win or timeout or advance or something else. */
+/* TODO: wonder if it should be given a reason arg */
+/* TODO: do you think lua could add extra args to funcs to pass to other lua scripts? */
+void on_game_end(struct State *st) {
+	return;
 }
 
 void on_position(plid pid, fvec3 pos, struct State *st) {
@@ -1516,6 +1549,27 @@ void kill(plid pid, unsigned type, plid killer, struct State *st) {
 
 	if (type < 4 && pid != killer)
 		st->p[killer].score++;
+
+	st->f.after_player_destroy(pid, st);
+}
+
+void after_player_destroy(plid pid, struct State *st) {
+	return;
+}
+
+void set_hp(plid pid, int hp, struct State *st) {
+	struct PacketSetHP sh;
+
+	if (hp < 0)
+		hp = 0;
+	st->p[pid].hp = hp;
+
+	sh.packetID = PacketTypeSetHP;
+	sh.hp = hp > 255 ? 255 : hp;
+	sh.type = 0;
+	memset(&sh.pos, 0, sizeof(sh.pos));
+
+	SEND(pid, sh);
 }
 
 void set_hp_directional(plid pid, int hp, fvec3 pos, struct State *st) {
@@ -1787,6 +1841,9 @@ void capture_intel(plid pid, unsigned winning, struct State *st) {
 	}
 
 	st->f.send_intel_capture(PID_BROADCAST, winning, pid, st);
+
+	if (winning)
+		st->f.on_game_end(st);
 }
 
 void pickup_intel(plid pid, struct State *st) {
@@ -1936,6 +1993,7 @@ int main(void) {
 	st->f.kill = kill;
 	st->f.on_kill = on_kill;
 	st->f.get_hit_damage = get_hit_damage;
+	st->f.set_hp = set_hp;
 	st->f.set_hp_directional = set_hp_directional;
 	st->f.on_grenade = on_grenade;
 	st->f.detonate_grenade = detonate_grenade;
@@ -1957,6 +2015,9 @@ int main(void) {
 	st->f.restock = restock;
 	st->f.move_intel = move_intel;
 	st->f.send_move_object = send_move_object;
+	st->f.after_player_destroy = after_player_destroy;
+	st->f.on_game_end = on_game_end;
+	st->f.boot_players_to_limbo = boot_players_to_limbo;
 
 	/*st->globals.fog[0] = 255;
 	st->globals.fog[1] = 200;

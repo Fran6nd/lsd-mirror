@@ -1,6 +1,18 @@
+#ifndef LS2_SERVER_STATE_H
+#define LS2_SERVER_STATE_H
 #include <enet/enet.h>
 #include "protocol.h"
 #include "bitmask.h"
+
+/* For blocks and block lines when no player has placed them */
+#define PID_COLOR_ANONYMOUS 32
+/* TODO: merge broadcast and broadcast_except? */
+#define PID_BROADCAST MAX_PLAYERS
+#define PID_BROADCAST_EXCEPT(pid) (-(pid)-1)
+#define PID_BROADCAST_TEAM(team) (MAX_PLAYERS + 1 + team)
+/* Quite the mouthful. */
+#define PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(team, pid) (-(MAX_PLAYERS + team | pid << 16))
+#define PID_BROADCAST_EXCEPT_TEAM(team) PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(team, 256)
 
 /* Type used for storing time as nanoseconds (clock) */
 typedef uint64_t clk;
@@ -94,6 +106,9 @@ struct Functions {
 	fvec3 (*on_player_spawn)(plid pid, struct State *st);
 	clk (*on_kill)(plid pid, struct State *st);
 	int (*get_hit_damage)(plid pid, unsigned type, struct State *st);
+	/* TODO: make name less ambiguous? refers to players dying/disconnecting/whatever but could be interpreted as block destroying */
+	void (*after_player_destroy)(plid pid, struct State *st);
+	void (*on_game_end)(struct State *st);
 
 	/*
 	 * Actions -- set pid to PID_BROADCAST to broadcast to all players,
@@ -114,6 +129,7 @@ struct Functions {
 	void (*set_fog)(color color, struct State *st);
 	void (*tick_player_physics)(plid pid, float timeDelta, struct State *st);
 	void (*detonate_grenade)(size_t index, struct State *st);
+	void (*boot_players_to_limbo)(struct State *st);
 
 	/*
 	 * Player actions
@@ -138,6 +154,7 @@ struct Functions {
 	void (*send_intel_pickup)(plid pid, plid from, struct State *st);
 	void (*send_intel_drop)(plid pid, fvec3 pos, plid from, struct State *st);
 	void (*send_restock)(plid pid, plid from, struct State *st);
+	void (*send_move_object)(plid pid, fvec3 pos, unsigned id, unsigned team, struct State *st);
 
 	void (*restock)(plid pid, struct State *st);
 	/* TODO: allow hijacking respawn time */
@@ -155,6 +172,7 @@ struct Functions {
 	void (*capture_intel)(plid pid, unsigned winning, struct State *st);
 	void (*pickup_intel)(plid pid, struct State *st);
 	void (*drop_intel)(plid pid, fvec3 pos, struct State *st);
+	void (*move_intel)(unsigned team, fvec3 pos, struct State *st);
 };
 
 struct Globals {
@@ -185,3 +203,4 @@ struct State {
 	const char *crapcond;
 	const char *crappacketname;
 };
+#endif

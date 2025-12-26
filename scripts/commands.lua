@@ -31,6 +31,7 @@ local function handle_command(pid, msg)
 	end
 
 	send_chat(pid, "> /"..msg, 2, 0);
+	log("%s: /%s", get_name(pid), msg);
 
 	if (commands[string.lower(argv[0])] == nil) then
 		send_chat(pid, "Unknown command", 2, 0);

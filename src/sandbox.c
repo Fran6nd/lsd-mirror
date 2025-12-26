@@ -50,7 +50,10 @@ static void pivot(void) {
 
 	MOUNT("/", NULL, "/", NULL, MS_SILENT | MS_REC | MS_SLAVE, NULL);
 	MOUNT("bind", ".", "/tmp", NULL, MS_SILENT | MS_BIND | MS_REC, NULL);
-	MOUNT("ro", NULL, "/tmp", NULL, MS_SILENT | MS_REMOUNT | MS_BIND | MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_RDONLY | MS_REC, NULL);
+	MOUNT("ro", NULL, "/tmp", NULL, MS_SILENT | MS_REMOUNT | MS_BIND | MS_NODEV | MS_NOSUID /*| MS_NOEXEC // loading binary lua modules depends on exec */ | MS_RDONLY | MS_REC, NULL);
+
+	MOUNT("bind-rw", "./rw", "/tmp/rw", NULL, MS_SILENT | MS_BIND | MS_REC, NULL);
+	MOUNT("remount-rw", NULL, "/tmp/rw", NULL, MS_SILENT | MS_REMOUNT | MS_BIND | MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_REC, NULL);
 
 	if (syscall(SYS_pivot_root, "/tmp", "/tmp")) ERR("pivot_root");
 	if (umount2("/", MNT_DETACH)) ERR("umount2");
@@ -66,6 +69,7 @@ void sandbox(void) {
 	unveil("./maps/", "r");
 	unveil("./scripts/", "r");
 	unveil("./config.lua", "r");
+	unveil("./rw/", "rwc");
 	unveil(NULL, NULL);
 
 	pledge("stdio rpath inet", "");
@@ -82,11 +86,13 @@ void sandbox(void) {
 	size_t i;
 	/* TODO: clock_gettime is suspiciously absent */
 	static const char *const calls[] = {
+		/* needed for core/lua */
 		"read",
 		"open",
 		"close",
 		"fstat",
 		"poll",
+		"lseek",
 		"mmap",
 		"mprotect",
 		"munmap",
@@ -94,6 +100,7 @@ void sandbox(void) {
 		"ioctl",
 		"readv",
 		"writev",
+		"mremap",
 		"socket",
 		"sendmsg",
 		"recvmsg",
@@ -101,14 +108,26 @@ void sandbox(void) {
 		"getsockname",
 		"setsockopt",
 		"fcntl",
+		"restart_syscall",
 		"exit_group",
 		"getrandom",
+		/* needed for lsqlite3 */
+		"getcwd",
+		"lstat",
+		"getpid",
+		"stat",
+		"pread64",
+		"geteuid",
+		"pwrite64",
+		"fdatasync",
+		"unlink",
+		"ftruncate",
 		NULL
 	};
 
 	/* For figuring out what syscalls the thing'd use:
 	 * scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_LOG);
-	 * and then check dmesg and look at https://www.chromium.org/chromium-os/developer-library/reference/linux-constants/syscalls/
+	 * and then check dmesg and look at /usr/include/asm/unistd_64.h
 	 * Or you could just use strace.
 	 */
 	scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_KILL_PROCESS);

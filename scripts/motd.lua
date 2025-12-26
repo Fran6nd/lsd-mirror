@@ -1,5 +1,6 @@
 -- motd.lua -- Send a blob of text to players when they join
 local mod = {};
+getcfg("motd", "Server owner forgot to set the motd, oh no");
 
 -- TODO: first join only -- on_initial_join
 function mod.on_join(pid, team, weapon, name)

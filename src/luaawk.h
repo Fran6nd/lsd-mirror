@@ -1,0 +1,1108 @@
+#ifndef LS2_SERVER_LUAAWK_H
+#define LS2_SERVER_LUAAWK_H
+
+static int lon_any_connect(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.on_any_connect(pid, st);
+	return 0;
+}
+
+static void con_any_connect(plid pid, struct State *st) {
+	lua_getglobal(l, "on_any_connect");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("on_any_connect: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_successful_connect(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.on_successful_connect(pid, st);
+	return 0;
+}
+
+static void con_successful_connect(plid pid, struct State *st) {
+	lua_getglobal(l, "on_successful_connect");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("on_successful_connect: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_disconnect(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.on_disconnect(pid, st);
+	return 0;
+}
+
+static void con_disconnect(plid pid, struct State *st) {
+	lua_getglobal(l, "on_disconnect");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("on_disconnect: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_join(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned team = luaL_checknumber(l, 2);
+	unsigned weapon = luaL_checknumber(l, 3);
+	const char *name = luaL_checkstring(l, 4);
+
+	f.on_join(pid, team, weapon, name, st);
+	return 0;
+}
+
+static void con_join(plid pid, unsigned team, unsigned weapon, const char *name, struct State *st) {
+	lua_getglobal(l, "on_join");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, team);
+	lua_pushnumber(l, weapon);
+	lua_pushstring(l, name);
+
+	if (lua_pcall(l, 4, 0, 0) != 0)
+		CBAIL("on_join: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_switch(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned team = luaL_checknumber(l, 2);
+	unsigned weapon = luaL_checknumber(l, 3);
+
+	f.on_switch(pid, team, weapon, st);
+	return 0;
+}
+
+static void con_switch(plid pid, unsigned team, unsigned weapon, struct State *st) {
+	lua_getglobal(l, "on_switch");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, team);
+	lua_pushnumber(l, weapon);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("on_switch: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_position(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	fvec3 pos = get_fvec3(l, 2);
+
+	f.on_position(pid, pos, st);
+	return 0;
+}
+
+static void con_position(plid pid, fvec3 pos, struct State *st) {
+	lua_getglobal(l, "on_position");
+
+	lua_pushnumber(l, pid);
+	push_fvec3(pos);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("on_position: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_orientation(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	fvec3 ori = get_fvec3(l, 2);
+
+	f.on_orientation(pid, ori, st);
+	return 0;
+}
+
+static void con_orientation(plid pid, fvec3 ori, struct State *st) {
+	lua_getglobal(l, "on_orientation");
+
+	lua_pushnumber(l, pid);
+	push_fvec3(ori);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("on_orientation: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_move_input(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned bitmask = luaL_checknumber(l, 2);
+
+	f.on_move_input(pid, bitmask, st);
+	return 0;
+}
+
+static void con_move_input(plid pid, unsigned bitmask, struct State *st) {
+	lua_getglobal(l, "on_move_input");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, bitmask);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("on_move_input: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_mouse_input(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned bitmask = luaL_checknumber(l, 2);
+
+	f.on_mouse_input(pid, bitmask, st);
+	return 0;
+}
+
+static void con_mouse_input(plid pid, unsigned bitmask, struct State *st) {
+	lua_getglobal(l, "on_mouse_input");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, bitmask);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("on_mouse_input: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_color_change(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	color color;
+
+	get_color2(l, 2, color);
+
+	f.on_color_change(pid, color, st);
+	return 0;
+}
+
+static void con_color_change(plid pid, color color, struct State *st) {
+	lua_getglobal(l, "on_color_change");
+
+	lua_pushnumber(l, pid);
+	push_color(color);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("on_color_change: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_block_action(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	ivec3 pos = get_ivec3(l, 2);
+	unsigned type = luaL_checknumber(l, 3);
+
+	f.on_block_action(pid, pos, type, st);
+	return 0;
+}
+
+static void con_block_action(plid pid, ivec3 pos, unsigned type, struct State *st) {
+	lua_getglobal(l, "on_block_action");
+
+	lua_pushnumber(l, pid);
+	push_ivec3(pos);
+	lua_pushnumber(l, type);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("on_block_action: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_block_line(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	ivec3 start = get_ivec3(l, 2);
+	ivec3 end = get_ivec3(l, 3);
+
+	f.on_block_line(pid, start, end, st);
+	return 0;
+}
+
+static void con_block_line(plid pid, ivec3 start, ivec3 end, struct State *st) {
+	lua_getglobal(l, "on_block_line");
+
+	lua_pushnumber(l, pid);
+	push_ivec3(start);
+	push_ivec3(end);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("on_block_line: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_chat(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	const char *msg = luaL_checkstring(l, 2);
+	unsigned type = luaL_checknumber(l, 3);
+
+	f.on_chat(pid, msg, type, st);
+	return 0;
+}
+
+static void con_chat(plid pid, const char *msg, unsigned type, struct State *st) {
+	lua_getglobal(l, "on_chat");
+
+	lua_pushnumber(l, pid);
+	lua_pushstring(l, msg);
+	lua_pushnumber(l, type);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("on_chat: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_tool_change(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned tool = luaL_checknumber(l, 2);
+
+	f.on_tool_change(pid, tool, st);
+	return 0;
+}
+
+static void con_tool_change(plid pid, unsigned tool, struct State *st) {
+	lua_getglobal(l, "on_tool_change");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, tool);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("on_tool_change: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_hit(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned type = luaL_checknumber(l, 2);
+	plid hitPlayer = luaL_checknumber(l, 3);
+
+	f.on_hit(pid, type, hitPlayer, st);
+	return 0;
+}
+
+static void con_hit(plid pid, unsigned type, plid hitPlayer, struct State *st) {
+	lua_getglobal(l, "on_hit");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, type);
+	lua_pushnumber(l, hitPlayer);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("on_hit: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_grenade(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	fvec3 pos = get_fvec3(l, 2);
+	fvec3 vel = get_fvec3(l, 3);
+	float fuse = luaL_checknumber(l, 4);
+
+	f.on_grenade(pid, pos, vel, fuse, st);
+	return 0;
+}
+
+static void con_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+	lua_getglobal(l, "on_grenade");
+
+	lua_pushnumber(l, pid);
+	push_fvec3(pos);
+	push_fvec3(vel);
+	lua_pushnumber(l, fuse);
+
+	if (lua_pcall(l, 4, 0, 0) != 0)
+		CBAIL("on_grenade: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_reload(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned mag = luaL_checknumber(l, 2);
+	unsigned reserve = luaL_checknumber(l, 3);
+
+	f.on_reload(pid, mag, reserve, st);
+	return 0;
+}
+
+static void con_reload(plid pid, unsigned mag, unsigned reserve, struct State *st) {
+	lua_getglobal(l, "on_reload");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, mag);
+	lua_pushnumber(l, reserve);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("on_reload: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lafter_player_destroy(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.after_player_destroy(pid, st);
+	return 0;
+}
+
+static void cafter_player_destroy(plid pid, struct State *st) {
+	lua_getglobal(l, "after_player_destroy");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("after_player_destroy: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_game_end(lua_State *l) {
+
+	f.on_game_end(st);
+	return 0;
+}
+
+static void con_game_end(struct State *st) {
+	lua_getglobal(l, "on_game_end");
+
+
+	if (lua_pcall(l, 0, 0, 0) != 0)
+		CBAIL("on_game_end: %s", luaL_checkstring(l, -1));
+}
+
+
+static int ltick(lua_State *l) {
+
+	f.tick(st);
+	return 0;
+}
+
+static void ctick(struct State *st) {
+	lua_getglobal(l, "tick");
+
+
+	if (lua_pcall(l, 0, 0, 0) != 0)
+		CBAIL("tick: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lload_map_from_file(lua_State *l) {
+	const char *path = luaL_checkstring(l, 1);
+
+	f.load_map_from_file(path, st);
+	return 0;
+}
+
+static void cload_map_from_file(const char *path, struct State *st) {
+	lua_getglobal(l, "load_map_from_file");
+
+	lua_pushstring(l, path);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("load_map_from_file: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lblock_action(lua_State *l) {
+	ivec3 pos = get_ivec3(l, 1);
+	unsigned type = luaL_checknumber(l, 2);
+	plid from = luaL_checknumber(l, 3);
+
+	f.block_action(pos, type, from, st);
+	return 0;
+}
+
+static void cblock_action(ivec3 pos, unsigned type, plid from, struct State *st) {
+	lua_getglobal(l, "block_action");
+
+	push_ivec3(pos);
+	lua_pushnumber(l, type);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("block_action: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lblock_line(lua_State *l) {
+	ivec3 start = get_ivec3(l, 1);
+	ivec3 end = get_ivec3(l, 2);
+	plid from = luaL_checknumber(l, 3);
+
+	f.block_line(start, end, from, st);
+	return 0;
+}
+
+static void cblock_line(ivec3 start, ivec3 end, plid from, struct State *st) {
+	lua_getglobal(l, "block_line");
+
+	push_ivec3(start);
+	push_ivec3(end);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("block_line: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lset_fog(lua_State *l) {
+	color color;
+
+	get_color2(l, 1, color);
+
+	f.set_fog(color, st);
+	return 0;
+}
+
+static void cset_fog(color color, struct State *st) {
+	lua_getglobal(l, "set_fog");
+
+	push_color(color);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("set_fog: %s", luaL_checkstring(l, -1));
+}
+
+
+static int ltick_player_physics(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	float timeDelta = luaL_checknumber(l, 2);
+
+	f.tick_player_physics(pid, timeDelta, st);
+	return 0;
+}
+
+static void ctick_player_physics(plid pid, float timeDelta, struct State *st) {
+	lua_getglobal(l, "tick_player_physics");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, timeDelta);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("tick_player_physics: %s", luaL_checkstring(l, -1));
+}
+
+
+static int ldetonate_grenade(lua_State *l) {
+	size_t index = luaL_checknumber(l, 1);
+
+	f.detonate_grenade(index, st);
+	return 0;
+}
+
+static void cdetonate_grenade(size_t index, struct State *st) {
+	lua_getglobal(l, "detonate_grenade");
+
+	lua_pushnumber(l, index);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("detonate_grenade: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lboot_players_to_limbo(lua_State *l) {
+
+	f.boot_players_to_limbo(st);
+	return 0;
+}
+
+static void cboot_players_to_limbo(struct State *st) {
+	lua_getglobal(l, "boot_players_to_limbo");
+
+
+	if (lua_pcall(l, 0, 0, 0) != 0)
+		CBAIL("boot_players_to_limbo: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_map(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.send_map(pid, st);
+	return 0;
+}
+
+static void csend_map(plid pid, struct State *st) {
+	lua_getglobal(l, "send_map");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("send_map: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_state(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.send_state(pid, st);
+	return 0;
+}
+
+static void csend_state(plid pid, struct State *st) {
+	lua_getglobal(l, "send_state");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("send_state: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_connected_players(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.send_connected_players(pid, st);
+	return 0;
+}
+
+static void csend_connected_players(plid pid, struct State *st) {
+	lua_getglobal(l, "send_connected_players");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("send_connected_players: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lspawn_player(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.spawn_player(pid, st);
+	return 0;
+}
+
+static void cspawn_player(plid pid, struct State *st) {
+	lua_getglobal(l, "spawn_player");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("spawn_player: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_chat(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	const char *msg = luaL_checkstring(l, 2);
+	unsigned type = luaL_checknumber(l, 3);
+	plid from = luaL_checknumber(l, 4);
+
+	f.send_chat(pid, msg, type, from, st);
+	return 0;
+}
+
+static void csend_chat(plid pid, const char *msg, unsigned type, plid from, struct State *st) {
+	lua_getglobal(l, "send_chat");
+
+	lua_pushnumber(l, pid);
+	lua_pushstring(l, msg);
+	lua_pushnumber(l, type);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 4, 0, 0) != 0)
+		CBAIL("send_chat: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_block_action(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	ivec3 pos = get_ivec3(l, 2);
+	unsigned type = luaL_checknumber(l, 3);
+	plid from = luaL_checknumber(l, 4);
+
+	f.send_block_action(pid, pos, type, from, st);
+	return 0;
+}
+
+static void csend_block_action(plid pid, ivec3 pos, unsigned type, plid from, struct State *st) {
+	lua_getglobal(l, "send_block_action");
+
+	lua_pushnumber(l, pid);
+	push_ivec3(pos);
+	lua_pushnumber(l, type);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 4, 0, 0) != 0)
+		CBAIL("send_block_action: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_block_line(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	ivec3 start = get_ivec3(l, 2);
+	ivec3 end = get_ivec3(l, 3);
+	plid from = luaL_checknumber(l, 4);
+
+	f.send_block_line(pid, start, end, from, st);
+	return 0;
+}
+
+static void csend_block_line(plid pid, ivec3 start, ivec3 end, plid from, struct State *st) {
+	lua_getglobal(l, "send_block_line");
+
+	lua_pushnumber(l, pid);
+	push_ivec3(start);
+	push_ivec3(end);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 4, 0, 0) != 0)
+		CBAIL("send_block_line: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_set_color(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	color color;
+	plid from = luaL_checknumber(l, 3);
+
+	get_color2(l, 2, color);
+
+	f.send_set_color(pid, color, from, st);
+	return 0;
+}
+
+static void csend_set_color(plid pid, color color, plid from, struct State *st) {
+	lua_getglobal(l, "send_set_color");
+
+	lua_pushnumber(l, pid);
+	push_color(color);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("send_set_color: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_player_update(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.send_player_update(pid, st);
+	return 0;
+}
+
+static void csend_player_update(plid pid, struct State *st) {
+	lua_getglobal(l, "send_player_update");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("send_player_update: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_position(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	fvec3 pos = get_fvec3(l, 2);
+
+	f.send_position(pid, pos, st);
+	return 0;
+}
+
+static void csend_position(plid pid, fvec3 pos, struct State *st) {
+	lua_getglobal(l, "send_position");
+
+	lua_pushnumber(l, pid);
+	push_fvec3(pos);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("send_position: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_reload(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned mag = luaL_checknumber(l, 2);
+	unsigned reserve = luaL_checknumber(l, 3);
+	plid from = luaL_checknumber(l, 4);
+
+	f.send_reload(pid, mag, reserve, from, st);
+	return 0;
+}
+
+static void csend_reload(plid pid, unsigned mag, unsigned reserve, plid from, struct State *st) {
+	lua_getglobal(l, "send_reload");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, mag);
+	lua_pushnumber(l, reserve);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 4, 0, 0) != 0)
+		CBAIL("send_reload: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_intel_capture(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned winning = luaL_checknumber(l, 2);
+	plid from = luaL_checknumber(l, 3);
+
+	f.send_intel_capture(pid, winning, from, st);
+	return 0;
+}
+
+static void csend_intel_capture(plid pid, unsigned winning, plid from, struct State *st) {
+	lua_getglobal(l, "send_intel_capture");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, winning);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("send_intel_capture: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_intel_pickup(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	plid from = luaL_checknumber(l, 2);
+
+	f.send_intel_pickup(pid, from, st);
+	return 0;
+}
+
+static void csend_intel_pickup(plid pid, plid from, struct State *st) {
+	lua_getglobal(l, "send_intel_pickup");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("send_intel_pickup: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_intel_drop(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	fvec3 pos = get_fvec3(l, 2);
+	plid from = luaL_checknumber(l, 3);
+
+	f.send_intel_drop(pid, pos, from, st);
+	return 0;
+}
+
+static void csend_intel_drop(plid pid, fvec3 pos, plid from, struct State *st) {
+	lua_getglobal(l, "send_intel_drop");
+
+	lua_pushnumber(l, pid);
+	push_fvec3(pos);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("send_intel_drop: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_restock(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	plid from = luaL_checknumber(l, 2);
+
+	f.send_restock(pid, from, st);
+	return 0;
+}
+
+static void csend_restock(plid pid, plid from, struct State *st) {
+	lua_getglobal(l, "send_restock");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("send_restock: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_move_object(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	fvec3 pos = get_fvec3(l, 2);
+	unsigned id = luaL_checknumber(l, 3);
+	unsigned team = luaL_checknumber(l, 4);
+
+	f.send_move_object(pid, pos, id, team, st);
+	return 0;
+}
+
+static void csend_move_object(plid pid, fvec3 pos, unsigned id, unsigned team, struct State *st) {
+	lua_getglobal(l, "send_move_object");
+
+	lua_pushnumber(l, pid);
+	push_fvec3(pos);
+	lua_pushnumber(l, id);
+	lua_pushnumber(l, team);
+
+	if (lua_pcall(l, 4, 0, 0) != 0)
+		CBAIL("send_move_object: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lrestock(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.restock(pid, st);
+	return 0;
+}
+
+static void crestock(plid pid, struct State *st) {
+	lua_getglobal(l, "restock");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("restock: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lkill(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned type = luaL_checknumber(l, 2);
+	plid killer = luaL_checknumber(l, 3);
+
+	f.kill(pid, type, killer, st);
+	return 0;
+}
+
+static void ckill(plid pid, unsigned type, plid killer, struct State *st) {
+	lua_getglobal(l, "kill");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, type);
+	lua_pushnumber(l, killer);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("kill: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lset_ammo(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned mag = luaL_checknumber(l, 2);
+	unsigned reserve = luaL_checknumber(l, 3);
+
+	f.set_ammo(pid, mag, reserve, st);
+	return 0;
+}
+
+static void cset_ammo(plid pid, unsigned mag, unsigned reserve, struct State *st) {
+	lua_getglobal(l, "set_ammo");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, mag);
+	lua_pushnumber(l, reserve);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("set_ammo: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lset_hp(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	int hp = luaL_checknumber(l, 2);
+
+	f.set_hp(pid, hp, st);
+	return 0;
+}
+
+static void cset_hp(plid pid, int hp, struct State *st) {
+	lua_getglobal(l, "set_hp");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, hp);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("set_hp: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lset_hp_directional(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	int hp = luaL_checknumber(l, 2);
+	fvec3 pos = get_fvec3(l, 3);
+
+	f.set_hp_directional(pid, hp, pos, st);
+	return 0;
+}
+
+static void cset_hp_directional(plid pid, int hp, fvec3 pos, struct State *st) {
+	lua_getglobal(l, "set_hp_directional");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, hp);
+	push_fvec3(pos);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("set_hp_directional: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lset_tool(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned tool = luaL_checknumber(l, 2);
+
+	f.set_tool(pid, tool, st);
+	return 0;
+}
+
+static void cset_tool(plid pid, unsigned tool, struct State *st) {
+	lua_getglobal(l, "set_tool");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, tool);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("set_tool: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lset_color(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	color color;
+
+	get_color2(l, 2, color);
+
+	f.set_color(pid, color, st);
+	return 0;
+}
+
+static void cset_color(plid pid, color color, struct State *st) {
+	lua_getglobal(l, "set_color");
+
+	lua_pushnumber(l, pid);
+	push_color(color);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("set_color: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lset_position(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	fvec3 pos = get_fvec3(l, 2);
+
+	f.set_position(pid, pos, st);
+	return 0;
+}
+
+static void cset_position(plid pid, fvec3 pos, struct State *st) {
+	lua_getglobal(l, "set_position");
+
+	lua_pushnumber(l, pid);
+	push_fvec3(pos);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("set_position: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lset_orientation(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	fvec3 ori = get_fvec3(l, 2);
+
+	f.set_orientation(pid, ori, st);
+	return 0;
+}
+
+static void cset_orientation(plid pid, fvec3 ori, struct State *st) {
+	lua_getglobal(l, "set_orientation");
+
+	lua_pushnumber(l, pid);
+	push_fvec3(ori);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("set_orientation: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lset_jump(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.set_jump(pid, st);
+	return 0;
+}
+
+static void cset_jump(plid pid, struct State *st) {
+	lua_getglobal(l, "set_jump");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("set_jump: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lcapture_intel(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned winning = luaL_checknumber(l, 2);
+
+	f.capture_intel(pid, winning, st);
+	return 0;
+}
+
+static void ccapture_intel(plid pid, unsigned winning, struct State *st) {
+	lua_getglobal(l, "capture_intel");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, winning);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("capture_intel: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lpickup_intel(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.pickup_intel(pid, st);
+	return 0;
+}
+
+static void cpickup_intel(plid pid, struct State *st) {
+	lua_getglobal(l, "pickup_intel");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("pickup_intel: %s", luaL_checkstring(l, -1));
+}
+
+
+static int ldrop_intel(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	fvec3 pos = get_fvec3(l, 2);
+
+	f.drop_intel(pid, pos, st);
+	return 0;
+}
+
+static void cdrop_intel(plid pid, fvec3 pos, struct State *st) {
+	lua_getglobal(l, "drop_intel");
+
+	lua_pushnumber(l, pid);
+	push_fvec3(pos);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("drop_intel: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lmove_intel(lua_State *l) {
+	unsigned team = luaL_checknumber(l, 1);
+	fvec3 pos = get_fvec3(l, 2);
+
+	f.move_intel(team, pos, st);
+	return 0;
+}
+
+static void cmove_intel(unsigned team, fvec3 pos, struct State *st) {
+	lua_getglobal(l, "move_intel");
+
+	lua_pushnumber(l, team);
+	push_fvec3(pos);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("move_intel: %s", luaL_checkstring(l, -1));
+}
+
+#endif

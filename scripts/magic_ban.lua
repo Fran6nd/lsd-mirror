@@ -1,4 +1,5 @@
 -- magic_ban.lua -- Send banned players to the shadow realm
+-- TODO: rename to purgatory
 local mod = {};
 -- TODO: a lot
 

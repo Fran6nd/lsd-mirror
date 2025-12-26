@@ -18,6 +18,7 @@ struct Vector32 {int32_t x, y, z;};
 struct Vector32u {uint32_t x, y, z;};
 
 typedef uint64_t clk;
+/* TODO: nuke REDEF_PLAYER? need to merge into ls2 though */
 struct Player;
 #ifdef REDEF_PLAYER
 struct Player {

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <arpa/inet.h>
 #include <luajit-2.1/lua.h>
 #include <luajit-2.1/lauxlib.h>
 #include <luajit-2.1/lualib.h>
@@ -152,7 +153,7 @@ static void push_color(const color color) {
 	lua_settable(l, -3);
 }
 
-const char *get_name(lua_State *l, unsigned team) {
+const char *get_team_name(lua_State *l, unsigned team) {
 	const char *result;
 
 	lua_pushnumber(l, team);
@@ -181,10 +182,10 @@ void read_config_values(lua_State *l, struct State *st) {
 		LERR(l, "team_name should be a table");
 
 	memset(st->globals.teamname[0], 0, 10);
-	strncpy(st->globals.teamname[0], get_name(l, 1), 9);
+	strncpy(st->globals.teamname[0], get_team_name(l, 1), 9);
 
 	memset(st->globals.teamname[1], 0, 10);
-	strncpy(st->globals.teamname[1], get_name(l, 2), 9);
+	strncpy(st->globals.teamname[1], get_team_name(l, 2), 9);
 	lua_settop(l, 0);
 
 
@@ -219,6 +220,8 @@ void read_config_values(lua_State *l, struct State *st) {
 
 static struct State *st;
 static struct Functions f;
+#include "luaawk.h"
+#if 0
 static int ltick(lua_State *l) {
 	f.tick(st);
 	return 0;
@@ -555,6 +558,7 @@ static void cdrop_intel(plid pid, fvec3 pos, struct State *st) {
 	if (lua_pcall(l, 2, 0, 0) != 0)
 		CBAIL("drop_intel: %s", luaL_checkstring(l, -1));
 }
+#endif
 
 static int lsend_state_ctf(lua_State *l) {
 	size_t i;
@@ -688,6 +692,7 @@ static void csend_state_ctf(plid pid, plid from, const char teamname[][10], cons
 		CBAIL("send_state_ctf: %s", luaL_checkstring(l, -1));
 }
 
+#if 0
 static int lrestock(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 
@@ -722,6 +727,109 @@ static void cmove_intel(unsigned team, fvec3 pos, struct State *st) {
 
 	if (lua_pcall(l, 2, 0, 0) != 0)
 		CBAIL("move_intel: %s", luaL_checkstring(l, -1));
+}
+
+static int lafter_player_destroy(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.after_player_destroy(pid, st);
+	return 0;
+}
+
+/* TODO: send new color back to pid *only* */
+static void cafter_player_destroy(plid pid, struct State *st) {
+	lua_getglobal(l, "after_player_destroy");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("after_player_destroy: %s", luaL_checkstring(l, -1));
+}
+
+static int lon_any_connect(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	f.on_any_connect(pid, st);
+	return 0;
+}
+
+static void con_any_connect(plid pid, struct State *st) {
+	lua_getglobal(l, "on_any_connect");
+
+	lua_pushnumber(l, pid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("on_any_connect: %s", luaL_checkstring(l, -1));
+}
+
+static int lon_game_end(lua_State *l) {
+	f.on_game_end(st);
+	return 0;
+}
+
+static void con_game_end(struct State *st) {
+	lua_getglobal(l, "on_game_end");
+
+	if (lua_pcall(l, 0, 0, 0) != 0)
+		CBAIL("on_game_end: %s", luaL_checkstring(l, -1));
+}
+
+static int lboot_players_to_limbo(lua_State *l) {
+	f.boot_players_to_limbo(st);
+	return 0;
+}
+
+static void cboot_players_to_limbo(struct State *st) {
+	lua_getglobal(l, "boot_players_to_limbo");
+
+	if (lua_pcall(l, 0, 0, 0) != 0)
+		CBAIL("boot_players_to_limbo: %s", luaL_checkstring(l, -1));
+}
+
+static int lset_hp(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	int hp = luaL_checknumber(l, 2);
+
+	f.set_hp(pid, hp, st);
+	return 0;
+}
+
+static void cset_hp(plid pid, int hp, struct State *st) {
+	lua_getglobal(l, "set_hp");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, hp);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("set_hp: %s", luaL_checkstring(l, -1));
+}
+#endif
+
+static int disconnect(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned reason = luaL_checknumber(l, 2);
+	enet_peer_disconnect(st->host->peers+pid, reason);
+	return 0;
+}
+
+static int disconnect_now(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned reason = luaL_checknumber(l, 2);
+	enet_peer_disconnect_now(st->host->peers+pid, reason);
+	return 0;
+}
+
+static int get_hp(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	lua_pushnumber(l, st->p[pid].hp);
+	return 1;
+}
+
+/* In host byte order */
+static int get_ipaddr(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	lua_pushnumber(l, ntohl(st->host->peers[pid].address.host));
+	return 1;
 }
 
 static int get_intelloc(lua_State *l) {
@@ -762,10 +870,39 @@ static int get_inputs(lua_State *l) {
 	return 1;
 }
 
+static int is_airborne(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	lua_pushboolean(l, st->p[pid].airborne);
+	return 1;
+}
+
 static int is_alive(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 
 	lua_pushboolean(l, st->p[pid].alive);
+	return 1;
+}
+
+static int is_joined(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	lua_pushboolean(l, st->p[pid].connected);
+	return 1;
+}
+
+/* TODO: rename connected -> joined */
+static int is_connected(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	lua_pushboolean(l, st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED);
+	return 1;
+}
+
+static int get_name(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	lua_pushstring(l, st->p[pid].name);
 	return 1;
 }
 
@@ -794,6 +931,12 @@ static int get_team_color(lua_State *l) {
 	}
 
 	push_color(color);
+	return 1;
+}
+
+static int get_team_score(lua_State *l) {
+	unsigned team = luaL_checknumber(l, 1);
+	lua_pushnumber(l, st->globals.teamscore[team]);
 	return 1;
 }
 
@@ -827,14 +970,30 @@ static const struct luaL_Reg funcs[] = {
 	{"send_state_ctf", lsend_state_ctf},
 	{"restock", lrestock},
 	{"move_intel", lmove_intel},
+	{"after_player_destroy", lafter_player_destroy},
+	{"on_any_connect", lon_any_connect},
+	{"set_hp", lset_hp},
+	{"on_game_end", lon_game_end},
+	{"boot_players_to_limbo", lboot_players_to_limbo},
 
+	/* TODO: this one's not like the rest */
+	{"disconnect", disconnect},
+	{"disconnect_now", disconnect_now},
+
+	{"get_hp", get_hp},
+	{"get_ipaddr", get_ipaddr},
 	{"get_intelloc", get_intelloc},
 	{"get_position", get_position},
 	{"get_orientation", get_orientation},
 	{"get_inputs", get_inputs},
+	{"is_airborne", is_airborne},
 	{"is_alive", is_alive},
+	{"is_joined", is_joined},
+	{"is_connected", is_connected},
+	{"get_name", get_name},
 	{"get_team", get_team},
 	{"get_team_color", get_team_color},
+	{"get_team_score", get_team_score},
 	{"get_time", lget_time},
 	{NULL, NULL}
 };
@@ -872,6 +1031,11 @@ void register_functions(lua_State *l, struct State *st) {
 	st->f.drop_intel = cdrop_intel;
 	st->f.send_state_ctf = csend_state_ctf;
 	st->f.restock = crestock;
+	st->f.after_player_destroy = cafter_player_destroy;
+	st->f.on_any_connect = con_any_connect;
+	st->f.set_hp = cset_hp;
+	st->f.on_game_end = con_game_end;
+	st->f.boot_players_to_limbo = cboot_players_to_limbo;
 }
 
 /* TODO: lua config file. . ? */
@@ -882,6 +1046,22 @@ void hook_lua(struct State *st2) {
 
 	luaL_openlibs(l);
 	register_functions(l, st);
+
+	lua_pushnumber(l, MAX_PLAYERS);
+	lua_setglobal(l, "MAX_PLAYERS");
+
+	lua_pushnumber(l, PID_BROADCAST);
+	lua_setglobal(l, "PID_BROADCAST");
+
+	lua_pushnumber(l, PID_COLOR_ANONYMOUS);
+	lua_setglobal(l, "PID_COLOR_ANONYMOUS");
+
+	/* TODO: #define SPECTATOR 255? */
+	lua_pushnumber(l, 255);
+	lua_setglobal(l, "SPECTATOR");
+
+	if (luaL_loadfile(l, "scripts/core.lua") || lua_pcall(l, 0, 0, 0))
+		LERR(l, "Can't load scripts/core.lua: %s", lua_tostring(l, -1));
 
 	if (luaL_loadfile(l, "config.lua") || lua_pcall(l, 0, 0, 0))
 		LERR(l, "Can't load config.lua: %s", lua_tostring(l, -1));

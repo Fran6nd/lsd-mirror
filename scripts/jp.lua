@@ -1,14 +1,11 @@
 -- jp.lua -- An implementation of that jetpack command
 local mod = {};
 
--- TODO: on_connect, on_disconnect, maybe make a cleaner method of clearing things
 local flies = {};
-
-local cmd = {name="jp"};
-function cmd.func(pid)
-	flies[pid] = not flies[pid];
+function mod.on_join(pid, team, weapon, name)
+	next_call("on_join", mod.on_join)(pid, team, weapon, name);
+	flies[pid] = nil;
 end
-register_command(cmd);
 
 MAX_PLAYERS=32
 function mod.tick()
@@ -20,5 +17,11 @@ function mod.tick()
 
 	next_call("tick", mod.tick)();
 end
+
+local cmd = {name="jp"};
+function cmd.func(pid)
+	flies[pid] = not flies[pid];
+end
+register_command(cmd);
 
 return mod;

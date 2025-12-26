@@ -568,6 +568,15 @@ int32_t move_player(PlayerType *p, float secondsSinceLastUpdate, const uint8_t *
 	oldZVelocity = p->velocity.z;
 	boxclipmove(p, secondsSinceLastUpdate, solidData, wrap);
 
+	if (wrap) {
+		p->position.x = fmodf(p->position.x, 512);
+		p->position.y = fmodf(p->position.y, 512);
+		if (p->position.x < 0)
+			p->position.x += 512;
+		if (p->position.y < 0)
+			p->position.y += 512;
+	}
+
 	if (p->velocity.z == 0 && (oldZVelocity > FALL_SLOW_DOWN)) {
 		/* Player went from an airborne state to a grounded one, and had enough velocity to slow down. */
 		p->velocity.x *= 0.5;

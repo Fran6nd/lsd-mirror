@@ -1,10 +1,8 @@
 -- team_block_colors.lua -- Remove the players' freedom of choice for block colors
 local mod = {};
 
--- TODO: to c
-SPECTATOR=255
-
 -- TODO: remove superfluous packet sending from core
+-- TODO: or just send color packet to the player
 function mod.on_color_change(pid, color)
 	set_color(pid, get_team_color(get_team(pid)));
 end

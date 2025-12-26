@@ -10,6 +10,8 @@
 #define LOG1(x) fputs(x"\n", stderr);
 #define LERR luaL_error
 #define CBAIL(x, ...) do {fprintf(stderr, x"\n", __VA_ARGS__); return;} while (0)
+#define CBAILN1(x, ...) do {fprintf(stderr, x"\n", __VA_ARGS__); return -1;} while (0)
+#define CBAIL1N1(x, ...) do {fputs(x"\n", stderr); return -1;} while (0)
 
 static lua_State *l;
 
@@ -353,6 +355,65 @@ static void csend_state_ctf(plid pid, plid from, const char teamname[][10], cons
 		CBAIL("send_state_ctf: %s", luaL_checkstring(l, -1));
 }
 
+static int lsend_packet(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	size_t length;
+	const char *data = luaL_checklstring(l, 2, &length);
+
+	lua_pushnumber(l, f.send_packet(pid, data, length, st));
+	return 1;
+}
+
+static int csend_packet(plid pid, const void *data, size_t length, struct State *st) {
+	int ret;
+
+	lua_getglobal(l, "send_packet");
+
+	lua_pushnumber(l, pid);
+	lua_pushlstring(l, data, length);
+
+	/* TODO: throwing an error with no arg leads to panic due to this checkstring */
+	if (lua_pcall(l, 2, 1, 0) != 0)
+		CBAILN1("send_packet: %s", luaL_checkstring(l, -1));
+
+	if (!lua_isnumber(l, -1))
+		CBAIL1N1("send_packet: should return a number");
+
+	ret = lua_tonumber(l, -1);
+	lua_pop(l, 1);
+
+	return ret;
+}
+
+static int lsend_packet_unreliable(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	size_t length;
+	const char *data = luaL_checklstring(l, 2, &length);
+
+	lua_pushnumber(l, f.send_packet_unreliable(pid, data, length, st));
+	return 1;
+}
+
+static int csend_packet_unreliable(plid pid, const void *data, size_t length, struct State *st) {
+	int ret;
+
+	lua_getglobal(l, "send_packet_unreliable");
+
+	lua_pushnumber(l, pid);
+	lua_pushlstring(l, data, length);
+
+	if (lua_pcall(l, 2, 1, 0) != 0)
+		CBAILN1("send_packet_unreliable: %s", luaL_checkstring(l, -1));
+
+	if (!lua_isnumber(l, -1))
+		CBAIL1N1("send_packet_unreliable: should return a number");
+
+	ret = lua_tonumber(l, -1);
+	lua_pop(l, 1);
+
+	return ret;
+}
+
 static int disconnect(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 	unsigned reason = luaL_checknumber(l, 2);
@@ -500,6 +561,8 @@ static const struct luaL_Reg funcs[] = {
 	/* Add all the cruft from luaawk.h */
 	LUA_CALLS
 	{"send_state_ctf", lsend_state_ctf},
+	{"send_packet", lsend_packet},
+	{"send_packet_unreliable", lsend_packet_unreliable},
 
 	/* TODO: these two are not like the rest */
 	{"disconnect", disconnect},
@@ -537,6 +600,8 @@ void register_functions(lua_State *l, struct State *st) {
 
 	f = st->f;
 	st->f.send_state_ctf = csend_state_ctf;
+	st->f.send_packet = csend_packet;
+	st->f.send_packet_unreliable = csend_packet_unreliable;
 	register_luaawk(l, st);
 }
 

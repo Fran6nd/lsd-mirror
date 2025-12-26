@@ -134,6 +134,8 @@ struct Functions {
 	/*
 	 * Player actions
 	 */
+	int (*send_packet)(plid pid, const void *data, size_t length, struct State *st);
+	int (*send_packet_unreliable)(plid pid, const void *data, size_t length, struct State *st);
 	void (*send_map)(plid pid, struct State *st);
 	void (*send_state)(plid pid, struct State *st);
 	void (*send_state_ctf)(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, const unsigned *teamscore, unsigned maxscore, const plid *holders, const fvec3 *intelpos, const fvec3 *tentpos, struct State *st);
@@ -155,6 +157,7 @@ struct Functions {
 	void (*send_intel_drop)(plid pid, fvec3 pos, plid from, struct State *st);
 	void (*send_restock)(plid pid, plid from, struct State *st);
 	void (*send_move_object)(plid pid, fvec3 pos, unsigned id, unsigned team, struct State *st);
+	void (*send_map_start)(plid pid, unsigned size, struct State *st);
 
 	void (*restock)(plid pid, struct State *st);
 	/* TODO: allow hijacking respawn time */

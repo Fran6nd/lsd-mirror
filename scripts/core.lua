@@ -26,7 +26,7 @@ function register(module)
 			callchain[key] = {server[key]};
 		end
 		table.insert(callchain[key], val);
-		_G[key] = function(...) status, err = pcall(val, ...); if (not status and err ~= stexec) then error(err); end end;
+		_G[key] = function(...) local status, err = pcall(val, ...); if (not status and err ~= stexec) then error(err); end return err; end;
 	end
 
 	if (module.on_load ~= nil) then

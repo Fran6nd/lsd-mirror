@@ -156,7 +156,7 @@ int send_packet_unreliable(plid pid, const void *data, size_t length, struct Sta
 	return send_packet_flags(pid, data, length, 0, st);
 }
 
-#define SEND(pid, data) send_packet(pid, &(data), sizeof(data), st)
+#define SEND(pid, data) st->f.send_packet(pid, &(data), sizeof(data), st)
 #define LOG(x, ...) fprintf(stderr, x"\n", __VA_ARGS__)
 #define LOG1(x) fputs(x"\n", stderr)
 
@@ -179,7 +179,7 @@ void set_fog(color color, struct State *st) {
 /* TODO: what if i'm the last player ID? i don't need my own position */
 void send_player_update(plid pid, struct State *st) {
 	struct PacketWorldUpdate upd;
-	plid i, max = 0;
+	plid i, max = -1;
 
 	upd.packetID = PacketTypeWorldUpdate;
 
@@ -196,7 +196,7 @@ void send_player_update(plid pid, struct State *st) {
 		upd.players[i].ori = st->p[i].ori;
 	}
 
-	send_packet_unreliable(pid, &upd, 1+(max+1)*24, st);
+	st->f.send_packet_unreliable(pid, &upd, 1+(max+1)*24, st);
 }
 
 int alloc_more_nades(struct State *st) {
@@ -598,17 +598,22 @@ void on_successful_connect(plid pid, struct State *st) {
 	st->f.send_map(pid, st);
 }
 
+void send_map_start(plid pid, unsigned size, struct State *st) {
+	struct PacketMapStart ms;
+
+	ms.packetID = PacketTypeMapStart;
+	ms.mapSize = size;
+
+	SEND(pid, ms);
+}
+
 #if 0
 void send_map(plid pid, struct State *st) {
-	struct PacketMapStart ms;
 	uint8_t *chk;
 	ssize_t mapsize;
 	char *map;
 
-	ms.packetID = PacketTypeMapStart;
-	ms.mapSize = 0;
-
-	SEND(pid, ms);
+	st->f.send_map_start(pid, 0, st);
 
 	map = map_file("maps/map.vxl.zlib", &mapsize);
 
@@ -618,7 +623,7 @@ void send_map(plid pid, struct State *st) {
 	
 	munmap(map, mapsize);
 
-	send_packet(pid, chk, 1+mapsize, st);
+	st->f.send_packet(pid, chk, 1+mapsize, st);
 	free(chk);
 
 	st->f.send_state(pid, st);
@@ -683,7 +688,7 @@ void send_compressed_map(plid pid, struct State *st) {
 				return;
 			}
 
-			send_packet(pid, outbuf, stream.next_out-outbuf, st);
+			st->f.send_packet(pid, outbuf, stream.next_out-outbuf, st);
 		} while (stream.avail_in != 0);
 	}
 
@@ -691,14 +696,10 @@ void send_compressed_map(plid pid, struct State *st) {
 }
 
 void send_map(plid pid, struct State *st) {
-	struct PacketMapStart ms;
 	size_t buflen;
 	plid i;
 
-	ms.packetID = PacketTypeMapStart;
-	ms.mapSize = 0;
-
-	SEND(pid, ms);
+	st->f.send_map_start(pid, 0, st);
 	send_compressed_map(pid, st);
 
 	/* TODO: use an iterator for broadcast macros */
@@ -751,7 +752,7 @@ void send_state_ctf(plid pid, plid from, const char teamname[][10], const color 
 	sta.gamemodeData.ctfStateData.team1TentPosition = tentpos[0];
 	sta.gamemodeData.ctfStateData.team2TentPosition = tentpos[1];
 
-	send_packet(pid, &sta, 84, st);
+	st->f.send_packet(pid, &sta, 84, st);
 }
 
 void send_state_tc(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, unsigned tentcount, const fvec3 *tentpos, unsigned *tentteam, struct State *st) {
@@ -782,7 +783,7 @@ void send_state_tc(plid pid, plid from, const char teamname[][10], const color *
 	}
 
 	/* TODO: we should probably validate tentcount from lua code */
-	send_packet(pid, &sta, 33+tentcount, st);
+	st->f.send_packet(pid, &sta, 33+tentcount, st);
 }
 
 void send_state(plid pid, struct State *st) {
@@ -828,7 +829,7 @@ void send_connected_players(plid pid, struct State *st) {
 
 		ki.playerID = i;
 
-		send_packet(pid, &ep, 13+strlen(ep.name), st);
+		st->f.send_packet(pid, &ep, 13+strlen(ep.name), st);
 
 		if (in.keyStates != 0)
 			SEND(pid, in);
@@ -1222,7 +1223,7 @@ void send_chat(plid pid, const char *msg, unsigned type, plid from, struct State
 	chat[2] = type;
 	memcpy(chat+3, msg, msglen+1);
 
-	send_packet(pid, chat, 3 + msglen + 1, st);
+	st->f.send_packet(pid, chat, 3 + msglen + 1, st);
 
 	free(chat);
 }
@@ -2018,6 +2019,9 @@ int main(void) {
 	st->f.after_player_destroy = after_player_destroy;
 	st->f.on_game_end = on_game_end;
 	st->f.boot_players_to_limbo = boot_players_to_limbo;
+	st->f.send_map_start = send_map_start;
+	st->f.send_packet = send_packet;
+	st->f.send_packet_unreliable = send_packet_unreliable;
 
 	/*st->globals.fog[0] = 255;
 	st->globals.fog[1] = 200;

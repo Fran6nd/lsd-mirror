@@ -1,12 +1,32 @@
 BEGIN {
 	pad = "";
+	lua_calls = "";
+	lua_reg = "";
 	print("#ifndef LS2_SERVER_LUAAWK_H");
 	print("#define LS2_SERVER_LUAAWK_H\n");
 }
 
 END {
-	print("\n#endif");
+	printf("\nstatic void register_luaawk(lua_State *l, struct State *st) {%s}\n", lua_reg);
+	printf("\n#define LUA_CALLS %s\n#endif\n", lua_calls);
 }
+
+# void register_functions(lua_State *l, struct State *st) {
+# 	const struct luaL_Reg *func = funcs;
+#
+# 	while (func->name != NULL) {
+# 		lua_pushcfunction(l, func->func);
+# 		lua_setglobal(l, func->name);
+#
+# 		func++;
+# 	}
+#
+# 	luaL_openlib(l, "server", funcs, 0);
+#
+# 	f = st->f;
+# 	st->f.tick = ctick;
+# 	st->f.set_color = cset_color;
+# 	st->f.send_chat = csend_chat;
 
 function extract_name(arg) {
 	toklen = split(arg, tokens, " ");
@@ -24,6 +44,9 @@ function extract_name(arg) {
 		match($0, /\)\([_a-zA-Z0-9, \*\[\]]*\)/);
 		args = substr($0, RSTART+2, RLENGTH-3);
 		argc = split(args, argv, ", ");
+
+		lua_calls = lua_calls sprintf("{\"%s\",l%s},", name, name);
+		lua_reg = lua_reg sprintf("st->f.%s=c%s;", name, name);
 
 		printf(pad"static int l%s(lua_State *l) {\n", name);
 		defer = "";

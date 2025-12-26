@@ -497,34 +497,10 @@ static int lget_time(struct lua_State *l) {
 }
 
 static const struct luaL_Reg funcs[] = {
-	{"tick", ltick},
-	{"set_color", lset_color},
-	{"send_chat", lsend_chat},
-	{"on_color_change", lon_color_change},
-	{"spawn_player", lspawn_player},
-	{"on_join", lon_join},
-	{"block_action", lblock_action},
-	{"on_block_action", lon_block_action},
-	{"on_chat", lon_chat},
-	{"kill", lkill},
-	{"set_jump", lset_jump},
-	{"tick_player_physics", ltick_player_physics},
-	{"on_position", lon_position},
-	{"set_position", lset_position},
-	{"load_map_from_file", lload_map_from_file},
-	{"capture_intel", lcapture_intel},
-	{"pickup_intel", lpickup_intel},
-	{"drop_intel", ldrop_intel},
-	{"send_state_ctf", lsend_state_ctf},
-	{"restock", lrestock},
-	{"move_intel", lmove_intel},
-	{"after_player_destroy", lafter_player_destroy},
-	{"on_any_connect", lon_any_connect},
-	{"set_hp", lset_hp},
-	{"on_game_end", lon_game_end},
-	{"boot_players_to_limbo", lboot_players_to_limbo},
+	/* Add all the cruft from luaawk.h */
+	LUA_CALLS
 
-	/* TODO: this one's not like the rest */
+	/* TODO: these two are not like the rest */
 	{"disconnect", disconnect},
 	{"disconnect_now", disconnect_now},
 
@@ -559,31 +535,7 @@ void register_functions(lua_State *l, struct State *st) {
 	luaL_openlib(l, "server", funcs, 0);
 
 	f = st->f;
-	st->f.tick = ctick;
-	st->f.set_color = cset_color;
-	st->f.send_chat = csend_chat;
-	st->f.on_color_change = con_color_change;
-	st->f.spawn_player = cspawn_player;
-	st->f.on_join = con_join;
-	st->f.on_block_action = con_block_action;
-	st->f.block_action = cblock_action;
-	st->f.on_chat = con_chat;
-	st->f.kill = ckill;
-	st->f.set_jump = cset_jump;
-	st->f.tick_player_physics = ctick_player_physics;
-	st->f.set_position = cset_position;
-	st->f.on_position = con_position;
-	st->f.load_map_from_file = cload_map_from_file;
-	st->f.capture_intel = ccapture_intel;
-	st->f.pickup_intel = cpickup_intel;
-	st->f.drop_intel = cdrop_intel;
-	st->f.send_state_ctf = csend_state_ctf;
-	st->f.restock = crestock;
-	st->f.after_player_destroy = cafter_player_destroy;
-	st->f.on_any_connect = con_any_connect;
-	st->f.set_hp = cset_hp;
-	st->f.on_game_end = con_game_end;
-	st->f.boot_players_to_limbo = cboot_players_to_limbo;
+	register_luaawk(l, st);
 }
 
 /* TODO: lua config file. . ? */

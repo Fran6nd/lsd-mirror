@@ -499,6 +499,7 @@ static int lget_time(struct lua_State *l) {
 static const struct luaL_Reg funcs[] = {
 	/* Add all the cruft from luaawk.h */
 	LUA_CALLS
+	{"send_state_ctf", lsend_state_ctf},
 
 	/* TODO: these two are not like the rest */
 	{"disconnect", disconnect},
@@ -535,6 +536,7 @@ void register_functions(lua_State *l, struct State *st) {
 	luaL_openlib(l, "server", funcs, 0);
 
 	f = st->f;
+	st->f.send_state_ctf = csend_state_ctf;
 	register_luaawk(l, st);
 }
 

@@ -1,5 +1,5 @@
 -- babel.lua -- The gamemode where nobody can cooperate
-local mod = {};
+local mod = {after={}};
 local drop_timeout = 0;
 --local intelloc = {x=256, y=256, z=1};
 
@@ -142,9 +142,7 @@ function within_cylinder(pos, cylinderpos, radius, bottom, top)
 end
 
 -- TODO: probably take a team as arg instead? though, the score. . .
-function mod.capture_intel(pid, winning)
-	next_call("capture_intel", mod.capture_intel)(pid, winning);
-
+function mod.after.capture_intel(pid)
 	move_intel(0, {x=256, y=256, z=plat_z});
 	local team = get_team(pid);
 	if (team == 0) then
@@ -168,9 +166,7 @@ local function get_1intel()
 end
 
 -- TODO: get, set intel position
-function mod.tick()
-	next_call("tick", mod.tick)();
-
+function mod.after.tick()
 	local intelloc = get_1intel();
 
 	-- Don't do anything if someone is holding the intel
@@ -185,7 +181,7 @@ function mod.tick()
 			-- TODO: put that intel back and maybe hook capture
 			--intelloc = {x=256, y=256, z=1};
 		end
-	elseif (get_time() >= drop_timeout) then for i=0,MAX_PLAYERS-1 do
+	elseif (get_time() >= drop_timeout) then for i in piditer(PID_BROADCAST) do
 		--print(intelloc);
 		if (not is_alive(i)) then
 			goto continue;
@@ -237,8 +233,7 @@ end
 
 -- TODO: intel position callback on map load?
 -- TODO: hook after load and before send
-function mod.load_map_from_file(path)
-	next_call("load_map_from_file", mod.load_map_from_file)(path);
+function mod.after.load_map_from_file()
 	-- TODO: don't send packets for this. . .
 	build_platform();
 	putback_intel();
@@ -300,13 +295,13 @@ end
 register_command(cmd);
 
 -- Drop intel on kill, disconnect, etc.
-function mod.after_player_destroy(pid)
-	next_call("after_player_destroy", mod.after_player_destroy)(pid);
+-- TODO: something seems very wrong about after.after_*
+function mod.after.after_player_destroy(pid)
 	try_drop(pid);
 end
 
 function mod.on_unload()
-
+	-- TODO: you going to do something with this?
 end
 
 -- TODO: should babel hook the statedata and send its own cruft or depend on the server for that?

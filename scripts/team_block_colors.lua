@@ -1,5 +1,5 @@
 -- team_block_colors.lua -- Remove the players' freedom of choice for block colors
-local mod = {};
+local mod = {after={}};
 
 -- TODO: remove superfluous packet sending from core
 -- TODO: or just send color packet to the player
@@ -9,8 +9,7 @@ end
 
 -- TODO: should i send a color packet right before block/line to keep things in sync?
 -- if so, that should really be part of core
-function mod.spawn_player(pid)
-	next_call("spawn_player", mod.spawn_player)(pid);
+function mod.after.spawn_player(pid)
 	-- TODO: should set_color ignore if there's no change in color?
 	-- TODO: yes
 	-- TODO: but what about the random dead person who places blocks?

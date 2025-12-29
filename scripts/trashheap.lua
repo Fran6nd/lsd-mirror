@@ -1,6 +1,34 @@
 -- trashheap.lua -- trash not a burner likes to /exec
 
 function sc(x)send_chat(PID_BROADCAST,tostring(x),2,0)end
+function ptab(tbl, depth)
+	if (depth == nil) then
+		depth = 0;
+	end
+
+	local tab = string.rep("        ", depth);
+	local out = "{\n";
+	for x,y in pairs(tbl) do
+		out = out..tab.."        "..fmtval(x, depth).." = "..fmtval(y, depth)..",\n";
+	end
+	return out..tab.."}";
+end
+
+function fmtval(x, depth)
+	if (depth == nil) then
+		depth = -1;
+	end
+
+	if (type(x) == "string") then
+		return '"'..x..'"';
+	end
+
+	if (type(x) ~= "table") then
+		return tostring(x);
+	end
+
+	return ptab(x, depth+1);
+end
 
 ticker = {};
 local before;
@@ -22,6 +50,22 @@ function ticker.tick()
 	end
 
 	before = now;
+end
+
+ticker2 = {};
+local before2;
+function ticker2.on_load()
+	before2 = get_time();
+end
+
+function ticker2.tick()
+	local now = get_time();
+
+	next_call("tick", ticker2.tick)();
+	
+	send_chat(PID_BROADCAST, string.format("N%% %f", now - before2 - 0.01666666666666666666), 2, 0);
+
+	before2 = now;
 end
 
 whereami = {};

@@ -1,6 +1,6 @@
 -- magic_ban.lua -- Send banned players to the shadow realm
 -- TODO: rename to purgatory
-local mod = {};
+local mod = {after={}};
 -- TODO: a lot
 
 magic_ban_msg = [[
@@ -21,51 +21,29 @@ local banned = {};
 -- TODO: iterator
 -- TODO: allow next_call to automatically determine which func called it, for more reusable funcs?
 -- TODO: make unreliable a flag instead of func?
+-- TODO: should the number be removed from send_packet
 function mod.send_packet(pid, data)
-	if (pid >= 0 and pid < MAX_PLAYERS) then
-		if (not banned[pid]) then
-			return next_call("send_packet", mod.send_packet)(pid, data);
-		end
-		return 0;
-	else
-		if (pid == PID_BROADCAST) then
-			for i=0,MAX_PLAYERS-1 do
-				if (is_connected(i) and not banned[i]) then
-					next_call("send_packet", mod.send_packet)(i, data);
-				end
-			end
-			return 0;
-		else
-			return next_call("send_packet", mod.send_packet)(pid, data);
+	-- TODO: set banned AFTER connect and packet-sending?
+	for i in piditer(pid) do
+		if (not banned[i]) then
+			next_call("send_packet", mod.send_packet)(i, data);
 		end
 	end
+	return 0;
 end
 
 function mod.send_packet_unreliable(pid, data)
-	if (pid >= 0 and pid < MAX_PLAYERS) then
-		if (not banned[pid]) then
-			return next_call("send_packet_unreliable", mod.send_packet_unreliable)(pid, data);
-		end
-		return 0;
-	else
-		if (pid == PID_BROADCAST) then
-			for i=0,MAX_PLAYERS-1 do
-				if (is_connected(i) and not banned[i]) then
-					next_call("send_packet_unreliable", mod.send_packet_unreliable)(i, data);
-				end
-			end
-			return 0;
-		else
-			return next_call("send_packet_unreliable", mod.send_packet_unreliable)(pid, data);
+	for i in piditer(pid) do
+		if (not banned[i]) then
+			next_call("send_packet_unreliable", mod.send_packet_unreliable)(i, data);
 		end
 	end
+	return 0;
 end
 
 function send_to_purgatory(pid)
 	-- TODO: set joined to false, after_destroy and boot
-	banned[pid] = true;
 	local head = send_packet;
-	send_packet = server.send_packet;
 	send_map_start(pid, 11);
 	send_map_chunk(pid, "\x78\xda\x63\xb0\xb3\x01\x00\x00\xbb\x00\x7b");
 	-- TODO: predefined colors?
@@ -76,7 +54,7 @@ function send_to_purgatory(pid)
 	for line in string.gmatch(magic_ban_msg, "([^\n]+)") do
 		send_chat(pid, line, 2, 0);
 	end
-	send_packet = head;
+	banned[pid] = true;
 end
 
 -- function mod.send_packet(...)
@@ -88,12 +66,12 @@ end
 -- TODO: prevent sending packets here
 -- TODO: error if loaded with no module? put commands into the module?
 function mod.on_any_connect(pid)
-	--banned[pid] = true;
 	if (banned[pid] == nil) then
 		if (pid == MAX_PLAYERS - 1) then
 			-- Boot banned players to make room for important players
+			-- TODO: disconnect_now? (with on_disconnect handling?)
 			for x,y in ipairs(banned) do
-				disconnect(y);
+				disconnect(x, 1);
 				break;
 			end
 		end
@@ -123,9 +101,8 @@ function mod.on_any_packet(pid, data)
 	next_call("on_any_packet", mod.on_any_packet)(pid, data);
 end
 
-function mod.on_disconnect(pid)
+function mod.after.on_disconnect(pid)
 	banned[pid] = nil;
-	next_call("on_disconnect", mod.on_disconnect)(pid);
 end
 
 return mod;

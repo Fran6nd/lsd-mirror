@@ -107,6 +107,26 @@ void do_loop(struct State *st) {
 	st->f.tick(st);
 }
 
+/* Use this for iterating over BROADCAST_* pids */
+int pid_matches(plid broadcast, plid pid, struct State *st) {
+	if (broadcast == PID_BROADCAST)
+		return st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED;
+
+	/* PID_BROADCAST_TEAM */
+	if (broadcast > MAX_PLAYERS)
+		return (st->p[pid].connected && st->p[pid].team == broadcast - MAX_PLAYERS - 1);
+
+	/* PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER */
+	if (broadcast <= -MAX_PLAYERS)
+		return (pid != (-broadcast >> 16 & 511) && st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED && (!st->p[pid].connected || (st->p[pid].connected && st->p[pid].team != -broadcast - MAX_PLAYERS)));
+
+	/* PID_BROADCAST_EXCEPT */
+	if (broadcast < 0)
+		return (st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED && pid != -broadcast-1);
+
+	return broadcast == pid;
+}
+
 int send_packet_flags(plid pid, const void *data, size_t length, unsigned flags, struct State *st) {
 	ENetPacket *packet;
 
@@ -116,34 +136,15 @@ int send_packet_flags(plid pid, const void *data, size_t length, unsigned flags,
 
 	if (pid == PID_BROADCAST)
 		enet_host_broadcast(st->host, 0, packet);
-	else if (pid > MAX_PLAYERS) { /* PID_BROADCAST_TEAM */
+	else if ((uint32_t)pid < MAX_PLAYERS)
+		return enet_peer_send(st->host->peers+pid, 0, packet) == 0 ? 0 : -1;
+	else {
 		plid i;
-
 		for (i=0;i<MAX_PLAYERS;i++) {
-			if (st->p[i].connected && st->p[i].team == pid - MAX_PLAYERS - 1)
+			if (pid_matches(pid, i, st))
 				enet_peer_send(st->host->peers+i, 0, packet);
 		}
-	} else if (pid <= -MAX_PLAYERS) { /* PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER */
-		plid i;
-
-		for (i=0;i<MAX_PLAYERS;i++) {
-			/* The player exception part -- & 511 instead of 255 to allow for passing an invalid player, which gets ignored */
-			if (i == (-pid >> 16 & 511))
-				continue;
-
-			/* Team part. */
-			if (st->host->peers[i].state == ENET_PEER_STATE_CONNECTED && (!st->p[i].connected || (st->p[i].connected && st->p[i].team != -pid - MAX_PLAYERS)))
-				enet_peer_send(st->host->peers+i, 0, packet);
-		}
-	} else if (pid < 0) { /* PID_BROADCAST_EXCEPT */
-		plid i;
-
-		for (i=0;i<MAX_PLAYERS;i++) {
-			if (st->host->peers[i].state == ENET_PEER_STATE_CONNECTED && i != -pid-1)
-				enet_peer_send(st->host->peers+i, 0, packet);
-		}
-	} else if (enet_peer_send(st->host->peers+pid, 0, packet) < 0)
-		return -1;
+	}
 
 	return 0;
 }
@@ -702,14 +703,10 @@ void send_map(plid pid, struct State *st) {
 	st->f.send_map_start(pid, 0, st);
 	send_compressed_map(pid, st);
 
-	/* TODO: use an iterator for broadcast macros */
 	/* TODO: should the iterator be moved to send_state? */
-	if (pid == PID_BROADCAST) {
-		for (i=0;i<MAX_PLAYERS;i++)
-			if (st->host->peers[i].state == ENET_PEER_STATE_CONNECTED)
-				st->f.send_state(i, st);
-	} else
-		st->f.send_state(pid, st);
+	for (i=0;i<MAX_PLAYERS;i++)
+		if (pid_matches(pid, i, st))
+			st->f.send_state(i, st);
 }
 #endif
 

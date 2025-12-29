@@ -1,23 +1,21 @@
 -- medkit.lua -- Use /m for morphine
-local mod = {};
+local mod = {after={}};
 local kits = {};
 getcfg("medkit_heal", 40);
 getcfg("medkit_quantity", 1);
 
 function mod.on_load()
-	for i=0,MAX_PLAYERS-1 do
+	for i in piditer(PID_BROADCAST) do
 		kits[i] = medkit_quantity;
 	end
 end
 
-function mod.spawn_player(pid)
-	next_call("spawn_player", mod.spawn_player)(pid);
+function mod.after.spawn_player(pid)
 	kits[pid] = medkit_quantity;
 end
 
 -- TODO: what about infinite_blocks restocks?
-function mod.restock(pid)
-	next_call("restock", mod.restock)(pid);
+function mod.after.restock(pid)
 	kits[pid] = medkit_quantity;
 end
 

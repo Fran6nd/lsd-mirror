@@ -1,5 +1,5 @@
 -- tip_spam.lua -- Occasionally spam all connected players with useless tips
-local mod = {};
+local mod = {after={}};
 local next_tip_spam = nil;
 local tip_spam_idx = 1;
 -- TODO: randomly pick tips? (maybe with that shuffle method tetris uses)
@@ -17,12 +17,10 @@ I hear gamebanana has some weapon skins -- just look for ones compatible with yo
 There are 3-ish popular clients: original ("Voxlap", sometimes incorrectly referred to as "buildandshoot"), OpenSpades, and BetterSpades.
 ]]);
 
-function mod.tick()
+function mod.after.tick()
 	if (next_tip_spam == nil) then
 		next_tip_spam = get_time() + tip_frequency; -- TODO: why did i comment out the + tip_frequency
 	end
-
-	next_call("tick", mod.tick)();
 
 	if (get_time() >= next_tip_spam) then
 		send_chat(PID_BROADCAST, tips[tip_spam_idx], 2, 0);

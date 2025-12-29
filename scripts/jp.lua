@@ -1,24 +1,20 @@
 -- jp.lua -- An implementation of that jetpack command
-local mod = {};
+local mod = {after={},before={}};
 
 local flies = {};
-function mod.on_join(pid, team, weapon, name)
-	next_call("on_join", mod.on_join)(pid, team, weapon, name);
+function mod.after.on_join(pid)
 	flies[pid] = nil;
 end
 
-MAX_PLAYERS=32
-function mod.tick()
-	for i=0,MAX_PLAYERS-1 do
+function mod.before.tick()
+	for i in piditer(PID_BROADCAST) do
 		if (flies[i] and bit.band(get_inputs(i), 64) == 64) then
 			set_jump(i);
 		end
 	end
-
-	next_call("tick", mod.tick)();
 end
 
-local cmd = {name="jp"};
+local cmd = {name="jp", caps="jp"};
 function cmd.func(pid)
 	flies[pid] = not flies[pid];
 end

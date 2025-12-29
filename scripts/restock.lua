@@ -1,5 +1,5 @@
 -- restock.lua -- Refill ammo and things at a tent
-local mod = {};
+local mod = {after={}};
 
 -- TODO: near_tent call or something like that
 -- TODO: plumb tent positions without piggybacking off of babel.lua
@@ -15,10 +15,8 @@ local function within_cylinder(pos, cylinderpos, radius, bottom, top)
 	return true;
 end
 
-function mod.tick()
-	next_call("tick", mod.tick)();
-
-	for i=0,MAX_PLAYERS-1 do
+function mod.after.tick()
+	for i in piditer(PID_BROADCAST) do
 		if (is_alive(i) and within_cylinder(get_position(i), get_tent_position(get_team(i)), 3, 1, -4)) then
 			restock(i);
 			-- TODO: put some delay on restock

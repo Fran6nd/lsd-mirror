@@ -9,7 +9,7 @@ local function unreg(name)
 	package.loaded[name] = nil;
 end
 
-local cmd = {name="unloadall"};
+local cmd = {name="unloadall", caps="modutils"};
 function cmd.func()
 	local cmds = require("commands");
 
@@ -21,7 +21,7 @@ function cmd.func()
 end
 register_command(cmd);
 
-local cmd = {name="lsmod"};
+local cmd = {name="lsmod", caps="modutils"};
 function cmd.func(pid)
 	for x,y in ipairs(modules) do
 		send_chat(pid, tostring(y), 2, 0);
@@ -39,14 +39,14 @@ function cmd.func(pid)
 end
 register_command(cmd);
 
-local cmd = {name="load"};
+local cmd = {name="load", caps="modutils"};
 function cmd.func(pid, argv)
 	unreg(argv[1]);
 	load(argv[1]);
 end
 register_command(cmd);
 
-local cmd = {name="unload"};
+local cmd = {name="unload", caps="modutils"};
 function cmd.func(pid, argv)
 	unreg(argv[1]);
 end

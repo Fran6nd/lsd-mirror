@@ -17,7 +17,7 @@ static lua_State *l;
 
 /* TODO: color -> struct */
 void get_color2(lua_State *l, int table, color color) {
-	lua_pushstring(l, "b");
+	lua_pushliteral(l, "b");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
 		LERR(l, "color should have 3 RGB numbers in it");
@@ -26,7 +26,7 @@ void get_color2(lua_State *l, int table, color color) {
 	lua_pop(l, 1);
 
 
-	lua_pushstring(l, "g");
+	lua_pushliteral(l, "g");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
 		LERR(l, "color should have 3 RGB numbers in it");
@@ -35,7 +35,7 @@ void get_color2(lua_State *l, int table, color color) {
 	lua_pop(l, 1);
 
 
-	lua_pushstring(l, "r");
+	lua_pushliteral(l, "r");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
 		LERR(l, "color should have 3 RGB numbers in it");
@@ -47,7 +47,7 @@ void get_color2(lua_State *l, int table, color color) {
 ivec3 get_ivec3(lua_State *l, int table) {
 	ivec3 val;
 
-	lua_pushstring(l, "x");
+	lua_pushliteral(l, "x");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
 		LERR(l, "ivec3 should have 3 numbers in it");
@@ -56,7 +56,7 @@ ivec3 get_ivec3(lua_State *l, int table) {
 	lua_pop(l, 1);
 
 
-	lua_pushstring(l, "y");
+	lua_pushliteral(l, "y");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
 		LERR(l, "ivec3 should have 3 numbers in it");
@@ -65,7 +65,7 @@ ivec3 get_ivec3(lua_State *l, int table) {
 	lua_pop(l, 1);
 
 
-	lua_pushstring(l, "z");
+	lua_pushliteral(l, "z");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
 		LERR(l, "ivec3 should have 3 numbers in it");
@@ -79,7 +79,7 @@ ivec3 get_ivec3(lua_State *l, int table) {
 fvec3 get_fvec3(lua_State *l, int table) {
 	fvec3 val;
 
-	lua_pushstring(l, "x");
+	lua_pushliteral(l, "x");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
 		LERR(l, "fvec3 should have 3 numbers in it");
@@ -88,7 +88,7 @@ fvec3 get_fvec3(lua_State *l, int table) {
 	lua_pop(l, 1);
 
 
-	lua_pushstring(l, "y");
+	lua_pushliteral(l, "y");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
 		LERR(l, "fvec3 should have 3 numbers in it");
@@ -97,7 +97,7 @@ fvec3 get_fvec3(lua_State *l, int table) {
 	lua_pop(l, 1);
 
 
-	lua_pushstring(l, "z");
+	lua_pushliteral(l, "z");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
 		LERR(l, "fvec3 should have 3 numbers in it");
@@ -414,6 +414,32 @@ static int csend_packet_unreliable(plid pid, const void *data, size_t length, st
 	return ret;
 }
 
+/* NOTE: Try not to touch pid_matches' conditions too much while iterating */
+int pid_matches(plid broadcast, plid pid, struct State *st);
+static int do_piditer(lua_State *l) {
+	plid broadcast = lua_tonumber(l, lua_upvalueindex(1));
+	plid pid = lua_tonumber(l, lua_upvalueindex(2));
+
+	for (;pid<MAX_PLAYERS;pid++) {
+		if (pid_matches(broadcast, pid, st)) {
+			lua_pushnumber(l, pid);
+			lua_pushnumber(l, pid+1);
+			lua_replace(l, lua_upvalueindex(2));
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static int piditer(lua_State *l) {
+	/* TODO: is there a better way to both verify that the first arg is a number and to ensure that the first arg is the last? */
+	lua_pushnumber(l, luaL_checknumber(l, 1));
+	lua_pushnumber(l, 0);
+	lua_pushcclosure(l, do_piditer, 2);
+	return 1;
+}
+
 static int disconnect(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 	unsigned reason = luaL_checknumber(l, 2);
@@ -567,6 +593,8 @@ static const struct luaL_Reg funcs[] = {
 	/* TODO: these two are not like the rest */
 	{"disconnect", disconnect},
 	{"disconnect_now", disconnect_now},
+
+	{"piditer", piditer},
 
 	{"get_hp", get_hp},
 	{"get_ipaddr", get_ipaddr},

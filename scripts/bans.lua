@@ -17,7 +17,7 @@ local function ban(startaddr, endaddr, bantime, expires, name, comment, bannedby
 	-- TODO: detect updates to database and kick if someone found there; may need inotify, checking often enough or ipc of some sorts
 
 	-- Look for players that should be banned and then ban them
-	for i=0,MAX_PLAYERS-1 do
+	for i in piditer(PID_BROADCAST) do
 		if (is_connected(i)) then
 			local addr = get_ipaddr(i);
 			if(startaddr <= addr and endaddr >= addr and addr ~= 2130706433) then
@@ -94,7 +94,7 @@ local function is_banned(name, addr)
 end
 
 local function check_banneds(msg)
-	for i=0,MAX_PLAYERS-1 do
+	for i in piditer(PID_BROADCAST) do
 		if (is_banned(get_name(i), get_ipaddr(i))) then
 			--send_chat(32, ":3 <"..i..">", 2, 0);
 			log(msg.." %s (#%u)", get_name(i), i);
@@ -173,6 +173,7 @@ function mod.on_load()
 		CREATE TABLE IF NOT EXISTS ArchivedBans(id INTEGER PRIMARY KEY, startaddr INTEGER, endaddr INTEGER, bantime INTEGER, expires INTEGER, name TEXT COLLATE NOCASE, comment TEXT, bannedby TEXT COLLATE NOCASE);
 	]];
 
+	-- TODO: add pledge(2)-style flags col -- ban, mute, purgatory, etc.
 	createstmt("sel",          "SELECT name, comment FROM BanRanges WHERE expires > ? AND startaddr <= ? AND endaddr >= ?;");
 	createstmt("queryaddr",    "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby FROM BanRanges WHERE endaddr >= ? AND startaddr <= ? ORDER BY bantime;");
 	createstmt("queryname",    "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby FROM BanRanges WHERE name = ? ORDER BY bantime;");
@@ -198,7 +199,7 @@ function mod.on_unload()
 	end
 end
 
-local cmd = {name="ban"};
+local cmd = {name="ban", caps="ban"};
 function cmd.func(pid, argv)
 	local now = os.time();
 	--ban(0, 1024, now, now+60, "jeff", "dirty haxor. . .", "notaburner's leaked password");
@@ -213,13 +214,13 @@ end
 register_command(cmd);
 
 -- TODO: get rid of commands and most traces on unreg
-local cmd = {name="unban"};
+local cmd = {name="unban", caps="ban"};
 function cmd.func(pid, argv)
 	moveban(argv[1], stmt.addarchive, stmt.rmarchive);
 end
 register_command(cmd);
 
-local cmd = {name="reban"};
+local cmd = {name="reban", caps="ban"};
 function cmd.func(pid, argv)
 	moveban(argv[1], stmt.addunarchive, stmt.rmunarchive);
 	check_banneds("Banned");
@@ -227,7 +228,7 @@ end
 register_command(cmd);
 
 -- TODO: CIDR notation?
-local cmd = {name="queryban"};
+local cmd = {name="queryban", caps="ban"};
 function cmd.func(pid, argv)
 	local vals;
 
@@ -241,7 +242,7 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="queryoldban"};
+local cmd = {name="queryoldban", caps="ban"};
 function cmd.func(pid, argv)
 	local vals;
 

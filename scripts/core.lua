@@ -13,6 +13,15 @@ function getcfg(key, default)
 	end
 end
 
+local function append_callchain(key, val)
+	if callchain[key] == nil then
+		-- TODO: does this need to reach into server, or will _G do fine?
+		callchain[key] = {server[key]};
+	end
+	table.insert(callchain[key], val);
+	_G[key] = function(...) local status, err = pcall(val, ...); if (not status and err ~= stexec) then error(err); end return err; end;
+end
+
 -- local
 callchain = {};
 -- TODO: names?
@@ -22,15 +31,31 @@ function register(module)
 	log("Loaded %s", module);
 	table.insert(modules, module);
 	for key, val in pairs(module) do
-		if callchain[key] == nil then
-			callchain[key] = {server[key]};
+		if (key == "before") then
+			for x,y in pairs(val) do
+				local patch;
+				patch = function(...) y(...); next_call(x, patch)(...); end
+				-- TODO: do you think overwriting things in the module will screw things up?
+				-- TODO: especially if one mod registers both a before and an after
+				module[x] = patch;
+				val[x] = nil;
+				append_callchain(x, patch);
+			end
+		elseif (key == "after") then
+			for x,y in pairs(val) do
+				local patch;
+				patch = function(...) next_call(x, patch)(...); y(...); end
+				module[x] = patch;
+				val[x] = nil;
+				append_callchain(x, patch);
+			end
+		else
+			append_callchain(key, val);
 		end
-		table.insert(callchain[key], val);
-		_G[key] = function(...) local status, err = pcall(val, ...); if (not status and err ~= stexec) then error(err); end return err; end;
 	end
 
 	if (module.on_load ~= nil) then
-		status, err = pcall(module.on_load);
+		local status, err = pcall(module.on_load);
 		if (not status) then
 			log("on_load failed, unregistering module");
 			unregister(module);
@@ -63,6 +88,9 @@ function unregister(module)
 	end
 
 	for key, val in pairs(module) do
+		if (key == "before" or key == "after") then
+			goto continue;
+		end
 		for k, v in ipairs(callchain[key]) do
 			if v == val then
 				table.remove(callchain[key], k);
@@ -71,6 +99,7 @@ function unregister(module)
 				break;
 			end
 		end
+		::continue::
 	end
 
 	-- If module.unload threw an error, throw it again after it's unregistered

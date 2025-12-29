@@ -49,20 +49,21 @@ function cmd.func(pid)
 end
 register_command(cmd);
 
-local cmd = {name="queuemap"};
+-- If you just want to let someone use e.g. /advance, give that someone the "cmd:advance" cap
+local cmd = {name="queuemap", caps="map_queue"};
 function cmd.func(pid, argv)
 	table.insert(nextqueue, argv[1]);
 end
 register_command(cmd);
 
 -- TODO: on_game_end -> end_game?
-local cmd = {name="advance"};
+local cmd = {name="advance", caps="map_queue"};
 function cmd.func(pid)
 	on_game_end();
 end
 register_command(cmd);
 
-local cmd = {name="loadmap"};
+local cmd = {name="loadmap", caps="map_queue"};
 function cmd.func(pid, argv)
 	table.insert(nextqueue, argv[1]);
 	on_game_end();

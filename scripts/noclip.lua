@@ -1,11 +1,10 @@
 -- noclip.lua -- when i'm feeling tired i can just... fly around
-local mod = {};
+local mod = {after={}};
 
 local clips = {};
 -- TODO: should jumpctr be player-specific or global?
 local jumpctr = {};
-function mod.on_join(pid, team, weapon, name)
-	next_call("on_join", mod.on_join)(pid, team, weapon, name);
+function mod.after.on_join(pid)
 	clips[pid] = nil;
 	jumpctr[pid] = 0;
 end
@@ -95,7 +94,7 @@ function mod.tick_player_physics(pid, delta)
 	next_call("tick_player_physics", mod.tick_player_physics)(pid, delta);
 end
 
-local cmd = {name="noclip"};
+local cmd = {name="noclip", caps="noclip"};
 function cmd.func(pid)
 	clips[pid] = not clips[pid];
 	jumpctr[pid] = 0;

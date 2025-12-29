@@ -21,6 +21,7 @@ end
 
 -- TODO: log
 -- TODO: /mute
+-- TODO: redact certain args?
 local function handle_command(pid, msg)
 	local i = 0;
 	local argv = {};
@@ -38,12 +39,17 @@ local function handle_command(pid, msg)
 		return;
 	end
 
-	local status, err = pcall(commands[string.lower(argv[0])].func, pid, argv, msg);
+	try_run_command(commands[string.lower(argv[0])], pid, argv, msg);
+end
+
+function try_run_command(cmd, pid, argv, msg)
+	local status, err = pcall(cmd.func, pid, argv, msg);
 	if (not status) then
 		send_chat(pid, "Some error occurred with that command :(", 2, 0);
 		error(err);
 	end
 end
+server.try_run_command = try_run_command;
 
 function mod.on_chat(pid, msg, type)
 	if (string.sub(msg, 1, 1) == "/") then

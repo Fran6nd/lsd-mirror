@@ -1,10 +1,10 @@
 -- fall_damage.lua -- Like pyspades fall damage if it sucked less and also wasn't bad
-local mod = {};
+local mod = {after={}};
 local apex = {};
 
 -- TODO: do i still need this after doing tickery?
 function mod.on_load()
-	for i=0,MAX_PLAYERS-1 do
+	for i in piditer(PID_BROADCAST) do
 		if (is_alive(i)) then
 			apex[i] = get_position(i).z;
 		end
@@ -12,13 +12,11 @@ function mod.on_load()
 end
 
 -- TODO: do i need all these funcs just to detect position change?
-function mod.spawn_player(pid)
-	next_call("spawn_player", mod.spawn_player)(pid);
+function mod.after.spawn_player(pid)
 	apex[pid] = get_position(pid).z;
 end
 
-function mod.set_position(pid, pos)
-	next_call("set_position", mod.set_position)(pid, pos);
+function mod.after.set_position(pid, pos)
 	-- TODO: wonder what happens if a further call in set_position changes the position
 	-- TODO: should i even check for apex here or defer to tick?
 	if (pos.z < apex[pid]) then
@@ -27,8 +25,7 @@ function mod.set_position(pid, pos)
 end
 
 -- TODO: what about player-triggered jumps if i ever upgrade its crap detector?
-function mod.set_jump(pid)
-	next_call("set_jump", mod.set_jump)(pid);
+function mod.after.set_jump(pid)
 	apex[pid] = get_position(pid).z;
 end
 
@@ -78,7 +75,7 @@ end
 function mod.tick()
 	local was_airborne = {};
 
-	for i=0,MAX_PLAYERS-1 do
+	for i in piditer(PID_BROADCAST) do
 		if (is_alive(i)) then
 			was_airborne[i] = is_airborne(i);
 		end
@@ -86,7 +83,7 @@ function mod.tick()
 
 	next_call("tick", mod.tick)();
 
-	for i=0,MAX_PLAYERS-1 do
+	for i in piditer(PID_BROADCAST) do
 		if (is_alive(i)) then
 			local pos = get_position(i);
 

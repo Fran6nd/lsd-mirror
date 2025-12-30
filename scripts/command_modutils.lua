@@ -1,4 +1,5 @@
 -- command_modutils.lua -- Manipulate loaded modules
+-- TODO: remove command_ prefix?
 
 -- Don't ask.
 local function unreg(name)

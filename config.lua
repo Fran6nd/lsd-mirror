@@ -14,7 +14,7 @@ load "command_modutils"
 load "command_cmds"
 load "command_kill"
 
-load "motd"
+--load "motd"
 motd = [[
 HIIIIIIIIIIIIIIIII!
 THIS IS A MOTD
@@ -23,7 +23,7 @@ IT'S MADE IN LUA TOO
 have i burned your ears off yet?
 ]]
 
-load "tip_spam"
+--load "tip_spam"
 tips = {
 	"This is a worthless tip.",
 	"Did you learn something new today?",
@@ -38,6 +38,7 @@ tip_frequency = 5*60
 
 --load "team_block_colors"
 load "map_queue"
+load "map_meta"
 load "fall_damage"
 load "babel"
 load "noclip"

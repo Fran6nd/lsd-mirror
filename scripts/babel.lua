@@ -1,17 +1,10 @@
 -- babel.lua -- The gamemode where nobody can cooperate
 local mod = {after={}};
 local drop_timeout = 0;
---local intelloc = {x=256, y=256, z=1};
 
 -- TODO: team starts at 0 or 1?
 -- TODO: i think some places use 0 and others use 1, unify that
 -- TODO: probably use 0 since player IDs start at 0 too? but lua uses 1. . .
-function get_tent_position(team)
-	local x = {};
-	x[0] = {x=128, y=256, z=62};
-	x[1] = {x=512-128, y=256, z=62};
-	return x[team];
-end
 
 -- TODO: _override set of hooks? these would be all or nothing things, instead of passive listeners -- presumable the passives would come after the overrides?
 -- TODO: or instead of dedicated override hooks, BETTER IDEA: just mark it as high-priority (override-priority?). . . and allow multiple hooks with different priorities in one module
@@ -173,9 +166,9 @@ function mod.after.tick()
 	-- TODO: do tents instead
 	-- TODO: add restock.lua
 	-- TODO: core tents
-	-- TODO: add hook get_tent_position(pid, team, st)? yes, with a pid
 	if (type(intelloc) == "number") then
-		if (within_cylinder(get_position(intelloc), get_tent_position(get_team(intelloc)), 3, 1, -4)) then
+		local tentloc = get_tentloc()[get_team(intelloc)+1];
+		if (tentloc ~= nil and within_cylinder(get_position(intelloc), tentloc, 3, 1, -4)) then
 			-- TODO: unhardcode, make wrapper for capture_intel
 			capture_intel(intelloc, get_team_score(get_team(intelloc))+1 >= 24);
 			-- TODO: put that intel back and maybe hook capture
@@ -221,6 +214,8 @@ local function putback_intel()
 	else
 		move_intel(1, {x=math.huge, y=math.huge, z=math.huge});
 	end
+	move_tent(0, {x=128, y=256, z=62});
+	move_tent(1, {x=512-128, y=256, z=62});
 end
 
 -- TODO: don't build if server hasn't loaded a map
@@ -237,26 +232,6 @@ function mod.after.load_map_from_file()
 	-- TODO: don't send packets for this. . .
 	build_platform();
 	putback_intel();
-end
-
--- TODO: fog color should definitely be hooked into core probably
--- TODO: maybe there should just be a callback for getting gamemode trash
--- TODO: probably no callback, just provide the necessary ones you dunce. . .
--- need to get max_score at least though, and probably teamscore too
--- TODO: intel/tent pos config? well not intel on babel
-function mod.send_state_ctf(pid, from, teamname, teamcolor, fog, teamscore, maxscore, _intelloc, tentpos)
-	local loc2 = {};-- = {intelloc, intelloc};
-	if (type(intelloc) == "number") then
-		if (get_team(intelloc) == 0) then
-			loc2[1] = intelloc;
-		else
-			loc2[2] = intelloc;
-		end
-	else
-		loc2[1] = intelloc;
-	end
-	--next_call("send_state_ctf", mod.send_state_ctf)(pid, from, teamname, teamcolor, fog, teamscore, maxscore, loc2, {get_tent_position(0), get_tent_position(1)});
-	next_call("send_state_ctf", mod.send_state_ctf)(pid, from, teamname, teamcolor, fog, teamscore, maxscore, _intelloc, {get_tent_position(0), get_tent_position(1)});
 end
 
 local function try_drop(pid)

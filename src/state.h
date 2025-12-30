@@ -23,6 +23,9 @@ typedef int32_t plid;
 /* [0] is B, [1] is G, [2] is R */
 typedef uint8_t color[3];
 
+/* An int that should be treated as boolean. */
+typedef int bint;
+
 /* Vector of 3 signed ints, to represent position.
  * Why signed? Sending a GrenadeDestroy at -1 is perfectly valid -- it just affects things at 0.
  */
@@ -41,7 +44,7 @@ typedef struct {
 typedef ivec3p ivec3;
 typedef fvec3p fvec3;
 
-/* TODO: aoscam/src/demoncore.h has an incompatible struct definition; i recommend merging all the random struct Player's strewn about the place. Or just removing everything after int connected; */
+/* TODO: aoscam/src/demoncore.h has an incompatible struct definition; i recommend merging all the random struct Player's strewn about the place. Or just removing everything after int joined; */
 struct Player {
 	fvec3 pos;
 	fvec3 ori;
@@ -52,7 +55,7 @@ struct Player {
 	int wade;
 	int airborne;
 	uint8_t weapon;
-	int connected;
+	int joined;
 	int alive;
 	char name[16];
 	uint8_t team;
@@ -152,7 +155,7 @@ struct Functions {
 	void (*send_player_update)(plid pid, struct State *st); /* TODO: hide too-far players, /ups */
 	void (*send_position)(plid pid, fvec3 pos, struct State *st);
 	void (*send_reload)(plid pid, unsigned mag, unsigned reserve, plid from, struct State *st);
-	void (*send_intel_capture)(plid pid, unsigned winning, plid from, struct State *st);
+	void (*send_intel_capture)(plid pid, bint winning, plid from, struct State *st);
 	void (*send_intel_pickup)(plid pid, plid from, struct State *st);
 	void (*send_intel_drop)(plid pid, fvec3 pos, plid from, struct State *st);
 	void (*send_restock)(plid pid, plid from, struct State *st);
@@ -172,10 +175,11 @@ struct Functions {
 	void (*set_position)(plid pid, fvec3 pos, struct State *st);
 	void (*set_orientation)(plid pid, fvec3 ori, struct State *st);
 	void (*set_jump)(plid pid, struct State *st);
-	void (*capture_intel)(plid pid, unsigned winning, struct State *st);
+	void (*capture_intel)(plid pid, bint winning, struct State *st);
 	void (*pickup_intel)(plid pid, struct State *st);
 	void (*drop_intel)(plid pid, fvec3 pos, struct State *st);
 	void (*move_intel)(unsigned team, fvec3 pos, struct State *st);
+	void (*move_tent)(unsigned team, fvec3 pos, struct State *st);
 };
 
 struct Globals {

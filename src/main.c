@@ -114,11 +114,11 @@ int pid_matches(plid broadcast, plid pid, struct State *st) {
 
 	/* PID_BROADCAST_TEAM */
 	if (broadcast > MAX_PLAYERS)
-		return (st->p[pid].connected && st->p[pid].team == broadcast - MAX_PLAYERS - 1);
+		return (st->p[pid].joined && st->p[pid].team == broadcast - MAX_PLAYERS - 1);
 
 	/* PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER */
 	if (broadcast <= -MAX_PLAYERS)
-		return (pid != (-broadcast >> 16 & 511) && st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED && (!st->p[pid].connected || (st->p[pid].connected && st->p[pid].team != -broadcast - MAX_PLAYERS)));
+		return (pid != (-broadcast >> 16 & 511) && st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED && (!st->p[pid].joined || (st->p[pid].joined && st->p[pid].team != -broadcast - MAX_PLAYERS)));
 
 	/* PID_BROADCAST_EXCEPT */
 	if (broadcast < 0)
@@ -519,7 +519,7 @@ void tick(struct State *st) {
 	clk now = get_time();
 
 	for (i=0;i<MAX_PLAYERS;i++) {
-		if (!st->p[i].connected)
+		if (!st->p[i].joined)
 			continue;
 
 		if (st->p[i].alive)
@@ -805,7 +805,7 @@ void send_connected_players(plid pid, struct State *st) {
 	ki.respawnTime = 0;
 	
 	for (i=0;i<MAX_PLAYERS;i++) {
-		if (!st->p[i].connected)
+		if (!st->p[i].joined)
 			continue;
 
 		ep.playerID = i;
@@ -842,7 +842,7 @@ void send_connected_players(plid pid, struct State *st) {
 void on_disconnect(plid pid, struct State *st) {
 	LOG("%s:%u (#%u) disconnected", IP(pid), PORT(pid), pid);
 
-	if (st->p[pid].connected) {
+	if (st->p[pid].joined) {
 		struct PacketPlayerLeft pl;
 
 		pl.packetID = PacketTypePlayerLeft;
@@ -851,7 +851,7 @@ void on_disconnect(plid pid, struct State *st) {
 		SEND(PID_BROADCAST, pl);
 	}
 
-	st->p[pid].connected = 0;
+	st->p[pid].joined = 0;
 	st->p[pid].alive = 0;
 
 	st->f.after_player_destroy(pid, st);
@@ -866,7 +866,7 @@ void on_disconnect(plid pid, struct State *st) {
 #define BADRETURN do {st->crapline = __LINE__; return 1;} while (0)
 #define SBAD(cond) do {if (cond) {st->crapcond = "SBAD("#cond");"; BADRETURN;}} while (0)
 #define SCASEANY case CAT(PacketType, PCKT): st->crappacketname = STR(PCKT);
-#define SCASECONNECTED SCASEANY SBAD(!st->p[pid].connected);
+#define SCASEJOINED SCASEANY SBAD(!st->p[pid].joined);
 #define SCASEALIVE SCASEANY SBAD(!st->p[pid].alive);
 #define PCASE case CAT(PacketType, PCKT):
 #define PACKET (*(struct CAT(Packet, PCKT) *)packet->data)
@@ -997,7 +997,7 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		return 0;
 #undef PCKT
 #define PCKT ChatMessage
-		SCASECONNECTED
+		SCASEJOINED
 		SRANGE(4, 4+255);
 		SPID();
 		SNUL();
@@ -1012,7 +1012,7 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		/* OpenSpades doesn't bother with SPID(); */
 		SNUL();
 
-		SBAD(st->p[pid].connected && st->p[pid].team != 255);
+		SBAD(st->p[pid].joined && st->p[pid].team != 255);
 
 		/* TODO: should a spectator be allowed to switch to spectator? this doesn't match shortplayer (RENAME: something better; SpectatorSwitch?) either */
 		SBAD(PACKET.team > 1 && PACKET.team != 255);
@@ -1024,7 +1024,7 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		return 0;
 #undef PCKT
 #define PCKT ShortPlayerData
-		SCASECONNECTED
+		SCASEJOINED
 		SEXACT();
 		SPID();
 
@@ -1036,7 +1036,7 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		return 0;
 #undef PCKT
 #define PCKT ChangeTeam
-		SCASECONNECTED
+		SCASEJOINED
 		SEXACT();
 		SPID();
 
@@ -1047,7 +1047,7 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		return 0;
 #undef PCKT
 #define PCKT ChangeWeapon
-		SCASECONNECTED
+		SCASEJOINED
 		SEXACT();
 		SPID();
 
@@ -1079,7 +1079,7 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		return 0;
 #undef PCKT
 #define PCKT Grenade
-		SCASECONNECTED /* Dead men can throw nades (unless you're pyspades). */
+		SCASEJOINED /* Dead men can throw nades (unless you're pyspades). */
 		SEXACT();
 		SPID();
 
@@ -1243,7 +1243,7 @@ void on_join(plid pid, unsigned team, unsigned weapon, const char *name, struct 
 	LOG("%s:%u (#%u) joined as \"%s\"", IP(pid), PORT(pid), pid, name);
 
 	/* at this point the player is still not alive */
-	st->p[pid].connected = 1;
+	st->p[pid].joined = 1;
 	st->p[pid].score = 0;
 	st->p[pid].newteam = team;
 	st->p[pid].newweapon = weapon;
@@ -1458,7 +1458,7 @@ void boot_players_to_limbo(struct State *st) {
 	st->globals.teamscore[0] = 0;
 	st->globals.teamscore[1] = 0;
 	for (i=0;i<MAX_PLAYERS;i++) {
-		st->p[i].connected = 0;
+		st->p[i].joined = 0;
 		st->p[i].alive = 0;
 
 		st->f.after_player_destroy(i, st);
@@ -1650,7 +1650,7 @@ void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
 #undef PCKT
 #define PCKT ExistingPlayer
 		PCASE
-		if (st->p[pid].connected)
+		if (st->p[pid].joined)
 			st->f.on_switch(pid, PACKET.team, PACKET.weapon, st);
 		else
 			/* TODO: CP437/WIN-1252 */
@@ -1795,12 +1795,12 @@ void set_jump(plid pid, struct State *st) {
 	SEND(PID_BROADCAST, ip);
 }
 
-void send_intel_capture(plid pid, unsigned winning, plid from, struct State *st) {
+void send_intel_capture(plid pid, int winning, plid from, struct State *st) {
 	struct PacketIntelCapture ic;
 
 	ic.packetID = PacketTypeIntelCapture;
 	ic.playerID = from;
-	ic.winning = winning;
+	ic.winning = !!winning;
 
 	SEND(pid, ic);
 }
@@ -1825,7 +1825,7 @@ void send_intel_drop(plid pid, fvec3 pos, plid from, struct State *st) {
 }
 
 /* TODO: or intel_capture? */
-void capture_intel(plid pid, unsigned winning, struct State *st) {
+void capture_intel(plid pid, int winning, struct State *st) {
 	/* Hope nobody tries this on a spectator. */
 	st->globals.teamscore[st->p[pid].team]++;
 	st->p[pid].score += 10;
@@ -1876,6 +1876,12 @@ void move_intel(unsigned team, fvec3 pos, struct State *st) {
 	st->f.send_move_object(PID_BROADCAST, pos, team, 0, st);
 }
 
+void move_tent(unsigned team, fvec3 pos, struct State *st) {
+	st->globals.tentpos[team] = pos;
+	/* "object" */
+	st->f.send_move_object(PID_BROADCAST, pos, 2|team, 0, st);
+}
+
 void on_crap_packet(plid pid, ENetPacket *packet, struct State *st) {
 	LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
 
@@ -1887,8 +1893,11 @@ void on_crap_packet(plid pid, ENetPacket *packet, struct State *st) {
 		/* TODO: what if i set_position a dead guy? what if i'd like to spawn where i die? */
 		/* TODO: does sending position screw with client's position timing? */
 		/* TODO: would it be worth just limiting the magnitude? */
-		if (st->p[pid].alive)
-			st->f.set_position(pid, st->p[pid].pos, st);
+		/* TODO: do i need a function that's just like set_position except used for position resend context? */
+		if (st->p[pid].alive) {
+			st->p[pid].lastagreedpos = st->p[pid].pos;
+			st->f.send_position(pid, st->p[pid].pos, st);
+		}
 		break;
 	}
 }
@@ -2019,6 +2028,7 @@ int main(void) {
 	st->f.send_map_start = send_map_start;
 	st->f.send_packet = send_packet;
 	st->f.send_packet_unreliable = send_packet_unreliable;
+	st->f.move_tent = move_tent;
 
 	/*st->globals.fog[0] = 255;
 	st->globals.fog[1] = 200;

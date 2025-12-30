@@ -2,7 +2,6 @@
 local mod = {after={}};
 
 -- TODO: near_tent call or something like that
--- TODO: plumb tent positions without piggybacking off of babel.lua
 local function within_cylinder(pos, cylinderpos, radius, bottom, top)
 	pos.x = pos.x - cylinderpos.x;
 	pos.y = pos.y - cylinderpos.y;
@@ -17,7 +16,7 @@ end
 
 function mod.after.tick()
 	for i in piditer(PID_BROADCAST) do
-		if (is_alive(i) and within_cylinder(get_position(i), get_tent_position(get_team(i)), 3, 1, -4)) then
+		if (is_alive(i) and within_cylinder(get_position(i), get_tentloc()[get_team(i)+1], 3, 1, -4)) then
 			restock(i);
 			-- TODO: put some delay on restock
 			-- TODO: only bother if there's something *to* restock

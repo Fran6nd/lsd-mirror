@@ -6,12 +6,34 @@ local totp = require "lib_totp";
 local db;
 local stmt = {};
 
+getcfg("auth_groups", {
+	guard = {
+		"cmd:advance",
+		"some_limited_ban_cap"
+	},
+	mod = {
+		"guard",
+		"jp",
+		"noclip"
+	},
+	admin = {
+		"all"
+	},
+	-- The nerd group is the most powerful group here
+	nerd = {
+		"exec",
+		"modutils"
+	}
+});
+
 -- Key is a pid
 -- user is a string with the username
 -- groups is a table with groups/caps as keys; values are all set to true
 -- if groups.all is set, all capabilities are granted
 local user = {};
 local groups = {};
+-- Computed from groups
+local caps = {};
 
 local function verifystmt(name, code)
 	if (stmt[name] == nil) then

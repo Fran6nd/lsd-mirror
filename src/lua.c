@@ -291,7 +291,14 @@ static int lsend_state_ctf(lua_State *l) {
 	for (i=0;i<2;i++) {
 		lua_pushnumber(l, i+1);
 		lua_gettable(l, 9);
-		tentpos[i] = get_fvec3(l, -2);
+		if (lua_isnil(l, -1)) {
+			tentpos[i].x = HUGE_VAL;
+			tentpos[i].y = HUGE_VAL;
+			tentpos[i].z = HUGE_VAL;
+		} else if (lua_istable(l, -1))
+			tentpos[i] = get_fvec3(l, -2);
+		else
+			LERR(l, "tentloc should have 2 nil or table in it");
 		lua_pop(l, 1);
 	}
 
@@ -347,7 +354,10 @@ static void csend_state_ctf(plid pid, plid from, const char teamname[][10], cons
 	lua_newtable(l);
 	for (i=0;i<2;i++) {
 		lua_pushnumber(l, i+1);
-		push_fvec3(tentpos[i]);
+		if (tentpos[i].x == HUGE_VAL && tentpos[i].y == HUGE_VAL && tentpos[i].z == HUGE_VAL)
+			lua_pushnil(l);
+		else
+			push_fvec3(tentpos[i]);
 		lua_settable(l, -3);
 	}
 
@@ -467,6 +477,23 @@ static int get_ipaddr(lua_State *l) {
 	return 1;
 }
 
+/* TODO: optional team arg? */
+static int get_tentloc(lua_State *l) {
+	size_t i;
+
+	lua_newtable(l);
+	for (i=0;i<2;i++) {
+		lua_pushnumber(l, i+1);
+		if (st->globals.tentpos[i].x == HUGE_VAL && st->globals.tentpos[i].y == HUGE_VAL && st->globals.tentpos[i].z == HUGE_VAL)
+			lua_pushnil(l);
+		else
+			push_fvec3(st->globals.tentpos[i]);
+		lua_settable(l, -3);
+	}
+
+	return 1;
+}
+
 static int get_intelloc(lua_State *l) {
 	size_t i;
 
@@ -522,11 +549,10 @@ static int is_alive(lua_State *l) {
 static int is_joined(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 
-	lua_pushboolean(l, st->p[pid].connected);
+	lua_pushboolean(l, st->p[pid].joined);
 	return 1;
 }
 
-/* TODO: rename connected -> joined */
 static int is_connected(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 
@@ -598,6 +624,7 @@ static const struct luaL_Reg funcs[] = {
 
 	{"get_hp", get_hp},
 	{"get_ipaddr", get_ipaddr},
+	{"get_tentloc", get_tentloc},
 	{"get_intelloc", get_intelloc},
 	{"get_position", get_position},
 	{"get_orientation", get_orientation},

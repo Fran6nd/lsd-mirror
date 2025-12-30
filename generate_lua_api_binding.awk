@@ -70,6 +70,8 @@ function extract_name(arg) {
 				pullfunc = "%s = luaL_checknumber(l, %i);";
 			else if (match(argv[i], /^int /))
 				pullfunc = "%s = luaL_checknumber(l, %i);";
+			else if (match(argv[i], /^bint /))
+				pullfunc = "%s = lua_toboolean(l, %i);";
 			else if (match(argv[i], /^float /))
 				pullfunc = "%s = luaL_checknumber(l, %i);";
 			else if (match(argv[i], /^double /))
@@ -110,6 +112,8 @@ function extract_name(arg) {
 				pushfunc = "lua_pushnumber(l, %s);";
 			else if (match(argv[i], /^int /))
 				pushfunc = "lua_pushnumber(l, %s);";
+			else if (match(argv[i], /^bint /))
+				pushfunc = "lua_pushboolean(l, %s);";
 			else if (match(argv[i], /^float /))
 				pushfunc = "lua_pushnumber(l, %s);";
 			else if (match(argv[i], /^double /))

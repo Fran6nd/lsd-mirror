@@ -30,28 +30,26 @@ local stexec = {};
 function register(module)
 	log("Loaded %s", module);
 	table.insert(modules, module);
-	for key, val in pairs(module) do
-		if (key == "before") then
-			for x,y in pairs(val) do
-				local patch;
-				patch = function(...) y(...); next_call(x, patch)(...); end
-				-- TODO: do you think overwriting things in the module will screw things up?
-				-- TODO: especially if one mod registers both a before and an after
-				module[x] = patch;
-				val[x] = nil;
-				append_callchain(x, patch);
-			end
-		elseif (key == "after") then
-			for x,y in pairs(val) do
-				local patch;
-				patch = function(...) next_call(x, patch)(...); y(...); end
-				module[x] = patch;
-				val[x] = nil;
-				append_callchain(x, patch);
-			end
-		else
-			append_callchain(key, val);
+	if (module.before ~= nil) then
+		for x,y in pairs(module.before) do
+			local patch;
+			patch = function(...) y(...); next_call(x, patch)(...); end
+			-- TODO: do you think overwriting things in the module will screw things up?
+			-- TODO: especially if one mod registers both a before and an after
+			module[x] = patch;
 		end
+	end
+	if (module.after ~= nil) then
+		for x,y in pairs(module.after) do
+			local patch;
+			patch = function(...) next_call(x, patch)(...); y(...); end
+			module[x] = patch;
+		end
+	end
+	module.before = nil;
+	module.after = nil;
+	for key, val in pairs(module) do
+		append_callchain(key, val);
 	end
 
 	if (module.on_load ~= nil) then

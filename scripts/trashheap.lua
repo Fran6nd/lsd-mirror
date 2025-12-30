@@ -1,6 +1,7 @@
 -- trashheap.lua -- trash not a burner likes to /exec
 
 function sc(x)send_chat(PID_BROADCAST,tostring(x),2,0)end
+function scl(x)for y in string.gmatch(x,"[^\n]+")do sc(y)end;end
 function ptab(tbl, depth)
 	if (depth == nil) then
 		depth = 0;

@@ -7,12 +7,13 @@
 /* For blocks and block lines when no player has placed them */
 #define PID_COLOR_ANONYMOUS 32
 /* TODO: merge broadcast and broadcast_except? */
-#define PID_BROADCAST MAX_PLAYERS
-#define PID_BROADCAST_EXCEPT(pid) (-(pid)-1)
-#define PID_BROADCAST_TEAM(team) (MAX_PLAYERS + 1 + team)
+#define PID_SET_FLAG(x) ((uint32_t)(x) << 29)
+#define PID_BROADCAST PID_SET_FLAG(1)
+#define PID_BROADCAST_EXCEPT(pid) ((plid)((uint32_t)(pid) | PID_SET_FLAG(2)))
+#define PID_BROADCAST_TEAM(team) ((plid)((uint32_t)(team) | PID_SET_FLAG(3)))
 /* Quite the mouthful. */
-#define PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(team, pid) (-(MAX_PLAYERS + team | pid << 16))
-#define PID_BROADCAST_EXCEPT_TEAM(team) PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(team, 256)
+#define PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(team, pid) ((plid)((uint32_t)(pid) << 8 | (uint32_t)(team) | PID_SET_FLAG(4)))
+#define PID_BROADCAST_EXCEPT_TEAM(team) PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(team, MAX_PLAYERS)
 
 /* Type used for storing time as nanoseconds (clock) */
 typedef uint64_t clk;
@@ -133,6 +134,9 @@ struct Functions {
 	void (*tick_player_physics)(plid pid, float timeDelta, struct State *st);
 	void (*detonate_grenade)(size_t index, struct State *st);
 	void (*boot_players_to_limbo)(struct State *st);
+	void (*send_grenade)(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, struct State *st);
+	size_t (*register_grenade)(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
+	size_t (*spawn_grenade)(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
 
 	/*
 	 * Player actions
@@ -161,6 +165,7 @@ struct Functions {
 	void (*send_restock)(plid pid, plid from, struct State *st);
 	void (*send_move_object)(plid pid, fvec3 pos, unsigned id, unsigned team, struct State *st);
 	void (*send_map_start)(plid pid, unsigned size, struct State *st);
+	void (*send_fog)(plid pid, color color, struct State *st);
 
 	void (*restock)(plid pid, struct State *st);
 	/* TODO: allow hijacking respawn time */

@@ -94,7 +94,7 @@ function mod.tick_player_physics(pid, delta)
 	next_call("tick_player_physics", mod.tick_player_physics)(pid, delta);
 end
 
-local cmd = {name="noclip", caps="noclip"};
+local cmd = {name="noclip", caps="noclip", desc="Fly around."};
 function cmd.func(pid)
 	clips[pid] = not clips[pid];
 	jumpctr[pid] = 0;

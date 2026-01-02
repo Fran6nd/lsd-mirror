@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #ifdef __linux__
 #define _GNU_SOURCE
+#include <errno.h>
+#include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/syscall.h>
 #include <linux/capability.h>
@@ -52,6 +54,8 @@ static void pivot(void) {
 	MOUNT("bind", ".", "/tmp", NULL, MS_SILENT | MS_BIND | MS_REC, NULL);
 	MOUNT("ro", NULL, "/tmp", NULL, MS_SILENT | MS_REMOUNT | MS_BIND | MS_NODEV | MS_NOSUID /*| MS_NOEXEC // loading binary lua modules depends on exec */ | MS_RDONLY | MS_REC, NULL);
 
+	/* TODO: should it just ignore bind-rw fail instead of mkdir'ing? */
+	if (mkdir("./rw", 0755) != 0 && errno != EEXIST) ERR("mkdir");
 	MOUNT("bind-rw", "./rw", "/tmp/rw", NULL, MS_SILENT | MS_BIND | MS_REC, NULL);
 	MOUNT("remount-rw", NULL, "/tmp/rw", NULL, MS_SILENT | MS_REMOUNT | MS_BIND | MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_REC, NULL);
 

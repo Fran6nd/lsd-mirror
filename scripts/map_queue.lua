@@ -41,7 +41,7 @@ end
 -- TODO: should it be legal to put a space or 30 before the command name? because we have that right now
 -- TODO: how to specify a command takes no args?
 -- TODO: should /showrotation be able to set rotation? (a la /mapqueue)
-local cmd = {name={"showrotation", "mapqueue"}};
+local cmd = {name={"showrotation", "mapqueue"}, desc="List the default map queue."};
 function cmd.func(pid)
 	for _,y in ipairs(map_queue) do
 		send_chat(pid, y, 2, 0);
@@ -50,20 +50,20 @@ end
 register_command(cmd);
 
 -- If you just want to let someone use e.g. /advance, give that someone the "cmd:advance" cap
-local cmd = {name="queuemap", caps="map_queue"};
+local cmd = {name="queuemap", caps="map_queue", usage="path", desc="Append a map to the temporary map queue."};
 function cmd.func(pid, argv)
 	table.insert(nextqueue, argv[1]);
 end
 register_command(cmd);
 
 -- TODO: on_game_end -> end_game?
-local cmd = {name="advance", caps="map_queue"};
+local cmd = {name="advance", caps="map_queue", desc="Load the next queued map."};
 function cmd.func(pid)
 	on_game_end();
 end
 register_command(cmd);
 
-local cmd = {name="loadmap", caps="map_queue"};
+local cmd = {name="loadmap", caps="map_queue", usage="path", desc="Immediately load the map at the specified path."};
 function cmd.func(pid, argv)
 	table.insert(nextqueue, argv[1]);
 	on_game_end();

@@ -64,7 +64,11 @@ function ticker2.tick()
 
 	next_call("tick", ticker2.tick)();
 	
-	send_chat(PID_BROADCAST, string.format("N%% %f", now - before2 - 0.01666666666666666666), 2, 0);
+	if false then
+		send_chat(PID_BROADCAST, string.format("N%% %f", now - before2 - 0.01666666666666666666), 2, 0);
+	elseif (now - before2 > 0.019) then
+		send_chat(PID_BROADCAST, string.format("N%% %f", now - before2 - 0.01666666666666666666), 2, 0);
+	end
 
 	before2 = now;
 end

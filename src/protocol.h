@@ -383,24 +383,16 @@ union IntelLocation {
 
 /** State data for the Capture-the-Flag gamemode. */
 struct LIBSPADES_PACKED CTFStateData {
-	uint8_t team1Score;   /**< The score (captures) of the first team. */
-	uint8_t team2Score;   /**< The score (captures) of the second team. */
-	uint8_t captureLimit; /**< The score that needs to be reached to finish the
-	                                                 game. */
+	uint8_t teamscore[2];
+	uint8_t maxscore;
 	uint8_t heldIntels;
 	/**< Which teams have a player holding their intel. Possible values (ORed
 	 * together) are:
 	 * - First team: 1,
 	 * - Second team: 2
 	 */
-	union IntelLocation team1Intel; /**< The location of the first team's intel. Use value
-	                                                                   playerID if the team's bit in heldIntels is
-	                                   set, otherwise position */
-	union IntelLocation team2Intel; /**< The location of the second team's intel. Use value
-	                                                                   playerID if the team's bit in heldIntels is
-	                                   set, otherwise position */
-	fvec3p team1TentPosition; /**< The position of the first team's tent. */
-	fvec3p team2TentPosition; /**< The position of the second team's tent. */
+	union IntelLocation intelloc[2];
+	fvec3p tentpos[2];
 };
 
 struct LIBSPADES_PACKED Territory {
@@ -419,8 +411,8 @@ struct LIBSPADES_PACKED TCStateData {
 
 /** A union that contains the possible gamemodes for @ref PacketStateData */
 union GamemodeData {
-	struct CTFStateData ctfStateData; /**< Capture-the-Flag mode */
-	struct TCStateData tcStateData;   /**< Territorial Control mode */
+	struct CTFStateData ctf; /**< Capture-the-Flag mode */
+	struct TCStateData tc;   /**< Territorial Control mode */
 };
 
 /** Contains information about the game's state and the client player's ID. @ingroup packets
@@ -429,15 +421,8 @@ union GamemodeData {
 struct LIBSPADES_PACKED PacketStateData { /* TODO: shoehorn gamemode state data in later */
 	uint8_t packetID;                 /**< 15 `(Client<--Server)` */
 	uint8_t playerID;                 /**< The ID of the client player. */
-	uint8_t fog_b;                    /**< The blue colour value of the fog. */
-	uint8_t fog_g;                    /**< The green colour value of the fog. */
-	uint8_t fog_r;                    /**< The red colour value of the fog. */
-	uint8_t team1_b;                  /**< The blue colour value of the first team. */
-	uint8_t team1_g;                  /**< The green colour value of the first team. */
-	uint8_t team1_r;                  /**< The red colour value of the first team. */
-	uint8_t team2_b;                  /**< The blue colour value of the second team. */
-	uint8_t team2_g;                  /**< The green colour value of the second team. */
-	uint8_t team2_r;                  /**< The red colour value of the second team. */
+	color fog;
+	color teamcolor[2];
 	char team1Name[10];               /**< The name of the first team. */
 	char team2Name[10];               /**< The name of the second team. */
 	uint8_t gamemode;
@@ -445,7 +430,7 @@ struct LIBSPADES_PACKED PacketStateData { /* TODO: shoehorn gamemode state data 
 	 * - GamemodeTypeCTF = 0,
 	 * - GamemodeTypeTC = 1
 	 */
-	union GamemodeData gamemodeData; /**< The data for the gamemode's state. */
+	union GamemodeData gm; /**< The data for the gamemode's state. */
 };
 
 /** Informs the client about the death of a player. @ingroup packets */

@@ -5,6 +5,7 @@
 #include <luajit-2.1/lauxlib.h>
 #include <luajit-2.1/lualib.h>
 #include "state.h"
+#include "demoncore.h"
 
 #define LOG(x, ...) fprintf(stderr, x"\n", __VA_ARGS__)
 #define LOG1(x) fputs(x"\n", stderr);
@@ -424,6 +425,75 @@ static int csend_packet_unreliable(plid pid, const void *data, size_t length, st
 	return ret;
 }
 
+static int lregister_grenade(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned team = luaL_checknumber(l, 2);
+	fvec3 pos = get_fvec3(l, 3);
+	fvec3 vel = get_fvec3(l, 4);
+	float fuse = luaL_checknumber(l, 5);
+
+	lua_pushnumber(l, f.register_grenade(pid, team, pos, vel, fuse, st));
+	return 1;
+}
+
+static size_t cregister_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+	size_t ret;
+
+	lua_getglobal(l, "register_grenade");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, team);
+	push_fvec3(pos);
+	push_fvec3(vel);
+	lua_pushnumber(l, fuse);
+
+	if (lua_pcall(l, 5, 1, 0) != 0)
+		CBAILN1("register_grenade: %s", luaL_checkstring(l, -1));
+
+	if (!lua_isnumber(l, -1))
+		CBAIL1N1("register_grenade: should return a number");
+
+	ret = lua_tonumber(l, -1);
+	lua_pop(l, 1);
+
+	return ret;
+}
+
+
+static int lspawn_grenade(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	unsigned team = luaL_checknumber(l, 2);
+	fvec3 pos = get_fvec3(l, 3);
+	fvec3 vel = get_fvec3(l, 4);
+	float fuse = luaL_checknumber(l, 5);
+
+	lua_pushnumber(l, f.spawn_grenade(pid, team, pos, vel, fuse, st));
+	return 1;
+}
+
+static size_t cspawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+	size_t ret;
+
+	lua_getglobal(l, "spawn_grenade");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, team);
+	push_fvec3(pos);
+	push_fvec3(vel);
+	lua_pushnumber(l, fuse);
+
+	if (lua_pcall(l, 5, 1, 0) != 0)
+		CBAILN1("spawn_grenade: %s", luaL_checkstring(l, -1));
+
+	if (!lua_isnumber(l, -1))
+		CBAIL1N1("spawn_grenade: should return a number");
+
+	ret = lua_tonumber(l, -1);
+	lua_pop(l, 1);
+
+	return ret;
+}
+
 /* NOTE: Try not to touch pid_matches' conditions too much while iterating */
 int pid_matches(plid broadcast, plid pid, struct State *st);
 static int do_piditer(lua_State *l) {
@@ -450,6 +520,45 @@ static int piditer(lua_State *l) {
 	return 1;
 }
 
+static int simulate_grenade_physics(lua_State *l) {
+	struct Grenade grenade;
+	float delta;
+	int collided;
+
+	grenade.pos = get_fvec3(l, 1);
+	grenade.vel = get_fvec3(l, 2);
+	delta = luaL_checknumber(l, 3);
+
+	collided = move_grenade(&grenade, delta, st->globals.map.solidData, 1);
+
+	push_fvec3(grenade.pos);
+	push_fvec3(grenade.vel);
+	lua_pushboolean(l, collided);
+
+	return 3;
+}
+
+static int raycast(lua_State *l) {
+	fvec3 start = get_fvec3(l, 1);
+	fvec3 end = get_fvec3(l, 1);
+	int last = lua_toboolean(l, 3);
+
+	ivec3 hitpos;
+	int32_t x, y, z;
+	int hit;
+
+	hit = cast2(st->globals.map.solidData, start.x, start.y, start.z, end.x, end.y, end.z, 0, &x, &y, &z, 0);
+	if (!hit)
+		return 0;
+
+	/* TODO: align ivec3 or make push_ivec3_3 */
+	hitpos.x = x;
+	hitpos.y = y;
+	hitpos.z = z;
+	push_ivec3(hitpos);
+	return 1;
+}
+
 static int disconnect(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 	unsigned reason = luaL_checknumber(l, 2);
@@ -463,6 +572,28 @@ static int disconnect_now(lua_State *l) {
 	enet_peer_disconnect_now(st->host->peers+pid, reason);
 	return 0;
 }
+
+int get_solid(ivec3 pos, struct State *st);
+static int is_solid(lua_State *l) {
+	ivec3 pos = get_ivec3(l, 1);
+	lua_pushboolean(l, get_solid(pos, st));
+	return 1;
+}
+
+static int get_fog(lua_State *l) {
+	push_color(st->globals.fog);
+	return 1;
+}
+
+/* TODO: ammunition estimation */
+#if 0
+static int get_ammo(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	lua_pushnumber(l, st->p[pid].magAmmo);
+	lua_pushnumber(l, st->p[pid].reserveAmmo);
+	return 1;
+}
+#endif
 
 static int get_hp(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
@@ -522,6 +653,20 @@ static int get_position(lua_State *l) {
 static int get_orientation(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 	push_fvec3(st->p[pid].ori);
+	return 1;
+}
+
+static int get_mouse_inputs(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	lua_pushnumber(l, st->p[pid].mouseInputs);
+	return 1;
+}
+
+static int get_tool(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	lua_pushnumber(l, st->p[pid].tool);
 	return 1;
 }
 
@@ -609,12 +754,34 @@ static int lget_time(struct lua_State *l) {
 	return 1;
 }
 
+static int lPID_BROADCAST_EXCEPT(struct lua_State *l) {
+	lua_pushnumber(l, PID_BROADCAST_EXCEPT(luaL_checknumber(l, 1)));
+	return 1;
+}
+
+static int lPID_BROADCAST_TEAM(struct lua_State *l) {
+	lua_pushnumber(l, PID_BROADCAST_TEAM(luaL_checknumber(l, 1)));
+	return 1;
+}
+
+static int lPID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(struct lua_State *l) {
+	lua_pushnumber(l, PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(luaL_checknumber(l, 1), luaL_checknumber(l, 2)));
+	return 1;
+}
+
+static int lPID_BROADCAST_EXCEPT_TEAM(struct lua_State *l) {
+	lua_pushnumber(l, PID_BROADCAST_EXCEPT_TEAM(luaL_checknumber(l, 1)));
+	return 1;
+}
+
 static const struct luaL_Reg funcs[] = {
 	/* Add all the cruft from luaawk.h */
 	LUA_CALLS
 	{"send_state_ctf", lsend_state_ctf},
 	{"send_packet", lsend_packet},
 	{"send_packet_unreliable", lsend_packet_unreliable},
+	{"register_grenade", lregister_grenade},
+	{"spawn_grenade", lspawn_grenade},
 
 	/* TODO: these two are not like the rest */
 	{"disconnect", disconnect},
@@ -622,12 +789,18 @@ static const struct luaL_Reg funcs[] = {
 
 	{"piditer", piditer},
 
+	{"raycast", raycast},
+	{"simulate_grenade_physics", simulate_grenade_physics},
+	{"is_solid", is_solid},
+	{"get_fog", get_fog},
 	{"get_hp", get_hp},
 	{"get_ipaddr", get_ipaddr},
 	{"get_tentloc", get_tentloc},
 	{"get_intelloc", get_intelloc},
 	{"get_position", get_position},
 	{"get_orientation", get_orientation},
+	{"get_mouse_inputs", get_mouse_inputs},
+	{"get_tool", get_tool},
 	{"get_inputs", get_inputs},
 	{"is_airborne", is_airborne},
 	{"is_alive", is_alive},
@@ -638,6 +811,10 @@ static const struct luaL_Reg funcs[] = {
 	{"get_team_color", get_team_color},
 	{"get_team_score", get_team_score},
 	{"get_time", lget_time},
+	{"PID_BROADCAST_EXCEPT", lPID_BROADCAST_EXCEPT},
+	{"PID_BROADCAST_TEAM", lPID_BROADCAST_TEAM},
+	{"PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER", lPID_BROADCAST_EXCEPT_TEAM_AND_PLAYER},
+	{"PID_BROADCAST_EXCEPT_TEAM", lPID_BROADCAST_EXCEPT_TEAM},
 	{NULL, NULL}
 };
 
@@ -657,11 +834,13 @@ void register_functions(lua_State *l, struct State *st) {
 	st->f.send_state_ctf = csend_state_ctf;
 	st->f.send_packet = csend_packet;
 	st->f.send_packet_unreliable = csend_packet_unreliable;
+	st->f.register_grenade = cregister_grenade;
+	st->f.spawn_grenade = cspawn_grenade;
 	register_luaawk(l, st);
 }
 
 /* TODO: lua config file. . ? */
-void hook_lua(struct State *st2) {
+void hook_lua(const char *cfg, struct State *st2) {
 	l = lua_open();
 
 	st = st2;
@@ -685,7 +864,7 @@ void hook_lua(struct State *st2) {
 	if (luaL_loadfile(l, "scripts/core.lua") || lua_pcall(l, 0, 0, 0))
 		LERR(l, "Can't load scripts/core.lua: %s", lua_tostring(l, -1));
 
-	if (luaL_loadfile(l, "config.lua") || lua_pcall(l, 0, 0, 0))
+	if (luaL_loadfile(l, cfg) || lua_pcall(l, 0, 0, 0))
 		LERR(l, "Can't load config.lua: %s", lua_tostring(l, -1));
 
 	read_config_values(l, st);

@@ -516,6 +516,31 @@ static void cboot_players_to_limbo(struct State *st) {
 }
 
 
+static int lsend_grenade(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	fvec3 pos = get_fvec3(l, 2);
+	fvec3 vel = get_fvec3(l, 3);
+	float fuse = luaL_checknumber(l, 4);
+	plid from = luaL_checknumber(l, 5);
+
+	f.send_grenade(pid, pos, vel, fuse, from, st);
+	return 0;
+}
+
+static void csend_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, struct State *st) {
+	lua_getglobal(l, "send_grenade");
+
+	lua_pushnumber(l, pid);
+	push_fvec3(pos);
+	push_fvec3(vel);
+	lua_pushnumber(l, fuse);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 5, 0, 0) != 0)
+		CBAIL("send_grenade: %s", luaL_checkstring(l, -1));
+}
+
+
 static int lsend_map(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 
@@ -857,6 +882,27 @@ static void csend_map_start(plid pid, unsigned size, struct State *st) {
 }
 
 
+static int lsend_fog(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	color color;
+
+	get_color2(l, 2, color);
+
+	f.send_fog(pid, color, st);
+	return 0;
+}
+
+static void csend_fog(plid pid, color color, struct State *st) {
+	lua_getglobal(l, "send_fog");
+
+	lua_pushnumber(l, pid);
+	push_color(color);
+
+	if (lua_pcall(l, 2, 0, 0) != 0)
+		CBAIL("send_fog: %s", luaL_checkstring(l, -1));
+}
+
+
 static int lrestock(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 
@@ -1143,7 +1189,7 @@ static void cmove_tent(unsigned team, fvec3 pos, struct State *st) {
 		CBAIL("move_tent: %s", luaL_checkstring(l, -1));
 }
 
-static void register_luaawk(lua_State *l, struct State *st) {st->f.on_any_connect=con_any_connect;st->f.on_successful_connect=con_successful_connect;st->f.on_disconnect=con_disconnect;st->f.on_join=con_join;st->f.on_switch=con_switch;st->f.on_position=con_position;st->f.on_orientation=con_orientation;st->f.on_move_input=con_move_input;st->f.on_mouse_input=con_mouse_input;st->f.on_color_change=con_color_change;st->f.on_block_action=con_block_action;st->f.on_block_line=con_block_line;st->f.on_chat=con_chat;st->f.on_tool_change=con_tool_change;st->f.on_hit=con_hit;st->f.on_grenade=con_grenade;st->f.on_reload=con_reload;st->f.after_player_destroy=cafter_player_destroy;st->f.on_game_end=con_game_end;st->f.tick=ctick;st->f.load_map_from_file=cload_map_from_file;st->f.block_action=cblock_action;st->f.block_line=cblock_line;st->f.set_fog=cset_fog;st->f.tick_player_physics=ctick_player_physics;st->f.detonate_grenade=cdetonate_grenade;st->f.boot_players_to_limbo=cboot_players_to_limbo;st->f.send_map=csend_map;st->f.send_state=csend_state;st->f.send_connected_players=csend_connected_players;st->f.spawn_player=cspawn_player;st->f.send_chat=csend_chat;st->f.send_block_action=csend_block_action;st->f.send_block_line=csend_block_line;st->f.send_set_color=csend_set_color;st->f.send_player_update=csend_player_update;st->f.send_position=csend_position;st->f.send_reload=csend_reload;st->f.send_intel_capture=csend_intel_capture;st->f.send_intel_pickup=csend_intel_pickup;st->f.send_intel_drop=csend_intel_drop;st->f.send_restock=csend_restock;st->f.send_move_object=csend_move_object;st->f.send_map_start=csend_map_start;st->f.restock=crestock;st->f.kill=ckill;st->f.set_ammo=cset_ammo;st->f.set_hp=cset_hp;st->f.set_hp_directional=cset_hp_directional;st->f.set_tool=cset_tool;st->f.set_color=cset_color;st->f.set_position=cset_position;st->f.set_orientation=cset_orientation;st->f.set_jump=cset_jump;st->f.capture_intel=ccapture_intel;st->f.pickup_intel=cpickup_intel;st->f.drop_intel=cdrop_intel;st->f.move_intel=cmove_intel;st->f.move_tent=cmove_tent;}
+static void register_luaawk(lua_State *l, struct State *st) {st->f.on_any_connect=con_any_connect;st->f.on_successful_connect=con_successful_connect;st->f.on_disconnect=con_disconnect;st->f.on_join=con_join;st->f.on_switch=con_switch;st->f.on_position=con_position;st->f.on_orientation=con_orientation;st->f.on_move_input=con_move_input;st->f.on_mouse_input=con_mouse_input;st->f.on_color_change=con_color_change;st->f.on_block_action=con_block_action;st->f.on_block_line=con_block_line;st->f.on_chat=con_chat;st->f.on_tool_change=con_tool_change;st->f.on_hit=con_hit;st->f.on_grenade=con_grenade;st->f.on_reload=con_reload;st->f.after_player_destroy=cafter_player_destroy;st->f.on_game_end=con_game_end;st->f.tick=ctick;st->f.load_map_from_file=cload_map_from_file;st->f.block_action=cblock_action;st->f.block_line=cblock_line;st->f.set_fog=cset_fog;st->f.tick_player_physics=ctick_player_physics;st->f.detonate_grenade=cdetonate_grenade;st->f.boot_players_to_limbo=cboot_players_to_limbo;st->f.send_grenade=csend_grenade;st->f.send_map=csend_map;st->f.send_state=csend_state;st->f.send_connected_players=csend_connected_players;st->f.spawn_player=cspawn_player;st->f.send_chat=csend_chat;st->f.send_block_action=csend_block_action;st->f.send_block_line=csend_block_line;st->f.send_set_color=csend_set_color;st->f.send_player_update=csend_player_update;st->f.send_position=csend_position;st->f.send_reload=csend_reload;st->f.send_intel_capture=csend_intel_capture;st->f.send_intel_pickup=csend_intel_pickup;st->f.send_intel_drop=csend_intel_drop;st->f.send_restock=csend_restock;st->f.send_move_object=csend_move_object;st->f.send_map_start=csend_map_start;st->f.send_fog=csend_fog;st->f.restock=crestock;st->f.kill=ckill;st->f.set_ammo=cset_ammo;st->f.set_hp=cset_hp;st->f.set_hp_directional=cset_hp_directional;st->f.set_tool=cset_tool;st->f.set_color=cset_color;st->f.set_position=cset_position;st->f.set_orientation=cset_orientation;st->f.set_jump=cset_jump;st->f.capture_intel=ccapture_intel;st->f.pickup_intel=cpickup_intel;st->f.drop_intel=cdrop_intel;st->f.move_intel=cmove_intel;st->f.move_tent=cmove_tent;}
 
-#define LUA_CALLS {"on_any_connect",lon_any_connect},{"on_successful_connect",lon_successful_connect},{"on_disconnect",lon_disconnect},{"on_join",lon_join},{"on_switch",lon_switch},{"on_position",lon_position},{"on_orientation",lon_orientation},{"on_move_input",lon_move_input},{"on_mouse_input",lon_mouse_input},{"on_color_change",lon_color_change},{"on_block_action",lon_block_action},{"on_block_line",lon_block_line},{"on_chat",lon_chat},{"on_tool_change",lon_tool_change},{"on_hit",lon_hit},{"on_grenade",lon_grenade},{"on_reload",lon_reload},{"after_player_destroy",lafter_player_destroy},{"on_game_end",lon_game_end},{"tick",ltick},{"load_map_from_file",lload_map_from_file},{"block_action",lblock_action},{"block_line",lblock_line},{"set_fog",lset_fog},{"tick_player_physics",ltick_player_physics},{"detonate_grenade",ldetonate_grenade},{"boot_players_to_limbo",lboot_players_to_limbo},{"send_map",lsend_map},{"send_state",lsend_state},{"send_connected_players",lsend_connected_players},{"spawn_player",lspawn_player},{"send_chat",lsend_chat},{"send_block_action",lsend_block_action},{"send_block_line",lsend_block_line},{"send_set_color",lsend_set_color},{"send_player_update",lsend_player_update},{"send_position",lsend_position},{"send_reload",lsend_reload},{"send_intel_capture",lsend_intel_capture},{"send_intel_pickup",lsend_intel_pickup},{"send_intel_drop",lsend_intel_drop},{"send_restock",lsend_restock},{"send_move_object",lsend_move_object},{"send_map_start",lsend_map_start},{"restock",lrestock},{"kill",lkill},{"set_ammo",lset_ammo},{"set_hp",lset_hp},{"set_hp_directional",lset_hp_directional},{"set_tool",lset_tool},{"set_color",lset_color},{"set_position",lset_position},{"set_orientation",lset_orientation},{"set_jump",lset_jump},{"capture_intel",lcapture_intel},{"pickup_intel",lpickup_intel},{"drop_intel",ldrop_intel},{"move_intel",lmove_intel},{"move_tent",lmove_tent},
+#define LUA_CALLS {"on_any_connect",lon_any_connect},{"on_successful_connect",lon_successful_connect},{"on_disconnect",lon_disconnect},{"on_join",lon_join},{"on_switch",lon_switch},{"on_position",lon_position},{"on_orientation",lon_orientation},{"on_move_input",lon_move_input},{"on_mouse_input",lon_mouse_input},{"on_color_change",lon_color_change},{"on_block_action",lon_block_action},{"on_block_line",lon_block_line},{"on_chat",lon_chat},{"on_tool_change",lon_tool_change},{"on_hit",lon_hit},{"on_grenade",lon_grenade},{"on_reload",lon_reload},{"after_player_destroy",lafter_player_destroy},{"on_game_end",lon_game_end},{"tick",ltick},{"load_map_from_file",lload_map_from_file},{"block_action",lblock_action},{"block_line",lblock_line},{"set_fog",lset_fog},{"tick_player_physics",ltick_player_physics},{"detonate_grenade",ldetonate_grenade},{"boot_players_to_limbo",lboot_players_to_limbo},{"send_grenade",lsend_grenade},{"send_map",lsend_map},{"send_state",lsend_state},{"send_connected_players",lsend_connected_players},{"spawn_player",lspawn_player},{"send_chat",lsend_chat},{"send_block_action",lsend_block_action},{"send_block_line",lsend_block_line},{"send_set_color",lsend_set_color},{"send_player_update",lsend_player_update},{"send_position",lsend_position},{"send_reload",lsend_reload},{"send_intel_capture",lsend_intel_capture},{"send_intel_pickup",lsend_intel_pickup},{"send_intel_drop",lsend_intel_drop},{"send_restock",lsend_restock},{"send_move_object",lsend_move_object},{"send_map_start",lsend_map_start},{"send_fog",lsend_fog},{"restock",lrestock},{"kill",lkill},{"set_ammo",lset_ammo},{"set_hp",lset_hp},{"set_hp_directional",lset_hp_directional},{"set_tool",lset_tool},{"set_color",lset_color},{"set_position",lset_position},{"set_orientation",lset_orientation},{"set_jump",lset_jump},{"capture_intel",lcapture_intel},{"pickup_intel",lpickup_intel},{"drop_intel",ldrop_intel},{"move_intel",lmove_intel},{"move_tent",lmove_tent},
 #endif

@@ -86,11 +86,18 @@ end
 local function build_platform()
 	set_color(PID_COLOR_ANONYMOUS, {b=255, g=255, r=0});
 
+	-- TODO: block line does not overwrite colors -- you need to hook the map load and properly set colors there. . .
 	for y=plat_start.y,plat_end.y do
-		for x=plat_start.x,plat_end.x do
-			block_action({x=x, y=y, z=plat_z}, 0, PID_COLOR_ANONYMOUS);
+		for x=plat_start.x,plat_end.x,50 do
+			block_line({x=x, y=y, z=plat_z}, {x=math.min(x+49, plat_end.x), y=y, z=plat_z}, PID_COLOR_ANONYMOUS);
 		end
 	end
+
+	-- for y=plat_start.y,plat_end.y do
+	-- 	for x=plat_start.x,plat_end.x do
+	-- 		block_action({x=x, y=y, z=plat_z}, 0, PID_COLOR_ANONYMOUS);
+	-- 	end
+	-- end
 end
 
 -- TODO: rename this trash
@@ -102,8 +109,11 @@ function mod.block_action(pos, type, from)
 	-- TODO: add func to paint blocks
 	if (legal_pos(pos, type) or type == 0) then
 		next_call("block_action", mod.block_action)(pos, type, from);
+		if (type ~= 0 and not is_solid{x=plat_start.x, y=plat_start.y, z=plat_z}) then
+			send_chat(PID_BROADCAST, ">:(", 2, 0);
+			build_platform();
+		end
 	end
-	--next_call("block_action", mod.block_action)(pos, type, from);
 end
 
 -- TODO: don't do this stop_exec thing, hook into some cannot_do_this thing
@@ -252,7 +262,11 @@ local function try_drop(pid)
 		end
 		-- TODO: plumb all this junk into core already
 		-- TODO: drop_intel func which takes only team or pid -- let the gamemode deal with it
-		drop_intel(pid, intelloc);
+		-- TODO: accept nil in place of fvec3
+		drop_intel(pid, get_team(pid) == 1 and intelloc or {x=math.huge, y=math.huge, z=math.huge});
+		if (get_team(pid) == 0) then
+			move_intel(0, intelloc);
+		end
 		drop_timeout = get_time() + 2;
 		return true;
 	end
@@ -260,7 +274,7 @@ local function try_drop(pid)
 	return false;
 end
 
-local cmd = {name="drop"};
+local cmd = {name="drop", desc="Drop the intel if you're holding it."};
 function cmd.func(pid)
 	if (not try_drop(pid)) then
 		send_chat(pid, "You're not holding the intel!", 2, 0);

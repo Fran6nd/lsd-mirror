@@ -14,7 +14,7 @@ function mod.before.tick()
 	end
 end
 
-local cmd = {name="jp", caps="jp"};
+local cmd = {name="jp", caps="jp", desc="Press sneak (V) to fly upwards."};
 function cmd.func(pid)
 	flies[pid] = not flies[pid];
 end

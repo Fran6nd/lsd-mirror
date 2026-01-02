@@ -42,7 +42,7 @@ function mod.before.load_map_from_file(path)
 end
 
 -- TODO: don't depend on fmtval for this
-local cmd = {name={"mapinfo", "mapname"}};
+local cmd = {name={"mapinfo", "mapname"}, desc="Dump the current map's metadata."};
 function cmd.func(pid)
 	send_chat(pid, fmtval(meta), 2, 0);
 end

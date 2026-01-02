@@ -153,11 +153,11 @@ hmac["hmac-sha1"] = totp.hmac_sha1;
 hmac["hmac-sha256"] = hmac_sha256;
 hmac["hmac-sha512"] = hmac_sha512;
 
-local cmd = {name="register"};
+local cmd = {name="register", usage="name password", desc="Create an account."};
 function cmd.func(pid, argv)
 	if (#argv ~= 2) then
 		-- TODO: auto-generate usage?
-		send_chat(pid, "usage: register name password", 2, 0);
+		send_usage(pid, cmd);
 		return;
 	end
 
@@ -178,10 +178,10 @@ end
 register_command(cmd);
 
 -- TODO: -> totp_gen?
-local cmd = {name="set_totp", caps="login"};
+local cmd = {name="set_totp", caps="login", desc="Configure TOTP for your account."};
 function cmd.func(pid, argv)
 	if (#argv ~= 0) then
-		send_chat(pid, "usage: set_totp", 2, 0);
+		send_usage(pid, cmd);
 		return;
 	end
 
@@ -211,11 +211,11 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="login"};
+local cmd = {name="login", desc="Login to an account."};
 function cmd.func(pid, argv)
 	if (#argv ~= 2 and #argv ~= 3) then
 		-- TODO: totp
-		send_chat(pid, "usage: login name password [totp_code]", 2, 0);
+		send_usage(pid, cmd);
 		return;
 	end
 
@@ -276,14 +276,14 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="logout", caps="login"};
+local cmd = {name="logout", caps="login", desc="Log out of your account."};
 function cmd.func(pid)
 	user[pid] = nil;
 	groups[pid] = nil;
 end
 register_command(cmd);
 
-local cmd = {name="id", caps="login"};
+local cmd = {name="id", caps="login", desc="Print your account name and groups."};
 function cmd.func(pid, argv)
 	local strgroups = "";
 	local delim = "";

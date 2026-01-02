@@ -102,7 +102,7 @@ int clip_grenade(uint32_t x, uint32_t y, int32_t z, const uint8_t *solidData, in
  * https://voxel.wiki/wiki/raytracing/
  * https://voxel.wiki/wiki/raycasting/
  */
-static int cast2(const uint8_t *solidData, float startX, float startY, float startZ, float endX, float endY,
+int cast2(const uint8_t *solidData, float startX, float startY, float startZ, float endX, float endY,
                 float endZ, float length, int32_t *x, int32_t *y, int32_t *z, int last) {
 	int stepx, stepy, stepz;
 	float offx, offy, offz;
@@ -311,7 +311,7 @@ int cast_ray_last(const uint8_t *solidData, float x0, float y0, float z0, float 
 }
 #endif
 
-void block_line(int32_t startX, int32_t startY, int32_t startZ, int32_t endX, int32_t endY, int32_t endZ, struct BitmaskUData *map, const uint8_t *color) {
+void dcore_block_line(int32_t startX, int32_t startY, int32_t startZ, int32_t endX, int32_t endY, int32_t endZ, struct BitmaskUData *map, const uint8_t *color) {
 	/* d. . . di. . . diamonds?! */
 	Vector32u off, d, di;
 	Vector32 cursor, step;

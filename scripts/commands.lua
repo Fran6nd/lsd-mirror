@@ -51,6 +51,17 @@ function try_run_command(cmd, pid, argv, msg)
 end
 server.try_run_command = try_run_command;
 
+function send_usage(pid, cmd)
+	local name = "usage: "..(cmd.name[1] or cmd.name);
+	local invocation = cmd.usage;
+
+	if (invocation) then
+		name = name .. " " .. invocation;
+	end
+
+	send_chat(pid, name, 2, 0);
+end
+
 function mod.on_chat(pid, msg, type)
 	if (string.sub(msg, 1, 1) == "/") then
 		handle_command(pid, string.sub(msg, 2, -1));

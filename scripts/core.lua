@@ -13,6 +13,7 @@ function getcfg(key, default)
 	end
 end
 
+local stexec = {};
 local function append_callchain(key, val)
 	if callchain[key] == nil then
 		-- TODO: does this need to reach into server, or will _G do fine?
@@ -26,7 +27,6 @@ end
 callchain = {};
 -- TODO: names?
 modules = {};
-local stexec = {};
 function register(module)
 	log("Loaded %s", module);
 	table.insert(modules, module);
@@ -92,7 +92,8 @@ function unregister(module)
 		for k, v in ipairs(callchain[key]) do
 			if v == val then
 				table.remove(callchain[key], k);
-				_G[key] = function(...) status, err = pcall(callchain[key][#callchain[key]], ...); if (not status and err ~= stexec) then error(err); end end;
+				--_G[key] = function(...) status, err = pcall(callchain[key][#callchain[key]], ...); if (not status and err ~= stexec) then error(err); end end;
+				_G[key] = function(...) local status, err = pcall(callchain[key][#callchain[key]], ...); if (not status and err ~= stexec) then error(err); end return err; end;
 				--_G[key] = callchain[key][#callchain[key]];
 				break;
 			end

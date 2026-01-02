@@ -70,3 +70,21 @@ function cmd.func(pid, argv)
 	send_chat(pid, table.concat(sorted, ", "), 2, 0);
 end
 register_command(cmd);
+
+-- TODO: should /help display usage for unseen commands? their existence can be confirmed by just attempting to run it, but /help denies it
+local cmd = {name={"help", "man"}, usage="command", desc="Display the invocation and description of a command."};
+function cmd.func(pid, argv)
+	local val = commands.help;
+
+	if (#argv == 1) then
+		val = commands[argv[1]];
+	end
+
+	-- TODO: show aliases
+	if (val ~= nil and can_see_command(pid, val)) then
+		send_chat(pid, print_cmd(val), 2, 0);
+	else
+		send_chat(pid, "Command not found.", 2, 0);
+	end
+end
+register_command(cmd);

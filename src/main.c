@@ -109,22 +109,25 @@ void do_loop(struct State *st) {
 
 /* Use this for iterating over BROADCAST_* pids */
 int pid_matches(plid broadcast, plid pid, struct State *st) {
-	if (broadcast == PID_BROADCAST)
+	uint32_t flags = (uint32_t)broadcast >> 29;
+	uint32_t data = (uint32_t)broadcast & (uint32_t)0x1fffffff;
+
+	switch (flags) {
+	case 1:
+		/* PID_BROADCAST */
 		return st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED;
-
-	/* PID_BROADCAST_TEAM */
-	if (broadcast > MAX_PLAYERS)
-		return (st->p[pid].joined && st->p[pid].team == broadcast - MAX_PLAYERS - 1);
-
-	/* PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER */
-	if (broadcast <= -MAX_PLAYERS)
-		return (pid != (-broadcast >> 16 & 511) && st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED && (!st->p[pid].joined || (st->p[pid].joined && st->p[pid].team != -broadcast - MAX_PLAYERS)));
-
-	/* PID_BROADCAST_EXCEPT */
-	if (broadcast < 0)
-		return (st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED && pid != -broadcast-1);
-
-	return broadcast == pid;
+	case 2:
+		/* PID_BROADCAST_EXCEPT */
+		return (st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED && pid != data);
+	case 3:
+		/* PID_BROADCAST_TEAM */
+		return (st->p[pid].joined && st->p[pid].team == data);
+	case 4:
+		/* PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER */
+		return (pid != data >> 8 && st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED && (!st->p[pid].joined || (st->p[pid].joined && st->p[pid].team != (data & 0xff))));
+	default:
+		return broadcast == pid;
+	}
 }
 
 int send_packet_flags(plid pid, const void *data, size_t length, unsigned flags, struct State *st) {
@@ -161,12 +164,8 @@ int send_packet_unreliable(plid pid, const void *data, size_t length, struct Sta
 #define LOG(x, ...) fprintf(stderr, x"\n", __VA_ARGS__)
 #define LOG1(x) fputs(x"\n", stderr)
 
-void set_fog(color color, struct State *st) {
+void send_fog(plid pid, color color, struct State *st) {
 	struct PacketFogColor cf;
-
-	st->globals.fog[0] = color[0];
-	st->globals.fog[1] = color[1];
-	st->globals.fog[2] = color[2];
 
 	cf.packetID = PacketTypeFogColor;
 	cf.a = 0;
@@ -174,7 +173,15 @@ void set_fog(color color, struct State *st) {
 	cf.color[1] = color[1];
 	cf.color[2] = color[2];
 
-	SEND(PID_BROADCAST, cf);
+	SEND(pid, cf);
+}
+
+void set_fog(color color, struct State *st) {
+	st->globals.fog[0] = color[0];
+	st->globals.fog[1] = color[1];
+	st->globals.fog[2] = color[2];
+
+	st->f.send_fog(PID_BROADCAST, color, st);
 }
 
 /* TODO: what if i'm the last player ID? i don't need my own position */
@@ -204,7 +211,7 @@ int alloc_more_nades(struct State *st) {
 	struct Grenade *newbuf;
 	size_t i;
 
-	newbuf = calloc(st->globals.grenadeSize>>2, sizeof(struct Grenade));
+	newbuf = calloc(st->globals.grenadeSize<<2, sizeof(struct Grenade));
 	if (newbuf == NULL)
 		return -1;
 
@@ -215,6 +222,7 @@ int alloc_more_nades(struct State *st) {
 	return 0;
 }
 
+/* TODO: it might be a little major bit more efficient to fill in nades starting at the start, not the end */
 int alloc_less_nades(struct State *st) {
 	struct Grenade *newbuf;
 	size_t smallSize = st->globals.grenadeSize;
@@ -222,17 +230,19 @@ int alloc_less_nades(struct State *st) {
 	if (st->globals.grenadeSize == 256)
 		return 0;
 
-	while (smallSize > st->globals.grenadeSize)
+	while (smallSize > st->globals.grenadeCount)
 		smallSize >>= 2;
+
+	smallSize <<= 2;
 
 	if (smallSize < 256)
 		smallSize = 256;
 
-	newbuf = realloc(st->globals.grenades, (st->globals.grenadeSize>>2)*sizeof(struct Grenade));
+	newbuf = realloc(st->globals.grenades, smallSize*sizeof(struct Grenade));
 	if (newbuf == NULL)
 		return -1;
 
-	st->globals.grenadeSize >>= 2;
+	st->globals.grenadeSize = smallSize;
 	st->globals.grenades = newbuf;
 	return 0;
 }
@@ -465,19 +475,45 @@ void detonate_grenade(size_t index, struct State *st) {
 	st->f.block_action(ipos, BlockActionTypeGrenadeDestroy, 0, st);
 }
 
-/* TODO: make grenade, send_grenade funcs */
-void on_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+void send_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, struct State *st) {
+	struct PacketGrenade nade;
+
+	nade.packetID = PacketTypeGrenade;
+	nade.playerID = from;
+	nade.fuseLength = fuse;
+	nade.pos = pos;
+	nade.vel = vel;
+
+	SEND(pid, nade);
+}
+
+size_t register_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
 	if (st->globals.grenadeCount == st->globals.grenadeSize && alloc_more_nades(st) == -1) {
 		LOG("Out of memory for more grenades (%lu currently allocated)", st->globals.grenadeSize);
-		return;
+		return (size_t)-1;
 	}
 
 	st->globals.grenades[st->globals.grenadeCount].detonateTime = get_time()+from_s_double(fuse);
 	st->globals.grenades[st->globals.grenadeCount].pos = pos;
 	st->globals.grenades[st->globals.grenadeCount].vel = vel;
 	st->globals.grenades[st->globals.grenadeCount].pid = pid;
-	st->globals.grenades[st->globals.grenadeCount].team = st->p[pid].team;
+	st->globals.grenades[st->globals.grenadeCount].team = team;
 	st->globals.grenades[st->globals.grenadeCount++].exists = 1;
+
+	return st->globals.grenadeCount-1;
+}
+
+size_t spawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+	size_t idx = st->f.register_grenade(pid, team, pos, vel, fuse, st);
+	if (idx != (size_t)-1)
+		st->f.send_grenade(PID_BROADCAST, pos, vel, fuse, 0, st);
+	return idx;
+}
+
+/* TODO: make grenade, send_grenade funcs */
+void on_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+	st->f.register_grenade(pid, st->p[pid].team, pos, vel, fuse, st);
+	st->f.send_grenade(PID_BROADCAST_EXCEPT(pid), pos, vel, fuse, 0, st);
 }
 
 void send_reload(plid pid, unsigned mag, unsigned reserve, plid from, struct State *st) {
@@ -710,44 +746,45 @@ void send_map(plid pid, struct State *st) {
 }
 #endif
 
+static void fill_in_state(struct PacketStateData *sta, plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, struct State *st) {
+	sta->packetID = PacketTypeStateData;
+	sta->playerID = from;
+	sta->fog[0] = fog[0];
+	sta->fog[1] = fog[1];
+	sta->fog[2] = fog[2];
+	sta->teamcolor[0][0] = teamcolor[0][0];
+	sta->teamcolor[0][1] = teamcolor[0][1];
+	sta->teamcolor[0][2] = teamcolor[0][2];
+	sta->teamcolor[1][0] = teamcolor[1][0];
+	sta->teamcolor[1][1] = teamcolor[1][1];
+	sta->teamcolor[1][2] = teamcolor[1][2];
+	memset(sta->team1Name, 0, 20);
+	strcpy(sta->team1Name, teamname[0]);
+	strcpy(sta->team2Name, teamname[1]);
+}
+
 void send_state_ctf(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, const unsigned *teamscore, unsigned maxscore, const plid *holders, const fvec3 *intelpos, const fvec3 *tentpos, struct State *st) {
 	struct PacketStateData sta;
+	unsigned i;
 
-	sta.packetID = PacketTypeStateData;
-	sta.playerID = from;
-	sta.fog_b = fog[0];
-	sta.fog_g = fog[1];
-	sta.fog_r = fog[2];
-	sta.team1_b = teamcolor[0][0];
-	sta.team1_g = teamcolor[0][1];
-	sta.team1_r = teamcolor[0][2];
-	sta.team2_b = teamcolor[1][0];
-	sta.team2_g = teamcolor[1][1];
-	sta.team2_r = teamcolor[1][2];
-	memset(sta.team1Name, 0, 20);
-	strcpy(sta.team1Name, teamname[0]);
-	strcpy(sta.team2Name, teamname[1]);
+	fill_in_state(&sta, pid, from, teamname, teamcolor, fog, st);
 	sta.gamemode = 0;
-	/* TODO: turn team1,2Score into an array? */
-	/* TODO: shorten */
-	sta.gamemodeData.ctfStateData.team1Score = teamscore[0];
-	sta.gamemodeData.ctfStateData.team2Score = teamscore[1];
-	sta.gamemodeData.ctfStateData.captureLimit = maxscore;
-	sta.gamemodeData.ctfStateData.heldIntels = (holders[0] != -1) | ((holders[1] != -1) << 1);
-	/* TODO: use holders instead of heldintels? */
+	sta.gm.ctf.teamscore[0] = teamscore[0];
+	sta.gm.ctf.teamscore[1] = teamscore[1];
+	sta.gm.ctf.maxscore = maxscore;
+	/* TODO: I like how the ordering is reversed from what you'd expect */
+	/* TODO: why does openspades sometimes decide nobody is holding an intel */
+	sta.gm.ctf.heldIntels = (holders[1] != -1) | ((holders[0] != -1) << 1);
 	/* TODO: what happens if 255 holds an intel */
-	if (holders[0] != -1) {
-		memset(&sta.gamemodeData.ctfStateData.team1Intel, 0, sizeof(sta.gamemodeData.ctfStateData.team1Intel));
-		sta.gamemodeData.ctfStateData.team1Intel.playerID = holders[0];
-	} else
-		sta.gamemodeData.ctfStateData.team1Intel.position = intelpos[0];
-	if (holders[1] != -1) {
-		memset(&sta.gamemodeData.ctfStateData.team2Intel, 0, sizeof(sta.gamemodeData.ctfStateData.team2Intel));
-		sta.gamemodeData.ctfStateData.team2Intel.playerID = holders[1];
-	} else
-		sta.gamemodeData.ctfStateData.team2Intel.position = intelpos[1];
-	sta.gamemodeData.ctfStateData.team1TentPosition = tentpos[0];
-	sta.gamemodeData.ctfStateData.team2TentPosition = tentpos[1];
+	for (i=0;i<2;i++) {
+		if (holders[i] != -1) {
+			memset(&sta.gm.ctf.intelloc[i], 0, sizeof(sta.gm.ctf.intelloc[i]));
+			sta.gm.ctf.intelloc[i].playerID = holders[i];
+		} else
+			sta.gm.ctf.intelloc[i].position = intelpos[i];
+	}
+	sta.gm.ctf.tentpos[0] = tentpos[0];
+	sta.gm.ctf.tentpos[1] = tentpos[1];
 
 	st->f.send_packet(pid, &sta, 84, st);
 }
@@ -756,27 +793,13 @@ void send_state_tc(plid pid, plid from, const char teamname[][10], const color *
 	struct PacketStateData sta;
 	unsigned i;
 
-	sta.packetID = PacketTypeStateData;
-	sta.playerID = from;
-	sta.fog_b = fog[0];
-	sta.fog_g = fog[1];
-	sta.fog_r = fog[2];
-	/* TODO: color to struct already */
-	sta.team1_b = teamcolor[0][0];
-	sta.team1_g = teamcolor[0][1];
-	sta.team1_r = teamcolor[0][2];
-	sta.team2_b = teamcolor[1][0];
-	sta.team2_g = teamcolor[1][1];
-	sta.team2_r = teamcolor[1][2];
-	memset(sta.team1Name, 0, 20);
-	strcpy(sta.team1Name, teamname[0]);
-	strcpy(sta.team2Name, teamname[1]);
+	fill_in_state(&sta, pid, from, teamname, teamcolor, fog, st);
 	sta.gamemode = 1;
-	sta.gamemodeData.tcStateData.territoryCount = tentcount;
+	sta.gm.tc.territoryCount = tentcount;
 
 	for (i=0;i<tentcount;i++) {
-		sta.gamemodeData.tcStateData.territories[i].pos = tentpos[i];
-		sta.gamemodeData.tcStateData.territories[i].team = tentteam[i];
+		sta.gm.tc.territories[i].pos = tentpos[i];
+		sta.gm.tc.territories[i].team = tentteam[i];
 	}
 
 	/* TODO: we should probably validate tentcount from lua code */
@@ -784,8 +807,9 @@ void send_state_tc(plid pid, plid from, const char teamname[][10], const color *
 }
 
 void send_state(plid pid, struct State *st) {
-	st->f.send_state_ctf(pid, pid, st->globals.teamname, st->globals.teamcolor, st->globals.fog, st->globals.teamscore, st->globals.maxscore, st->globals.intelplayers, st->globals.intelpos, st->globals.tentpos, st);
+	/* TODO: does this go before or after? */
 	st->f.send_connected_players(pid, st);
+	st->f.send_state_ctf(pid, pid, st->globals.teamname, st->globals.teamcolor, st->globals.fog, st->globals.teamscore, st->globals.maxscore, st->globals.intelplayers, st->globals.intelpos, st->globals.tentpos, st);
 }
 
 void send_connected_players(plid pid, struct State *st) {
@@ -1018,7 +1042,7 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		SBAD(PACKET.team > 1 && PACKET.team != 255);
 		SBAD(PACKET.weapon > 2);
 		SBAD(PACKET.tool != ToolTypeGun);
-		SBAD(PACKET.score != 0);
+		/* OpenSpades puts its score in PACKET.score (or some other data; I didn't check) for some reason despite being ignored */
 		/* blue, green and red are ignored */
 
 		return 0;
@@ -1523,6 +1547,7 @@ clk on_kill(plid pid, struct State *st) {
 /* TODO: even dead people send position in openspades */
 /* TODO: should kill still kill dead men? (probably yes) */
 /* TODO: move spawn time into lua */
+/* TODO: kill packet only gets sent if pid 0 is joined */
 void kill(plid pid, unsigned type, plid killer, struct State *st) {
 	struct PacketKill kl;
 
@@ -1761,10 +1786,13 @@ void on_block_action(plid pid, ivec3 pos, unsigned type, struct State *st) {
 	st->f.block_action(pos, type, type == 0 ? pid : 0, st);
 }
 
-void on_block_line(plid pid, ivec3 start, ivec3 end, struct State *st) {
-	block_line(start.x, start.y, start.z, end.x, end.y, end.z, &st->globals.map, st->p[pid].blockColor);
+void block_line(ivec3 start, ivec3 end, plid from, struct State *st) {
+	dcore_block_line(start.x, start.y, start.z, end.x, end.y, end.z, &st->globals.map, st->p[from].blockColor);
+	st->f.send_block_line(PID_BROADCAST, start, end, from, st);
+}
 
-	st->f.send_block_line(PID_BROADCAST, start, end, pid, st);
+void on_block_line(plid pid, ivec3 start, ivec3 end, struct State *st) {
+	st->f.block_line(start, end, pid, st);
 }
 
 void send_position(plid pid, fvec3 pos, struct State *st) {
@@ -1932,38 +1960,7 @@ int intercept(ENetHost *host, ENetEvent *event) {
 	return 0;
 }
 
-void hook_lua(struct State *st);
-
-int main(void) {
-	ENetAddress addr;
-	struct State *st;
-	fvec3 hidden = {HUGE_VAL, HUGE_VAL, HUGE_VAL};
-
-	sandbox();
-
-	st = calloc(1, sizeof(struct State));
-	if (st == NULL)
-		ERR("calloc");
-
-	st->globals.grenadeSize = 256;
-	st->globals.grenadeCount = 0;
-	st->globals.grenades = calloc(256, sizeof(struct Grenade));
-	if (st->globals.grenades == NULL)
-		ERR("calloc");
-
-	addr.host = ENET_HOST_ANY;
-	addr.port = 32777;
-
-	st->host = bringup_host(&addr);
-	if (st->host == NULL)
-		ERR("bringup_host");
-	st->host->peers[0].data = st;
-	st->host->intercept = intercept;
-
-	st->tickrate = (clk)1000000000 / TICKRATE;
-	st->epoch = get_time();
-	st->nextTickTime = st->epoch + st->tickrate;
-
+void set_funcs(struct State *st) {
 	st->f.tick = tick;
 	st->f.on_any_connect = on_any_connect;
 	st->f.on_successful_connect = on_successful_connect;
@@ -1994,6 +1991,7 @@ int main(void) {
 	st->f.on_color_change = on_color_change;
 	st->f.send_position = send_position;
 	st->f.set_position = set_position;
+	st->f.block_line = block_line;
 	st->f.on_block_line = on_block_line;
 	st->f.send_block_line = send_block_line;
 	st->f.on_hit = on_hit;
@@ -2029,10 +2027,14 @@ int main(void) {
 	st->f.send_packet = send_packet;
 	st->f.send_packet_unreliable = send_packet_unreliable;
 	st->f.move_tent = move_tent;
+	st->f.send_grenade = send_grenade;
+	st->f.register_grenade = register_grenade;
+	st->f.spawn_grenade = spawn_grenade;
+	st->f.send_fog = send_fog;
+}
 
-	/*st->globals.fog[0] = 255;
-	st->globals.fog[1] = 200;
-	st->globals.fog[2] = 160;*/
+void set_defaults(struct State *st) {
+	fvec3 hidden = {HUGE_VAL, HUGE_VAL, HUGE_VAL};
 
 	st->globals.fog[0] = 255;
 	st->globals.fog[1] = 232;
@@ -2051,6 +2053,62 @@ int main(void) {
 	st->globals.intelpos[1] = hidden;
 	st->globals.tentpos[0] = hidden;
 	st->globals.tentpos[1] = hidden;
+}
+
+const char *cfg = "config.lua";
+/* config_path is relative to root_path, root_path defaults to . */
+#define USAGE "usage: %s [-c config_path] [-d root_path]\n"
+void parse_args(int argc, char **argv) {
+	int ch;
+
+	while ((ch = getopt(argc, argv, "c:d:")) != -1) {switch (ch){
+	case 'c':
+		cfg = optarg;
+		break;
+	case 'd':
+		if (chdir(optarg) != 0)
+			ERR("chdir");
+		break;
+	default:
+		fprintf(stderr, USAGE, argv[0]);
+		exit(EXIT_FAILURE);
+	}}
+}
+
+void hook_lua(const char *cfg, struct State *st);
+
+int main(int argc, char **argv) {
+	ENetAddress addr;
+	struct State *st;
+
+	parse_args(argc, argv);
+	sandbox();
+
+	st = calloc(1, sizeof(struct State));
+	if (st == NULL)
+		ERR("calloc");
+
+	st->globals.grenadeSize = 256;
+	st->globals.grenadeCount = 0;
+	st->globals.grenades = calloc(256, sizeof(struct Grenade));
+	if (st->globals.grenades == NULL)
+		ERR("calloc");
+
+	addr.host = ENET_HOST_ANY;
+	addr.port = 32777;
+
+	st->host = bringup_host(&addr);
+	if (st->host == NULL)
+		ERR("bringup_host");
+	st->host->peers[0].data = st;
+	st->host->intercept = intercept;
+
+	st->tickrate = (clk)1000000000 / TICKRATE;
+	st->epoch = get_time();
+	st->nextTickTime = st->epoch + st->tickrate;
+
+	set_funcs(st);
+	set_defaults(st);
 
 	if (pvx_create_bitmask(&st->globals.map, 512, 512, 64) != 0) {
 		fputs("can't create bitmask, check your memory\n", stderr);
@@ -2060,7 +2118,7 @@ int main(void) {
 	stackData = malloc(32*512*512*sizeof(uint32_t));
 	rememberedSolidity = calloc(1, 512*512*sizeof(uint64_t));
 
-	hook_lua(st);
+	hook_lua(cfg, st);
 
 	st->f.load_map_from_file("maps/map.vxl", st);
 

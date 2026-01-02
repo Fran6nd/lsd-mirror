@@ -10,7 +10,7 @@ local function unreg(name)
 	package.loaded[name] = nil;
 end
 
-local cmd = {name="unloadall", caps="modutils"};
+local cmd = {name="unloadall", caps="modutils", desc="Unregister all the modules."};
 function cmd.func()
 	local cmds = require("commands");
 
@@ -22,7 +22,8 @@ function cmd.func()
 end
 register_command(cmd);
 
-local cmd = {name="lsmod", caps="modutils"};
+-- TODO: mod.cmds?
+local cmd = {name="lsmod", caps="modutils", desc="Crusty listing of all loaded modules."};
 function cmd.func(pid)
 	for x,y in ipairs(modules) do
 		send_chat(pid, tostring(y), 2, 0);
@@ -40,14 +41,14 @@ function cmd.func(pid)
 end
 register_command(cmd);
 
-local cmd = {name="load", caps="modutils"};
+local cmd = {name="load", caps="modutils", usage="module", desc="Dynamically load a module."};
 function cmd.func(pid, argv)
 	unreg(argv[1]);
 	load(argv[1]);
 end
 register_command(cmd);
 
-local cmd = {name="unload", caps="modutils"};
+local cmd = {name="unload", caps="modutils", usage="module", desc="Dynamically unload a module."};
 function cmd.func(pid, argv)
 	unreg(argv[1]);
 end

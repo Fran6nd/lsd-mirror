@@ -1,7 +1,3 @@
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
 #ifdef __linux__
 #define _GNU_SOURCE
 #include <errno.h>
@@ -14,6 +10,10 @@
 #define WITH_LIBSECCOMP
 #define WITH_UNSHARE
 #endif
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
 #define PUTSERR(x) do {fputs(x"\n", stderr); exit(EXIT_FAILURE);} while (0)

@@ -1,6 +1,7 @@
 -- babel.lua -- The gamemode where nobody can cooperate
 local mod = {after={}};
 local drop_timeout = 0;
+local platform_rebuild_time;
 
 -- TODO: team starts at 0 or 1?
 -- TODO: i think some places use 0 and others use 1, unify that
@@ -112,6 +113,11 @@ function mod.block_action(pos, type, from)
 		if (type ~= 0 and not is_solid{x=plat_start.x, y=plat_start.y, z=plat_z}) then
 			send_chat(PID_BROADCAST, ">:(", 2, 0);
 			build_platform();
+			-- Most of the clients don't process block line/action immediately when recieved.
+			-- They do some cursed queueing thing that, for instance, lets you break and place
+			-- a block on the same frame to recolor it. Anyway, those ones need some delay before
+			-- rebuilding the platform.
+			platform_rebuild_time = get_time()+0.1;
 		end
 	end
 end
@@ -171,6 +177,11 @@ end
 -- TODO: get, set intel position
 function mod.after.tick()
 	local intelloc = get_1intel();
+
+	if (platform_rebuild_time and get_time() >= platform_rebuild_time) then
+		build_platform();
+		platform_rebuild_time = nil;
+	end
 
 	-- Don't do anything if someone is holding the intel
 	-- TODO: do tents instead

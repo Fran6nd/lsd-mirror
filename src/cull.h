@@ -21,6 +21,7 @@
 typedef uint32_t Column;
 struct ColumnStack {
 	size_t occupiedSize;
+	size_t startIndex;
 	size_t index;
 	Column *data;
 };

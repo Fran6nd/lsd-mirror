@@ -374,7 +374,7 @@ static void destroyGrenadeVoxel(uint_fast32_t x,
 	*solids |= ctr;
 }
 
-void libspades_grenade_destroy(uint_fast32_t x,
+int libspades_grenade_destroy(uint_fast32_t x,
                                uint_fast32_t y,
                                uint_fast32_t z,
 	                       struct State *st) {
@@ -404,6 +404,7 @@ void libspades_grenade_destroy(uint_fast32_t x,
 	}
 
 	finish_cull(stackData, (void *)keepSolid);
+	return !!solids;
 }
 
 void set_solid(ivec3 pos, struct State *st) {

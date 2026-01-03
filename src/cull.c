@@ -104,7 +104,6 @@ static int detect_and_push_columns(int_fast16_t x,
 			if (keepSolid[x][y] & ((uint64_t)1 << (uint64_t)z))
 				return 1;
 			rememberedSolidity[x][y] |= (uint64_t)1 << (uint64_t)z;
-			keepSolid[x][y] |= (uint64_t)1 << (uint64_t)z;
 
 			COLUMN_SET(x, y, detectedTop, z, detectedColumn);
 			stack->data[stack->occupiedSize++] = detectedColumn;
@@ -137,7 +136,6 @@ static int detect_and_push_columns(int_fast16_t x,
 			if (keepSolid[x][y] & ((uint64_t)1 << (uint64_t)z))
 				return 1;
 			rememberedSolidity[x][y] |= (uint64_t)1 << (uint64_t)z;
-			keepSolid[x][y] |= (uint64_t)1 << (uint64_t)z;
 
 			COLUMN_SET(x, y, detectedTop, z, detectedColumn);
 			stack->data[stack->occupiedSize++] = detectedColumn;
@@ -171,6 +169,21 @@ static void reset_cull_solidity(struct ColumnStack *stack, uint64_t (*solid)[512
 	}
 }
 
+static void cp_cull_solidity(struct ColumnStack *stack, uint64_t (*rememberedSolidity)[512], uint64_t (*keepSolid)[512]) {
+	Column column;
+	uint32_t x, y;
+
+	stack->index = stack->startIndex;
+	while (stack->index != stack->occupiedSize) {
+		column = stack->data[stack->index++];
+		x = COLUMN_GET_X(column);
+		y = COLUMN_GET_Y(column);
+
+		keepSolid[x][y] |= rememberedSolidity[x][y];
+		rememberedSolidity[x][y] = 0;
+	}
+}
+
 void finish_cull(struct ColumnStack *stack, uint64_t (*solid)[512]) {
 	stack->startIndex = 0;
 	reset_cull_solidity(stack, solid);
@@ -200,7 +213,6 @@ size_t cull_floating_voxels(uint32_t x, uint32_t y, uint32_t z, int actuallyCull
 	stack->data[stack->occupiedSize++] = column;
 
 	rememberedSolidity[x][y] |= (uint64_t)1 << ((uint64_t)COLUMN_GET_BOTTOM(column));
-	keepSolid[x][y] |= (uint64_t)1 << ((uint64_t)COLUMN_GET_BOTTOM(column));
 
 	stack->startIndex = stack->index;
 	while (stack->index != stack->occupiedSize) {
@@ -212,35 +224,26 @@ size_t cull_floating_voxels(uint32_t x, uint32_t y, uint32_t z, int actuallyCull
 		bottom = COLUMN_GET_BOTTOM(column);
 
 		if (x < (MAP_SIZE_X - 1) &&
-		    detect_and_push_columns(x + 1, y, top, bottom, stack, rememberedSolidity, keepSolid, solidData)) {
-			reachedGround = 1;
+		    (reachedGround = detect_and_push_columns(x + 1, y, top, bottom, stack, rememberedSolidity, keepSolid, solidData)))
 			break;
-		}
 		if (x > 0 &&
-		    detect_and_push_columns(x - 1, y, top, bottom, stack, rememberedSolidity, keepSolid, solidData)) {
-			reachedGround = 1;
+		    (reachedGround = detect_and_push_columns(x - 1, y, top, bottom, stack, rememberedSolidity, keepSolid, solidData)))
 			break;
-		}
 		if (y < (MAP_SIZE_Y - 1) &&
-		    detect_and_push_columns(x, y + 1, top, bottom, stack, rememberedSolidity, keepSolid, solidData)) {
-			reachedGround = 1;
+		    (reachedGround = detect_and_push_columns(x, y + 1, top, bottom, stack, rememberedSolidity, keepSolid, solidData)))
 			break;
-		}
 		if (y > 0 &&
-		    detect_and_push_columns(x, y - 1, top, bottom, stack, rememberedSolidity, keepSolid, solidData)) {
-			reachedGround = 1;
+		    (reachedGround = detect_and_push_columns(x, y - 1, top, bottom, stack, rememberedSolidity, keepSolid, solidData)))
 			break;
-		}
 	}
 
-	if (!reachedGround) {
+	if (reachedGround == 0) {
 		/* Clear all the bitmasks, we can't trust anything since voxels are being removed */
 		stack->index = 0;
 		while (stack->index != stack->startIndex) {
 			column = stack->data[stack->index++];
 			x = COLUMN_GET_X(column);
 			y = COLUMN_GET_Y(column);
-			rememberedSolidity[x][y] = 0;
 			keepSolid[x][y] = 0;
 		}
 		while (stack->index != stack->occupiedSize) {
@@ -265,7 +268,8 @@ size_t cull_floating_voxels(uint32_t x, uint32_t y, uint32_t z, int actuallyCull
 	} else
 		/* Just clear all of rememberedSolidity, and keep index pointed to where it is now
 		 * -- we don't want to overwrite old cols, otherwise we can't clear keepSolid */
-		reset_cull_solidity(stack, rememberedSolidity);
+		/* Also copy rememberedSolidity to keepSolid */
+		cp_cull_solidity(stack, rememberedSolidity, keepSolid);
 
 	return culledVoxels;
 }

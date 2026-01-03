@@ -81,4 +81,28 @@ function whereami.tick()
 	send_chat(0, string.format("N%% pos: {%.3f, %.3f, %.3f}", pos.x, pos.y, pos.z), 2, 0);
 end
 
+function nuketest()
+	local start = get_time();
+	for y=1,511+2,3 do
+		for x=1,511+2,3 do
+			block_action({x=x, y=y, z=32}, 3, 0);
+		end
+	end
+	sc("delta: "..tostring(get_time()-start));
+	log("%s", "delta: "..tostring(get_time()-start));
+end
+
+function nuketest2()
+	local start = get_time();
+	for y=1,511+2,3 do
+		for x=1,511+2,3 do
+			if (x == 1 and y == 1) then goto nope; end
+			block_action({x=x, y=y, z=32}, 3, 0);
+			::nope::
+		end
+	end
+	sc("delta: "..tostring(get_time()-start));
+	log("%s", "delta: "..tostring(get_time()-start));
+end
+
 return {};

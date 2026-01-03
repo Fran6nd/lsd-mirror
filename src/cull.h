@@ -18,6 +18,15 @@
 #include <stdint.h>
 #include <stddef.h>
 
-size_t cull_floating_voxels(uint32_t x, uint32_t y, uint32_t z, int actuallyCull, uint8_t *solidData, uint32_t *stackData, uint64_t (*rememberedSolidity)[512]);
+typedef uint32_t Column;
+struct ColumnStack {
+	size_t occupiedSize;
+	size_t index;
+	Column *data;
+};
+
+int init_cull_stack(struct ColumnStack *stack);
+void finish_cull(struct ColumnStack *stack, uint64_t (*solid)[512]);
+size_t cull_floating_voxels(uint32_t x, uint32_t y, uint32_t z, int actuallyCull, uint8_t *solidData, struct ColumnStack *stack, uint64_t (*rememberedSolidity)[512], uint64_t (*keepSolid)[512]);
 
 #endif

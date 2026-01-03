@@ -301,12 +301,67 @@ int libspades_voxel_bounds_check_player(uint_fast32_t x, uint_fast32_t y, uint_f
 	return (x < MAP_SIZE_X && y < MAP_SIZE_Y && z < (MAP_SIZE_Z - 2));
 }
 
-uint32_t *stackData;
+struct ColumnStack stack;
+struct ColumnStack *stackData = &stack;
 uint64_t *rememberedSolidity;
+uint64_t *keepSolid;
+
+/* TODO: culling on openspades is much faster if there's a "floor" to connect to near the bottom
+ * |#|
+ * |#|
+ * | |
+ * |-|
+ *   |
+ * Say you're trying to destroy those two # blocks; it'll be much faster with that - than without it
+ * This is when facing {-1,0,0}
+ */
+static void cull_grenade(uint_fast32_t x,
+                         uint_fast32_t y,
+                         uint_fast32_t z,
+                         int_fast8_t xOffset,
+                         int_fast8_t yOffset,
+                         int_fast8_t zOffset,
+                         struct State *st) {
+	if (xOffset != 0 && yOffset != 0 && zOffset != 0) {
+		cull_floating_voxels(x + xOffset * 2, y + yOffset, z + zOffset, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		cull_floating_voxels(x + xOffset, y + yOffset * 2, z + zOffset, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		cull_floating_voxels(x + xOffset, y + yOffset, z + zOffset * 2, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		return;
+	}
+	if (xOffset != 0 && yOffset != 0) {
+		cull_floating_voxels(x + xOffset * 2, y + yOffset, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		cull_floating_voxels(x + xOffset, y + yOffset * 2, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		return;
+	}
+	if (xOffset != 0 && zOffset != 0) {
+		cull_floating_voxels(x + xOffset * 2, y, z + zOffset, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		cull_floating_voxels(x + xOffset, y, z + zOffset * 2, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		return;
+	}
+	if (yOffset != 0 && zOffset != 0) {
+		cull_floating_voxels(x, y + yOffset * 2, z + zOffset, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		cull_floating_voxels(x, y + yOffset, z + zOffset * 2, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		return;
+	}
+	if (xOffset != 0) {
+		cull_floating_voxels(x + xOffset * 2, y, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		return;
+	}
+	if (yOffset != 0) {
+		cull_floating_voxels(x, y + yOffset * 2, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		return;
+	}
+	if (zOffset != 0) {
+		cull_floating_voxels(x, y, z + zOffset * 2, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		return;
+	}
+}
 
 static void destroyGrenadeVoxel(uint_fast32_t x,
                                 uint_fast32_t y,
                                 uint_fast32_t z,
+				uint_fast32_t *solids,
+				uint_fast32_t ctr,
                                 int_fast8_t xOffset,
                                 int_fast8_t yOffset,
                                 int_fast8_t zOffset,
@@ -316,39 +371,7 @@ static void destroyGrenadeVoxel(uint_fast32_t x,
 		return;
 
 	pvx_voxel_destroy4(st->globals.map.solidData, CALC_I(x + xOffset, y + yOffset), z + zOffset);
-	if (xOffset != 0 && yOffset != 0 && zOffset != 0) {
-		cull_floating_voxels(x + xOffset * 2, y + yOffset, z + zOffset, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
-		cull_floating_voxels(x + xOffset, y + yOffset * 2, z + zOffset, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
-		cull_floating_voxels(x + xOffset, y + yOffset, z + zOffset * 2, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
-		return;
-	}
-	if (xOffset != 0 && yOffset != 0) {
-		cull_floating_voxels(x + xOffset * 2, y + yOffset, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
-		cull_floating_voxels(x + xOffset, y + yOffset * 2, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
-		return;
-	}
-	if (xOffset != 0 && zOffset != 0) {
-		cull_floating_voxels(x + xOffset * 2, y, z + zOffset, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
-		cull_floating_voxels(x + xOffset, y, z + zOffset * 2, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
-		return;
-	}
-	if (yOffset != 0 && zOffset != 0) {
-		cull_floating_voxels(x, y + yOffset * 2, z + zOffset, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
-		cull_floating_voxels(x, y + yOffset, z + zOffset * 2, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
-		return;
-	}
-	if (xOffset != 0) {
-		cull_floating_voxels(x + xOffset * 2, y, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
-		return;
-	}
-	if (yOffset != 0) {
-		cull_floating_voxels(x, y + yOffset * 2, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
-		return;
-	}
-	if (zOffset != 0) {
-		cull_floating_voxels(x, y, z + zOffset * 2, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
-		return;
-	}
+	*solids |= ctr;
 }
 
 void libspades_grenade_destroy(uint_fast32_t x,
@@ -356,12 +379,31 @@ void libspades_grenade_destroy(uint_fast32_t x,
                                uint_fast32_t z,
 	                       struct State *st) {
 	int_fast8_t xOffset, yOffset, zOffset;
+	uint_fast32_t solids = 0;
+	uint_fast32_t ctr = 1;
 
 	/* TODO: move bounds checking to each of these for loops? or is that terrible */
-	for (zOffset = -1; zOffset <= 1; zOffset++)
-		for (yOffset = -1; yOffset <= 1; yOffset++)
-			for (xOffset = -1; xOffset <= 1; xOffset++)
-				destroyGrenadeVoxel(x, y, z, xOffset, yOffset, zOffset, st);
+	for (zOffset = -1; zOffset <= 1; zOffset++) {
+		for (yOffset = -1; yOffset <= 1; yOffset++) {
+			for (xOffset = -1; xOffset <= 1; xOffset++) {
+				destroyGrenadeVoxel(x, y, z, &solids, ctr, xOffset, yOffset, zOffset, st);
+				ctr <<= 1;
+			}
+		}
+	}
+
+	ctr = 1;
+	for (zOffset = -1; zOffset <= 1; zOffset++) {
+		for (yOffset = -1; yOffset <= 1; yOffset++) {
+			for (xOffset = -1; xOffset <= 1; xOffset++) {
+				if (solids & ctr)
+					cull_grenade(x, y, z, xOffset, yOffset, zOffset, st);
+				ctr <<= 1;
+			}
+		}
+	}
+
+	finish_cull(stackData, (void *)keepSolid);
 }
 
 void set_solid(ivec3 pos, struct State *st) {
@@ -380,8 +422,32 @@ void set_empty(ivec3 pos, struct State *st) {
 	set_empty3(pos.x, pos.y, pos.z, st);
 }
 
+int get_solid3(int32_t x, int32_t y, int32_t z, struct State *st) {
+	return pvx_voxel_get_solidity4(st->globals.map.solidData, CALC_I(x, y), z);
+}
+
+int get_solid(ivec3 pos, struct State *st) {
+	return get_solid3(pos.x, pos.y, pos.z, st);
+}
+
+int neighboring_voxels(ivec3 pos, struct State *st) {
+	int32_t off;
+	int count = 0;
+
+	for (off=-1;off<2;off+=2)
+		count += ((uint32_t)(pos.x+off) < 512 && get_solid3(pos.x+off, pos.y, pos.z, st));
+
+	for (off=-1;off<2;off+=2)
+		count += ((uint32_t)(pos.y+off) < 512 && get_solid3(pos.x, pos.y+off, pos.z, st));
+
+	for (off=-1;off<2;off+=2)
+		count += ((uint32_t)(pos.z+off) < 64 && get_solid3(pos.x, pos.y, pos.z+off, st));
+
+	return count;
+}
+
 void cull3(int32_t x, int32_t y, int32_t z, struct State *st) {
-	cull_floating_voxels(x, y, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity);
+	cull_floating_voxels(x, y, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
 }
 
 void cull(ivec3 pos, struct State *st) {
@@ -395,16 +461,31 @@ void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
 		set_vox_color(pos, st->p[from].blockColor, st);
 		break;
 	case 1: /* destroy */
-		set_empty(pos, st);
-		cull3(pos.x-1, pos.y, pos.z, st);
-		cull3(pos.x+1, pos.y, pos.z, st);
-		cull3(pos.x, pos.y-1, pos.z, st);
-		cull3(pos.x, pos.y+1, pos.z, st);
-		cull3(pos.x, pos.y, pos.z-1, st);
-		cull3(pos.x, pos.y, pos.z+1, st);
+		/* Don't cull (or destroy) if nonsolid, which'll only ever happen for fun scripts */
+		if (get_solid(pos, st)) {
+			set_empty(pos, st);
+			cull3(pos.x-1, pos.y, pos.z, st);
+			cull3(pos.x+1, pos.y, pos.z, st);
+			cull3(pos.x, pos.y-1, pos.z, st);
+			cull3(pos.x, pos.y+1, pos.z, st);
+			cull3(pos.x, pos.y, pos.z-1, st);
+			cull3(pos.x, pos.y, pos.z+1, st);
+			finish_cull(stackData, (void *)keepSolid);
+		}
 		break;
-	case 2: /* 3x destroy */
-		if (pos.z > 0) {
+	case 2: { /* 3x destroy */
+		/* TODO: only do cull on actually destroyed voxels in rl */
+		/* TODO: does piqueserver have that bug? test by building 2 blocks, then a floating block diagonal to the top of those 2, rmb spade the top of the 2 */
+		/* (TODO: betterspades could handle this weird, in which case i may have to polyfill it) */
+		unsigned solids = 0;
+
+		if (pos.z < 61 && get_solid3(pos.x, pos.y, pos.z+1, st)) {
+			set_empty(pos, st);
+			solids |= 1;
+		} if (pos.z < 61 && get_solid3(pos.x, pos.y, pos.z+1, st)) {
+			solids |= 2;
+			set_empty3(pos.x, pos.y, pos.z+1, st);
+		} if (pos.z > 0 && get_solid3(pos.x, pos.y, pos.z-1, st)) {
 			set_empty3(pos.x, pos.y, pos.z-1, st);
 			cull3(pos.x-1, pos.y, pos.z-1, st);
 			cull3(pos.x+1, pos.y, pos.z-1, st);
@@ -413,14 +494,7 @@ void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
 			cull3(pos.x, pos.y, pos.z-2, st);
 		}
 
-		set_empty3(pos.x, pos.y, pos.z, st);
-		cull3(pos.x-1, pos.y, pos.z, st);
-		cull3(pos.x+1, pos.y, pos.z, st);
-		cull3(pos.x, pos.y-1, pos.z, st);
-		cull3(pos.x, pos.y+1, pos.z, st);
-
-		if (pos.z < 61) {
-			set_empty3(pos.x, pos.y, pos.z+1, st);
+		if (solids & 2) {
 			cull3(pos.x-1, pos.y, pos.z+1, st);
 			cull3(pos.x+1, pos.y, pos.z+1, st);
 			cull3(pos.x, pos.y-1, pos.z+1, st);
@@ -428,7 +502,16 @@ void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
 			cull3(pos.x, pos.y, pos.z+2, st);
 		}
 
-		break;
+		if (solids & 1) {
+			cull3(pos.x-1, pos.y, pos.z, st);
+			cull3(pos.x+1, pos.y, pos.z, st);
+			cull3(pos.x, pos.y-1, pos.z, st);
+			cull3(pos.x, pos.y+1, pos.z, st);
+		}
+
+		finish_cull(stackData, (void *)keepSolid);
+
+		} break;
 	case 3: /* nade destroy */
 		libspades_grenade_destroy(pos.x, pos.y, pos.z, st);
 		break;
@@ -899,30 +982,6 @@ void on_disconnect(plid pid, struct State *st) {
 #define SEXACT() SBAD(packet->dataLength != sizeof(struct CAT(Packet, PCKT)))
 #define SNUL() SBAD(packet->data[packet->dataLength-1] != '\0')
 #define SPID() SBAD(packet->data[1] != pid)
-
-int get_solid3(int32_t x, int32_t y, int32_t z, struct State *st) {
-	return pvx_voxel_get_solidity4(st->globals.map.solidData, CALC_I(x, y), z);
-}
-
-int get_solid(ivec3 pos, struct State *st) {
-	return get_solid3(pos.x, pos.y, pos.z, st);
-}
-
-int neighboring_voxels(ivec3 pos, struct State *st) {
-	int32_t off;
-	int count = 0;
-
-	for (off=-1;off<2;off+=2)
-		count += ((uint32_t)(pos.x+off) < 512 && get_solid3(pos.x+off, pos.y, pos.z, st));
-
-	for (off=-1;off<2;off+=2)
-		count += ((uint32_t)(pos.y+off) < 512 && get_solid3(pos.x, pos.y+off, pos.z, st));
-
-	for (off=-1;off<2;off+=2)
-		count += ((uint32_t)(pos.z+off) < 64 && get_solid3(pos.x, pos.y, pos.z+off, st));
-
-	return count;
-}
 
 #define SCLIP(xoff, yoff, zoff, vec) clip_player(vec.x + (xoff), vec.y + (yoff), vec.z + (zoff), st->globals.map.solidData, 0)
 #define SCLIPB(zoff, vec) (SCLIP(-0.44, -0.44, zoff, vec) || SCLIP (-0.44, 0.44, zoff, vec) || SCLIP(0.44, -0.44, zoff, vec) || SCLIP(0.44, 0.44, zoff, vec))
@@ -2115,8 +2174,12 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	stackData = malloc(32*512*512*sizeof(uint32_t));
-	rememberedSolidity = calloc(1, 512*512*sizeof(uint64_t));
+	if (init_cull_stack(stackData) != 0)
+		ERR("malloc");
+	if ((rememberedSolidity = calloc(1, 512*512*sizeof(uint64_t))) == NULL)
+		ERR("calloc");
+	if ((keepSolid = calloc(1, 512*512*sizeof(uint64_t))) == NULL)
+		ERR("calloc");
 
 	hook_lua(cfg, st);
 

@@ -68,6 +68,8 @@ function extract_name(arg) {
 				pullfunc = "%s = luaL_checknumber(l, %i);";
 			else if (match(argv[i], /^unsigned /))
 				pullfunc = "%s = luaL_checknumber(l, %i);";
+			else if (match(argv[i], /^uint32_t /))
+				pullfunc = "%s = luaL_checknumber(l, %i);";
 			else if (match(argv[i], /^int /))
 				pullfunc = "%s = luaL_checknumber(l, %i);";
 			else if (match(argv[i], /^bint /))
@@ -109,6 +111,8 @@ function extract_name(arg) {
 			else if (match(argv[i], /^size_t /))
 				pushfunc = "lua_pushnumber(l, %s);";
 			else if (match(argv[i], /^unsigned /))
+				pushfunc = "lua_pushnumber(l, %s);";
+			else if (match(argv[i], /^uint32_t /))
 				pushfunc = "lua_pushnumber(l, %s);";
 			else if (match(argv[i], /^int /))
 				pushfunc = "lua_pushnumber(l, %s);";

@@ -306,6 +306,54 @@ struct ColumnStack *stackData = &stack;
 uint64_t *rememberedSolidity;
 uint64_t *keepSolid;
 
+void set_solid(ivec3 pos, struct State *st) {
+	pvx_voxel_create4(st->globals.map.solidData, CALC_I(pos.x, pos.y), pos.z);
+}
+
+void set_vox_color(ivec3 pos, color clr, struct State *st) {
+	pvx_voxel_color5(st->globals.map.colorData, clr, CALC_I(pos.x, pos.y), pos.z);
+}
+
+void set_empty3(int32_t x, int32_t y, int32_t z, struct State *st) {
+	pvx_voxel_destroy4(st->globals.map.solidData, CALC_I(x, y), z);
+}
+
+void set_empty(ivec3 pos, struct State *st) {
+	set_empty3(pos.x, pos.y, pos.z, st);
+}
+
+int get_solid3(int32_t x, int32_t y, int32_t z, struct State *st) {
+	return pvx_voxel_get_solidity4(st->globals.map.solidData, CALC_I(x, y), z);
+}
+
+int get_solid(ivec3 pos, struct State *st) {
+	return get_solid3(pos.x, pos.y, pos.z, st);
+}
+
+int neighboring_voxels(ivec3 pos, struct State *st) {
+	int32_t off;
+	int count = 0;
+
+	for (off=-1;off<2;off+=2)
+		count += ((uint32_t)(pos.x+off) < 512 && get_solid3(pos.x+off, pos.y, pos.z, st));
+
+	for (off=-1;off<2;off+=2)
+		count += ((uint32_t)(pos.y+off) < 512 && get_solid3(pos.x, pos.y+off, pos.z, st));
+
+	for (off=-1;off<2;off+=2)
+		count += ((uint32_t)(pos.z+off) < 64 && get_solid3(pos.x, pos.y, pos.z+off, st));
+
+	return count;
+}
+
+void cull3(int32_t x, int32_t y, int32_t z, struct State *st) {
+	cull_floating_voxels(x, y, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+}
+
+void cull(ivec3 pos, struct State *st) {
+	cull3(pos.x, pos.y, pos.z, st);
+}
+
 /* TODO: culling on openspades is much faster if there's a "floor" to connect to near the bottom
  * |#|
  * |#|
@@ -374,120 +422,103 @@ static void destroyGrenadeVoxel(uint_fast32_t x,
 	*solids |= ctr;
 }
 
-int libspades_grenade_destroy(uint_fast32_t x,
-                               uint_fast32_t y,
-                               uint_fast32_t z,
-	                       struct State *st) {
-	int_fast8_t xOffset, yOffset, zOffset;
+void grenade_cullblocks(ivec3 pos, uint32_t solids, struct State *st) {
+	ivec3 off;
+	uint_fast32_t ctr = 1;
+
+	for (off.z = -1; off.z <= 1; off.z++) {
+		for (off.y = -1; off.y <= 1; off.y++) {
+			for (off.x = -1; off.x <= 1; off.x++) {
+				if (solids & ctr)
+					cull_grenade(pos.x, pos.y, pos.z, off.x, off.y, off.z, st);
+				ctr <<= 1;
+			}
+		}
+	}
+}
+
+uint32_t grenade_rmblocks(ivec3 pos, struct State *st) {
+	ivec3 off;
 	uint_fast32_t solids = 0;
 	uint_fast32_t ctr = 1;
 
 	/* TODO: move bounds checking to each of these for loops? or is that terrible */
-	for (zOffset = -1; zOffset <= 1; zOffset++) {
-		for (yOffset = -1; yOffset <= 1; yOffset++) {
-			for (xOffset = -1; xOffset <= 1; xOffset++) {
-				destroyGrenadeVoxel(x, y, z, &solids, ctr, xOffset, yOffset, zOffset, st);
+	for (off.z = -1; off.z <= 1; off.z++) {
+		for (off.y = -1; off.y <= 1; off.y++) {
+			for (off.x = -1; off.x <= 1; off.x++) {
+				destroyGrenadeVoxel(pos.x, pos.y, pos.z, &solids, ctr, off.x, off.y, off.z, st);
 				ctr <<= 1;
 			}
 		}
 	}
 
-	ctr = 1;
-	for (zOffset = -1; zOffset <= 1; zOffset++) {
-		for (yOffset = -1; yOffset <= 1; yOffset++) {
-			for (xOffset = -1; xOffset <= 1; xOffset++) {
-				if (solids & ctr)
-					cull_grenade(x, y, z, xOffset, yOffset, zOffset, st);
-				ctr <<= 1;
-			}
-		}
-	}
+	return solids;
+}
 
+#if 0
+int grenade_destroy(ivec3 pos, struct State *st) {
+	uint32_t solids = grenade_rmblocks(pos, st);
+	grenade_cullblocks(pos, solids, st);
 	finish_cull(stackData, (void *)keepSolid);
 	return !!solids;
 }
+#endif
 
-void set_solid(ivec3 pos, struct State *st) {
-	pvx_voxel_create4(st->globals.map.solidData, CALC_I(pos.x, pos.y), pos.z);
-}
+/* Don't try to build with this! */
+uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) {
+	uint32_t mask = 0;
 
-void set_vox_color(ivec3 pos, color clr, struct State *st) {
-	pvx_voxel_color5(st->globals.map.colorData, clr, CALC_I(pos.x, pos.y), pos.z);
-}
-
-void set_empty3(int32_t x, int32_t y, int32_t z, struct State *st) {
-	pvx_voxel_destroy4(st->globals.map.solidData, CALC_I(x, y), z);
-}
-
-void set_empty(ivec3 pos, struct State *st) {
-	set_empty3(pos.x, pos.y, pos.z, st);
-}
-
-int get_solid3(int32_t x, int32_t y, int32_t z, struct State *st) {
-	return pvx_voxel_get_solidity4(st->globals.map.solidData, CALC_I(x, y), z);
-}
-
-int get_solid(ivec3 pos, struct State *st) {
-	return get_solid3(pos.x, pos.y, pos.z, st);
-}
-
-int neighboring_voxels(ivec3 pos, struct State *st) {
-	int32_t off;
-	int count = 0;
-
-	for (off=-1;off<2;off+=2)
-		count += ((uint32_t)(pos.x+off) < 512 && get_solid3(pos.x+off, pos.y, pos.z, st));
-
-	for (off=-1;off<2;off+=2)
-		count += ((uint32_t)(pos.y+off) < 512 && get_solid3(pos.x, pos.y+off, pos.z, st));
-
-	for (off=-1;off<2;off+=2)
-		count += ((uint32_t)(pos.z+off) < 64 && get_solid3(pos.x, pos.y, pos.z+off, st));
-
-	return count;
-}
-
-void cull3(int32_t x, int32_t y, int32_t z, struct State *st) {
-	cull_floating_voxels(x, y, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
-}
-
-void cull(ivec3 pos, struct State *st) {
-	cull3(pos.x, pos.y, pos.z, st);
-}
-
-void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
 	switch (type) {
-	case 0: /* build */
-		set_solid(pos, st);
-		set_vox_color(pos, st->p[from].blockColor, st);
-		break;
 	case 1: /* destroy */
 		/* Don't cull (or destroy) if nonsolid, which'll only ever happen for fun scripts */
 		if (get_solid(pos, st)) {
 			set_empty(pos, st);
-			cull3(pos.x-1, pos.y, pos.z, st);
-			cull3(pos.x+1, pos.y, pos.z, st);
-			cull3(pos.x, pos.y-1, pos.z, st);
-			cull3(pos.x, pos.y+1, pos.z, st);
-			cull3(pos.x, pos.y, pos.z-1, st);
-			cull3(pos.x, pos.y, pos.z+1, st);
-			finish_cull(stackData, (void *)keepSolid);
+			mask = 1;
 		}
 		break;
-	case 2: { /* 3x destroy */
+	case 2: /* 3x destroy */
 		/* TODO: only do cull on actually destroyed voxels in rl */
 		/* TODO: does piqueserver have that bug? test by building 2 blocks, then a floating block diagonal to the top of those 2, rmb spade the top of the 2 */
 		/* (TODO: betterspades could handle this weird, in which case i may have to polyfill it) */
-		unsigned solids = 0;
-
 		if (pos.z < 61 && get_solid3(pos.x, pos.y, pos.z+1, st)) {
 			set_empty(pos, st);
-			solids |= 1;
+			mask |= 1;
 		} if (pos.z < 61 && get_solid3(pos.x, pos.y, pos.z+1, st)) {
-			solids |= 2;
+			mask |= 2;
 			set_empty3(pos.x, pos.y, pos.z+1, st);
 		} if (pos.z > 0 && get_solid3(pos.x, pos.y, pos.z-1, st)) {
 			set_empty3(pos.x, pos.y, pos.z-1, st);
+			mask |= 4;
+		}
+
+		break;
+	case 3: /* nade destroy */
+		mask = grenade_rmblocks(pos, st);
+		break;
+	}
+
+	if (mask == 0)
+		type = 0;
+	else
+		st->f.send_block_action(PID_BROADCAST, pos, type, from, st);
+
+	return mask | (type << 30);
+}
+
+void block_action_cull(ivec3 pos, uint32_t mask, struct State *st) {
+	uint32_t type = mask >> 30;
+
+	switch (type) {
+	case 1: /* Destroy */
+		cull3(pos.x-1, pos.y, pos.z, st);
+		cull3(pos.x+1, pos.y, pos.z, st);
+		cull3(pos.x, pos.y-1, pos.z, st);
+		cull3(pos.x, pos.y+1, pos.z, st);
+		cull3(pos.x, pos.y, pos.z-1, st);
+		cull3(pos.x, pos.y, pos.z+1, st);
+		break;
+	case 2: /* 3x destroy */
+		if (mask & 4) {
 			cull3(pos.x-1, pos.y, pos.z-1, st);
 			cull3(pos.x+1, pos.y, pos.z-1, st);
 			cull3(pos.x, pos.y-1, pos.z-1, st);
@@ -495,7 +526,7 @@ void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
 			cull3(pos.x, pos.y, pos.z-2, st);
 		}
 
-		if (solids & 2) {
+		if (mask & 2) {
 			cull3(pos.x-1, pos.y, pos.z+1, st);
 			cull3(pos.x+1, pos.y, pos.z+1, st);
 			cull3(pos.x, pos.y-1, pos.z+1, st);
@@ -503,22 +534,38 @@ void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
 			cull3(pos.x, pos.y, pos.z+2, st);
 		}
 
-		if (solids & 1) {
+		if (mask & 1) {
 			cull3(pos.x-1, pos.y, pos.z, st);
 			cull3(pos.x+1, pos.y, pos.z, st);
 			cull3(pos.x, pos.y-1, pos.z, st);
 			cull3(pos.x, pos.y+1, pos.z, st);
 		}
+		break;
+	case 3: /* Nade destroy */
+		grenade_cullblocks(pos, mask, st);
+		break;
+	default:
+		return;
+	}
+}
 
-		finish_cull(stackData, (void *)keepSolid);
+/* st->f.finish_cull under a different name because the name finish_cull was already taken */
+static void fin_cull(struct State *st) {
+	finish_cull(stackData, (void *)keepSolid);
+}
 
-		} break;
-	case 3: /* nade destroy */
-		libspades_grenade_destroy(pos.x, pos.y, pos.z, st);
+void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
+	switch (type) {
+	case 0: /* Build */
+		set_solid(pos, st);
+		set_vox_color(pos, st->p[from].blockColor, st);
+		st->f.send_block_action(PID_BROADCAST, pos, type, from, st);
+		break;
+	default: /* Any of the destroy family */
+		st->f.block_action_cull(pos, st->f.block_action_rm(pos, type, from, st), st);
+		st->f.finish_cull(st);
 		break;
 	}
-
-	st->f.send_block_action(PID_BROADCAST, pos, type, from, st);
 }
 
 /* Fun fact: since distance is limited to 16 along each axis, the minimum grenade damage is 5. */
@@ -2040,6 +2087,9 @@ void set_funcs(struct State *st) {
 	st->f.load_map_from_file = load_map_from_file;
 	st->f.on_tool_change = on_tool_change;
 	st->f.on_block_action = on_block_action;
+	st->f.finish_cull = fin_cull;
+	st->f.block_action_rm = block_action_rm;
+	st->f.block_action_cull = block_action_cull;
 	st->f.block_action = block_action;
 	st->f.send_block_action = send_block_action;
 	st->f.send_connected_players = send_connected_players;

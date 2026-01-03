@@ -13,6 +13,34 @@ function register_command(cmd)
 	end
 end
 
+function get_player_by_str(str)
+	local found;
+
+	if (arg == nil) then
+		return nil;
+	end
+
+	if (string.sub(str, 1, 1) == "#") then
+		local found = tonumber(string.sub(str, 2, -1));
+		if (is_connected(found)) then
+			return found
+		end
+		-- pid not connected
+		return nil;
+	end
+	for i in piditer(PID_BROADCAST) do
+		if (string.find(string.lower(get_name(i)), string.lower(str), 1, true)) then
+			if (found) then
+				-- Ambiguous
+				return nil;
+			end
+			found = i;
+		end
+	end
+
+	return found;
+end
+
 -- TODO: unregister commands somehow
 local orig_unreg = unregister;
 function unregister(module)

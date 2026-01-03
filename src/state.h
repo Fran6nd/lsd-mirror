@@ -127,6 +127,9 @@ struct Functions {
 
 	/* vxl, scientists hypothesize pvx may one day become available */
 	void (*load_map_from_file)(const char *path, struct State *st);
+	void (*finish_cull)(struct State *st);
+	uint32_t (*block_action_rm)(ivec3 pos, unsigned type, plid from, struct State *st);
+	void (*block_action_cull)(ivec3 pos, uint32_t mask, struct State *st);
 	void (*block_action)(ivec3 pos, unsigned type, plid from, struct State *st);
 	/* Try to limit sent block lines to 50 blocks or openspades will eat you. */
 	void (*block_line)(ivec3 start, ivec3 end, plid from, struct State *st);

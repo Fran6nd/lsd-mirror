@@ -6,6 +6,7 @@
 #include <luajit-2.1/lualib.h>
 #include "state.h"
 #include "demoncore.h"
+#include "cull.h"
 
 #define LOG(x, ...) fprintf(stderr, x"\n", __VA_ARGS__)
 #define LOG1(x) fputs(x"\n", stderr);
@@ -494,6 +495,36 @@ static size_t cspawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, floa
 	return ret;
 }
 
+static int lblock_action_rm(lua_State *l) {
+	ivec3 pos = get_ivec3(l, 1);
+	unsigned type = luaL_checknumber(l, 2);
+	plid from = luaL_checknumber(l, 3);
+
+	lua_pushnumber(l, f.block_action_rm(pos, type, from, st));
+	return 1;
+}
+
+static uint32_t cblock_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) {
+	uint32_t ret;
+
+	lua_getglobal(l, "block_action_rm");
+
+	push_ivec3(pos);
+	lua_pushnumber(l, type);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 3, 1, 0) != 0)
+		CBAILN1("block_action_rm: %s", luaL_checkstring(l, -1));
+
+	if (!lua_isnumber(l, -1))
+		CBAIL1N1("block_action_rm: should return a number");
+
+	ret = lua_tonumber(l, -1);
+	lua_pop(l, 1);
+
+	return ret;
+}
+
 /* NOTE: Try not to touch pid_matches' conditions too much while iterating */
 int pid_matches(plid broadcast, plid pid, struct State *st);
 static int do_piditer(lua_State *l) {
@@ -782,6 +813,7 @@ static const struct luaL_Reg funcs[] = {
 	{"send_packet_unreliable", lsend_packet_unreliable},
 	{"register_grenade", lregister_grenade},
 	{"spawn_grenade", lspawn_grenade},
+	{"block_action_rm", lblock_action_rm},
 
 	/* TODO: these two are not like the rest */
 	{"disconnect", disconnect},
@@ -836,6 +868,7 @@ void register_functions(lua_State *l, struct State *st) {
 	st->f.send_packet_unreliable = csend_packet_unreliable;
 	st->f.register_grenade = cregister_grenade;
 	st->f.spawn_grenade = cspawn_grenade;
+	st->f.block_action_rm = cblock_action_rm;
 	register_luaawk(l, st);
 }
 

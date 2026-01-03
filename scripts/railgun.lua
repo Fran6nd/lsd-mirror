@@ -1,5 +1,6 @@
 -- railgun.lua -- Blast holes in things.
 local mod = {after={}};
+require "lib_bulk_destroy";
 
 -- Some swizzle functions
 local function sign1(num)
@@ -42,25 +43,6 @@ local function length(vec)
 	return math.sqrt(vec.x*vec.x + vec.y*vec.y + vec.z*vec.z);
 end
 
--- TODO: to core?
-local function blocks_to_destroy(pos)
-	for z=pos.z-1,pos.z+1 do
-		if (z < 0 or z > 63) then goto continuez; end
-		for y=pos.y-1,pos.y+1 do
-			if (y < 0 or y > 511) then goto continuey; end
-			for x=pos.x-1,pos.x+1 do
-				if (x >= 0 and x <= 511 and is_solid{x=x, y=y, z=z}) then
-					return true;
-				end
-			end
-			::continuey::
-		end
-		::continuez::
-	end
-	
-	return false;
-end
-
 -- TODO: killing people too close to you does not go well
 -- 	TODO: replace with send + kill, except_team_and_player
 local function kill_people(pid, pos, dist)
@@ -90,13 +72,13 @@ local function cast(pid, start, off)
 		if ((step.z == -1 and vox.z < 0) or (step.z == 1 and vox.z > 63) or
 		    vox.x < 0 or vox.x > 511 or
 		    vox.y < 0 or vox.y > 511) then
+			bdestroy_finish();
 			return;
 		end
 
 		-- TODO: original had 4 and 8 reversed; why?
 		killdist = hasdestroyed and 4 or 8;
-		if (blocks_to_destroy(vox)) then
-			block_action(vox, 3, 0);
+		if (bdestroy_block_action(vox, 3)) then
 			hasdestroyed = true;
 		end
 		kill_people(pid, vox, killdist);

@@ -1,4 +1,5 @@
 -- trashheap.lua -- trash not a burner likes to /exec
+require "lib_bulk_destroy";
 
 function sc(x)send_chat(PID_BROADCAST,tostring(x),2,0)end
 function scl(x)for y in string.gmatch(x,"[^\n]+")do sc(y)end;end
@@ -101,6 +102,18 @@ function nuketest2()
 			::nope::
 		end
 	end
+	sc("delta: "..tostring(get_time()-start));
+	log("%s", "delta: "..tostring(get_time()-start));
+end
+
+function nuketest3()
+	local start = get_time();
+	for y=1,511+2,3 do
+		for x=1,511+2,3 do
+			bdestroy_block_action({x=x, y=y, z=32}, 3);
+		end
+	end
+	bdestroy_finish();
 	sc("delta: "..tostring(get_time()-start));
 	log("%s", "delta: "..tostring(get_time()-start));
 end

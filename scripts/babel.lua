@@ -101,24 +101,24 @@ local function build_platform()
 	-- end
 end
 
--- TODO: rename this trash
--- TODO: hook grenades instead
--- Try to prevent platform destruction
--- TODO: if platform gets nuked after one of these anyway, fix it
-function mod.block_action(pos, type, from)
-	-- TODO: this was commented out before
-	-- TODO: add func to paint blocks
-	if (legal_pos(pos, type) or type == 0) then
-		next_call("block_action", mod.block_action)(pos, type, from);
-		if (type ~= 0 and not is_solid{x=plat_start.x, y=plat_start.y, z=plat_z}) then
-			send_chat(PID_BROADCAST, ">:(", 2, 0);
-			build_platform();
-			-- Most of the clients don't process block line/action immediately when recieved.
-			-- They do some cursed queueing thing that, for instance, lets you break and place
-			-- a block on the same frame to recolor it. Anyway, those ones need some delay before
-			-- rebuilding the platform.
-			platform_rebuild_time = get_time()+0.1;
-		end
+-- Prevent most block actions from tearing down the platform
+function mod.block_action_rm(pos, type, from)
+	if (legal_pos(pos, type)) then
+		return next_call("block_action_rm", mod.block_action_rm)(pos, type, from);
+	end
+	return 0;
+end
+
+-- Handle the few that tear it down anyway
+function mod.after.finish_cull()
+	if (not is_solid{x=plat_start.x, y=plat_start.y, z=plat_z}) then
+		send_chat(PID_BROADCAST, ">:(", 2, 0);
+		build_platform();
+		-- Most of the clients don't process block line/action immediately when recieved.
+		-- They do some cursed queueing thing that, for instance, lets you break and place
+		-- a block on the same frame to recolor it. Anyway, those ones need some delay before
+		-- rebuilding the platform.
+		platform_rebuild_time = get_time()+0.1;
 	end
 end
 

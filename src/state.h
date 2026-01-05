@@ -126,6 +126,7 @@ struct Functions {
 	 */
 
 	/* vxl, scientists hypothesize pvx may one day become available */
+	void (*load_initial_map)(struct State *st);
 	void (*load_map_from_file)(const char *path, struct State *st);
 	void (*finish_cull)(struct State *st);
 	uint32_t (*block_action_rm)(ivec3 pos, unsigned type, plid from, struct State *st);

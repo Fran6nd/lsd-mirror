@@ -14,31 +14,156 @@ function register_command(cmd)
 end
 
 function get_player_by_str(str)
-	local found;
+	-- Substring not found
+	local found = -1;
 
-	if (arg == nil) then
+	if (str == nil) then
 		return nil;
 	end
 
 	if (string.sub(str, 1, 1) == "#") then
 		local found = tonumber(string.sub(str, 2, -1));
+		-- TODO: implement validation into is_connected
+		-- The not is there since all comparisons against NaN are false.
+		if (found == nil or not (found >= 0 and found < MAX_PLAYERS)) then
+			-- pid invalid
+			return -4;
+		end
+
 		if (is_connected(found)) then
 			return found
 		end
 		-- pid not connected
-		return nil;
+		return -2;
 	end
+
 	for i in piditer(PID_BROADCAST) do
 		if (string.find(string.lower(get_name(i)), string.lower(str), 1, true)) then
-			if (found) then
+			if (found >= 0) then
 				-- Ambiguous
-				return nil;
+				return -3;
 			end
 			found = i;
 		end
 	end
 
 	return found;
+end
+
+local stexec = {};
+function cmd_assert(pid, cmd, condition)
+	if (not condition) then
+		send_usage(pid, cmd);
+		error(stexec);
+	end
+end
+
+function get_arg_str(argname, pid, cmd, arg)
+	if (arg == nil) then
+		send_usage(pid, cmd);
+		error(stexec);
+	end
+	return arg;
+end
+
+function get_arg_time(argname, pid, cmd, arg)
+	local umap = {s=1, min=60, h=60*60, d=60*60*24, w=60*60*24*7, month=60*60*24*30, y=60*60*24*365};
+	local num, unit = string.match(arg, "^(%d+)(%a*)$");
+	num = tonumber(num);
+	if (num == nil) then
+		send_usage(pid, cmd);
+		send_chat(pid, argname.." should be a time delta.", 2, 0);
+		error(stexec);
+	end
+	-- TODO: It should probably be finite, right?
+	if (not (num > -math.huge and num < math.huge)) then
+		send_usage(pid, cmd);
+		send_chat(pid, argname.." should be finite.", 2, 0);
+		error(stexec);
+	end
+
+	if (unit == "") then
+		-- TODO: should it default to seconds or something else?
+		return num;
+	elseif (umap[string.lower(unit)]) then
+		return num * umap[unit];
+	end
+
+	send_usage(pid, cmd);
+	send_chat(pid, argname.." should use at most one of the following units: s, min, h, d, w, month, y.", 2, 0);
+	error(stexec);
+end
+
+function get_arg_num_nonfinite(argname, pid, cmd, arg)
+	local num = tonumber(arg);
+	if (num == nil) then
+		send_usage(pid, cmd);
+		error(stexec);
+	end
+	return num;
+end
+
+function get_arg_num_range(argname, pid, cmd, arg, start, endval)
+	local num = tonumber(arg);
+	if (num == nil) then
+		send_usage(pid, cmd);
+		error(stexec);
+	end
+	if (not (num >= start and num <= endval)) then
+		send_usage(pid, cmd);
+		send_chat(pid, string.format("%s should be between %f and %f", argname, start, endval), 2, 0);
+		error(stexec);
+	end
+	return num;
+end
+
+function get_arg_num_finite_opt(argname, pid, cmd, arg)
+	if (arg == nil) then
+		return nil;
+	end
+	local num = tonumber(arg);
+	if (num == nil or not (num > -math.huge and num < math.huge)) then
+		send_usage(pid, cmd);
+		send_chat(pid, argname.." should be a finite number.", 2, 0);
+		error(stexec);
+	end
+	return num;
+end
+
+function get_arg_num_finite(argname, pid, cmd, arg)
+	local num = get_arg_num_finite_opt(argname, pid, cmd, arg);
+	if (num == nil) then
+		send_usage(pid, cmd);
+		error(stexec);
+	end
+	return num;
+end
+
+function get_arg_pid_opt(argname, pid, cmd, arg)
+	local plr = get_player_by_str(arg);
+	if (plr ~= nil and plr < 0) then
+		send_usage(pid, cmd);
+		if (plr == -1) then
+			send_chat(pid, argname..": Player not found.", 2, 0);
+		elseif (plr == -2) then
+			send_chat(pid, argname..": Player not connected.", 2, 0);
+		elseif (plr == -3) then
+			send_chat(pid, argname..": Ambiguous player.", 2, 0);
+		elseif (plr == -4) then
+			send_chat(pid, argname..": Invalid player ID.", 2, 0);
+		end
+		error(stexec);
+	end
+	return plr;
+end
+
+function get_arg_pid(argname, pid, cmd, arg)
+	local plr = get_arg_pid_opt(argname, pid, cmd, arg);
+	if (plr == nil) then
+		send_usage(pid, cmd);
+		error(stexec);
+	end
+	return plr;
 end
 
 -- TODO: unregister commands somehow
@@ -54,7 +179,7 @@ local function handle_command(pid, msg)
 	local i = 0;
 	local argv = {};
 
-	for x in string.gmatch(msg, "([^%s]+)") do
+	for x in string.gmatch(msg, "%S+") do
 		argv[i] = x;
 		i = i + 1;
 	end
@@ -72,7 +197,7 @@ end
 
 function try_run_command(cmd, pid, argv, msg)
 	local status, err = pcall(cmd.func, pid, argv, msg);
-	if (not status) then
+	if (not status and err ~= stexec) then
 		send_chat(pid, "Some error occurred with that command :(", 2, 0);
 		error(err);
 	end

@@ -1,11 +1,10 @@
 -- command_modutils.lua -- Manipulate loaded modules
 -- TODO: remove command_ prefix?
 
--- Don't ask.
+-- TODO: set package.cpath
 local function unreg(name)
-	mod = require(name);
-	if (type(mod) == "table") then
-		unregister(mod);
+	if (package.loaded[name]) then
+		unregister(package.loaded[name]);
 	end
 	package.loaded[name] = nil;
 end

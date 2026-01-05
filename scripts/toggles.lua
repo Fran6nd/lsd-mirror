@@ -1,35 +1,20 @@
 -- toggles.lua -- Toggle building, killing, talking, moving, etc.
-local mod = {after={}};
-local nobuild = {};
-local nodamage = {};
-local mute = {};
+local mod = {};
 -- TODO: automute based on regexp, muted player only knows after he's sent a few messages but normal players never see anything
 
-function mod.on_load(pid)
-	nobuild = {};
-	nodamage = {};
-	mute = {};
-end
-
-function mod.after.on_successful_connect(pid)
-	nobuild[pid] = nil;
-	nodamage[pid] = nil;
-	mute[pid] = nil;
-end
-
+-- TODO: block line, also in babel
 function mod.on_block_action(pid, pos, type)
-	if (nobuild[pid]) then
+	if (has_cap(pid, "badcap:nobuild")) then
 		-- TODO: deal with stop_exec's funkiness
 		--stop_exec();
 		return;
-		-- TODO: deal with stop_exec's segfaults
 	end
 	next_call("on_block_action", mod.on_block_action)(pid, pos, type);
 end
 
 -- TODO: use ... for args i don't care about? (and extension args?)
 function mod.on_hit(pid, type, hitPlayer)
-	if (nodamage[pid]) then
+	if (has_cap(pid, "badcap:nodamage")) then
 		return;
 	end
 	next_call("on_hit", mod.on_hit)(pid, type, hitPlayer);
@@ -37,31 +22,39 @@ end
 
 -- TODO: make this loaded later than commands
 function mod.on_chat(pid, msg, type)
-	if (mute[pid]) then
+	if (has_cap(pid, "badcap:mute")) then
 		return;
 	end
 	next_call("on_chat", mod.on_chat)(pid, msg, type);
+end
+
+local function toggle(pid, cmd, argv, cap)
+	local nowactive = toggle_cap(get_arg_pid("player", pid, cmd, argv[1]), cap);
+	send_chat(pid, string.format("%s %s %s %s.", nowactive and "Added" or "Removed", cap, nowactive and "to" or "from", get_name(pid)), 2, 0);
 end
 
 -- TODO: get pike-style player instead of toggling me
 -- TODO: disable family of commands
 -- TODO: can i toggle other people with the toggles cap?
 -- TODO: hook toggles into bans
-local cmd = {name={"togglebuild", "tb"}, caps="toggles"};
+local cmd = {name={"togglebuild", "tb"}, caps="toggles", usage="player", desc="Prevent a player from directly altering the map."};
 function cmd.func(pid, argv)
-	nobuild[pid] = not nobuild[pid];
+	toggle(pid, cmd, argv, "badcap:nobuild");
 end
 register_command(cmd);
 
-local cmd = {name={"togglekill", "tk"}, caps="toggles"};
+-- TODO: grenade damage
+-- TODO: wonder how that would work with apoc
+local cmd = {name={"togglekill", "tk"}, caps="toggles", usage="player", desc="Prevent a player from directly damaging others."};
 function cmd.func(pid, argv)
-	nodamage[pid] = not nodamage[pid];
+	toggle(pid, cmd, argv, "badcap:nodamage");
 end
 register_command(cmd);
 
-local cmd = {name={"mute", "togglechat", "tc"}, caps="toggles"};
+-- TODO: muted player should probably be able to run commands
+local cmd = {name={"mute", "togglechat", "tc"}, caps="toggles", usage="player", desc="Shut a noisy player up."};
 function cmd.func(pid, argv)
-	mute[pid] = not mute[pid];
+	toggle(pid, cmd, argv, "badcap:mute");
 end
 register_command(cmd);
 

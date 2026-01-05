@@ -28,8 +28,9 @@ function can_see_command(pid, cmd)
 end
 server.can_see_command = can_see_command;
 
-local cmd = {name={"cmds", "commands"}, usage="[page]", desc="Prints an alphabetically ordered list of all commands."};
+local cmd = {name={"cmds", "commands"}, usage="[page]", desc="Print an alphabetically ordered list of all commands."};
 function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv <= 1);
 	local sorted = {};
 
 	if (argv[1]) then

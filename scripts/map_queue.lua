@@ -29,6 +29,7 @@ local function get_next_map()
 	return map;
 end
 
+-- TODO: on_server_start?
 -- TODO: cleanup
 -- TODO: should there be a hook for player disconnect/boot to limbo? on_unjoined?
 -- TODO: should you combine the boot/load into one function?

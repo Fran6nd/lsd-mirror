@@ -1,39 +1,15 @@
 -- auth.lua -- Leak your passwords to the world with /login
-local mod = {};
+local mod = {after={}};
 local sql = require "lsqlite3";
 local sodium = require "luasodium";
 local totp = require "lib_totp";
 local db;
 local stmt = {};
 
-getcfg("auth_groups", {
-	guard = {
-		"cmd:advance",
-		"some_limited_ban_cap"
-	},
-	mod = {
-		"guard",
-		"jp",
-		"noclip"
-	},
-	admin = {
-		"all"
-	},
-	-- The nerd group is the most powerful group here
-	nerd = {
-		"exec",
-		"modutils"
-	}
-});
-
--- Key is a pid
--- user is a string with the username
--- groups is a table with groups/caps as keys; values are all set to true
--- if groups.all is set, all capabilities are granted
+local granted = {};
 local user = {};
-local groups = {};
--- Computed from groups
-local caps = {};
+
+getcfg("auth_db", "rw/auth.db");
 
 local function verifystmt(name, code)
 	if (stmt[name] == nil) then
@@ -50,7 +26,7 @@ end
 
 function mod.on_load()
 	local code, msg;
-	db, code, msg = sql.open("rw/auth.db");
+	db, code, msg = sql.open(auth_db);
 
 	if (db == nil) then
 		error("sql.open: " .. msg);
@@ -75,12 +51,27 @@ function mod.on_load()
 	createstmt("getpasswd", "SELECT name, groups, caps, password, totp, totptype, totpinterval FROM Users WHERE name = ?;");
 	createstmt("setpasswd", "UPDATE USERS SET password = ? WHERE name = ?;");
 	createstmt("settotp", "UPDATE USERS SET totp = ?, totptype = ?, totpinterval = ? WHERE name = ?;");
+
+	granted = {};
+	user = {};
+end
+
+
+local function drop_granted(pid)
+	if (granted[pid]) then
+		for _,y in ipairs(granted[pid]) do
+			drop_cap(pid, y);
+		end
+	end
+end
+
+function mod.after.on_disconnect(pid)
+	drop_granted(pid);
+	user[pid] = nil;
+	granted[pid] = nil;
 end
 
 function mod.on_unload()
-	user = {};
-	groups = {};
-
 	for _,y in pairs(stmt) do
 		y:finalize();
 	end
@@ -88,54 +79,18 @@ function mod.on_unload()
 	if (db ~= nil) then
 		db:close();
 	end
-end
 
-function has_cap(pid, cap)
-	return groups[pid] ~= nil and (groups[pid].all or groups[pid][cap]);
-end
-
-function grant_cap(pid, cap)
-	if (groups[pid] == nil) then
-		groups[pid] = {};
+	for i in piditer(PID_BROADCAST) do
+		drop_granted(i);
 	end
-
-	groups[pid][cap] = true;
 end
 
-function drop_cap(pid, cap)
-	groups[pid][cap] = nil;
-end
-
-local function get_cmd_canonical_name(cmd)
-	if (type(cmd.name) == "table") then
-		return cmd.name[1];
-	end
-
-	return cmd.name;
-end
-
--- Abusing register to interface cleanly with commands.lua
 function mod.try_run_command(cmd, pid, argv, msg)
-	if (cmd.caps ~= nil) then
-		if (groups[pid] == nil) then
-			send_chat(pid, "You need to login to run that command.", 2, 0);
-			return;
-		end
-		if (not has_cap(pid, cmd.caps) and not has_cap(pid, "cmd:"..get_cmd_canonical_name(cmd))) then
-			send_chat(pid, "You need the "..cmd.caps.." capability to run that command.", 2, 0)
-			return;
-		end
+	if (cmd.caps == "login" and not has_cap(pid, "login")) then
+		send_chat(pid, "You need to login to run that command.", 2, 0);
+		return;
 	end
-
 	next_call("try_run_command", mod.try_run_command)(cmd, pid, argv, msg);
-end
-
-function mod.can_see_command(pid, cmd)
-	if (not next_call("can_see_command", mod.can_see_command)(pid, cmd)) then
-		return false;
-	end
-
-	return cmd.caps == nil or has_cap(pid, cmd.caps) or has_cap(pid, "cmd:"..get_cmd_canonical_name(cmd));
 end
 
 -- TODO: should i rewrite half of this stuff in C and use sodium's secure memory functions?
@@ -163,6 +118,12 @@ function cmd.func(pid, argv)
 
 	local name = argv[1];
 	local pwd = argv[2];
+
+	-- OpenSpades chat length limit is 255 (maybe +|- 1 depending on how you count) UTF-8 bytes
+	if (#pwd > 128) then
+		send_chat(pid, "Don't make the password that long or you might not be able to change it! Try <= 128 chars.", 2, 0);
+		return;
+	end
 
 	-- TODO: do i need to handle sodium errors?
 	-- TODO: add cooldown time to /register to prevent dos from password hashing (unless you want to spin up a new thread)
@@ -211,7 +172,40 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="login", desc="Login to an account."};
+local cmd = {name="chpasswd", caps="login", desc="Change your account's password."};
+function cmd.func(pid, argv)
+	if (#argv ~= 0) then
+		send_usage(pid, cmd);
+		return;
+	end
+
+	-- TODO: tie into logins
+
+	-- TODO: mush it all into one string?
+	--local totp_key = sodium.randombytes_buf(32);
+	local totp_key = sodium.crypto_auth_hmacsha256_keygen();
+	local totp_type = "hmac-sha1";
+	local totp_interval = 30;
+
+	stmt.settotp:reset();
+	stmt.settotp:bind_values(totp_key, totp_type, totp_interval, user[pid]);
+	code = stmt.settotp:step();
+	if (code ~= sql.DONE) then
+		error("settotp:step: "..code);
+	end
+
+	local encodedkey = totp.base32enc(totp_key);
+
+	send_chat(pid, string.upper(totp_type)..", "..totp_interval.." s, key: "..encodedkey, 2, 0)
+	-- TODO: verify that the user actually did something with the key
+	-- TODO: password reset resets TOTP too?
+	send_chat(pid, totp.gen_code(totp_key, os.time()/totp_interval, hmac[totp_type]), 2, 0);
+	send_chat(pid, totp.gen_code(totp_key, os.time()/totp_interval+1, hmac[totp_type]), 2, 0);
+	send_chat(pid, totp.gen_code(totp_key, os.time()/totp_interval+2, hmac[totp_type]), 2, 0);
+end
+register_command(cmd);
+
+local cmd = {name="login", usage="name password [otp]", desc="Login to an account."};
 function cmd.func(pid, argv)
 	if (#argv ~= 2 and #argv ~= 3) then
 		-- TODO: totp
@@ -266,44 +260,32 @@ function cmd.func(pid, argv)
 	::okay::
 	send_chat(pid, "OK", 2, 0);
 
+	-- TODO: remove caps from table
 	user[pid] = vals[1];
 	-- TODO: caps-groups merge
-	groups[pid] = {login=true};
-	-- TODO: update commands gmatch to %S+, or update this one instead
+	drop_granted(pid);
+	granted[pid] = {};
+	table.insert(granted[pid], "login");
+	grant_cap(pid, "login");
 	for x in string.gmatch(vals[2] .. " " .. vals[3], "%S+") do
-		groups[pid][x] = true;
+		table.insert(granted[pid], x);
+		grant_cap(pid, x);
 	end
 end
 register_command(cmd);
 
 local cmd = {name="logout", caps="login", desc="Log out of your account."};
 function cmd.func(pid)
+	drop_granted(pid);
 	user[pid] = nil;
-	groups[pid] = nil;
+	granted[pid] = nil;
 end
 register_command(cmd);
 
+-- TODO: move user to caps so we don't clear everything on unload?
 local cmd = {name="id", caps="login", desc="Print your account name and groups."};
 function cmd.func(pid, argv)
-	local strgroups = "";
-	local delim = "";
-	for x,_ in pairs(groups[pid]) do
-		strgroups = strgroups .. delim .. x;
-		delim = ", ";
-	end
-	send_chat(pid, string.format("uid=%s groups=%s", user[pid], strgroups), 2, 0);
-end
-register_command(cmd);
-
-local cmd = {name="totp", caps="test"};
-function cmd.func(pid, argv)
-	send_chat(pid, totp.gen_code("Hello!\xde\xad\xbe\xef", os.time()/30, totp.hmac_sha1), 2, 0);
-end
-register_command(cmd);
-
-local cmd = {name="totp-512", caps="test"};
-function cmd.func(pid, argv)
-	send_chat(pid, totp.gen_code("\x94\xed\x83\x2c\xed\x3a\xd3\xd1\xf0\x51\xd8\x1e\x19\x27\xb4\xae\x43\xba\x74\x3a\xb3\x01\xb4\x90\x52\xa0\x3a\xc4\x7a\x0d\x3a\x4a", os.time()/30, hmac_sha512), 2, 0);
+	send_chat(pid, string.format("uid=%s groups=[%s] computed=[%s]", user[pid], get_cap_groups(pid), get_caps(pid)), 2, 0);
 end
 register_command(cmd);
 

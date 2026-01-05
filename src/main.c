@@ -1210,7 +1210,7 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		return 0;
 #undef PCKT
 #define PCKT Grenade
-		SCASEJOINED /* Dead men can throw nades (unless you're pyspades). */
+		SCASEJOINED /* Dead men can throw nades (unless you're pyspades). */ /* TODO: only allow 1 deadnade */
 		SEXACT();
 		SPID();
 
@@ -2037,6 +2037,10 @@ void on_crap_packet(plid pid, ENetPacket *packet, struct State *st) {
 	}
 }
 
+void load_initial_map(struct State *st) {
+	st->f.load_map_from_file("maps/map.vxl", st);
+}
+
 int intercept(ENetHost *host, ENetEvent *event) {
 	ENetBuffer buf;
 
@@ -2141,6 +2145,7 @@ void set_funcs(struct State *st) {
 	st->f.register_grenade = register_grenade;
 	st->f.spawn_grenade = spawn_grenade;
 	st->f.send_fog = send_fog;
+	st->f.load_initial_map = load_initial_map;
 }
 
 void set_defaults(struct State *st) {
@@ -2234,7 +2239,7 @@ int main(int argc, char **argv) {
 
 	hook_lua(cfg, st);
 
-	st->f.load_map_from_file("maps/map.vxl", st);
+	st->f.load_initial_map(st);
 
 	while (1)
 		do_loop(st);

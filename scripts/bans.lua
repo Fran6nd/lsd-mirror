@@ -1,17 +1,79 @@
 -- bans.lua -- Ban IP address ranges retrieved from an sqlite3 database
-local mod = {};
+local mod = {after={}};
 local sql = require "lsqlite3";
 local db;
 local stmt = {};
 
-local function ban(startaddr, endaddr, bantime, expires, name, comment, bannedby)
-	if (endaddr >= 2130706432 and startaddr <= 2147483647) then
-		-- You can't ban a loopback address. . .
-		return 1;
+-- TODO: badcaps is too easy to confuse with bancaps
+getcfg("bans_db", "rw/bans.db");
+getcfg("bans_default_badcaps", "ban");
+
+local badcap_exp = {};
+local badcap_exp_next = {};
+local function rm_badcaps(pid, now)
+	local shoulddrop = {};
+	badcap_exp_next[pid] = nil;
+
+	for x,y in pairs(badcap_exp[pid]) do
+		if (now >= x) then
+			sc("drop ts: "..tostring(x));
+			for _,cap in ipairs(y) do
+				if (shoulddrop[cap] == nil) then
+					shoulddrop[cap] = true;
+				end
+			end
+			-- TODO: don't set to nil if there are still unexpired badcaps which have it set
+			badcap_exp[pid][x] = nil;
+		else
+			for _,cap in ipairs(y) do
+				shoulddrop[cap] = false;
+			end
+			if (badcap_exp_next[pid] == nil or x < badcap_exp_next[pid]) then
+				badcap_exp_next[pid] = x;
+			end
+		end
 	end
 
+	for x,y in pairs(shoulddrop) do
+		if (y) then
+			sc("drop "..x);
+			drop_cap(pid, x);
+		end
+	end
+end
+local function tick_badcaps()
+	local now = os.time();
+	for i in piditer(PID_BROADCAST) do
+		if (badcap_exp_next[i] and now >= badcap_exp_next[i]) then
+			sc("tick #"..tostring(i));
+			rm_badcaps(i, now);
+		end
+	end
+end
+local function setup_badcap_exp(pid, expires)
+	if (badcap_exp_next[pid] == nil or expires < badcap_exp_next[pid]) then
+		badcap_exp_next[pid] = expires;
+		sc("addto #"..tostring(pid).." -- ts: "..tostring(expires));
+	end
+	if (badcap_exp[pid][expires] == nil) then
+		badcap_exp[pid][expires] = {};
+	end
+end
+local function add_badcaps(pid)
+	-- TODO: query multiple bans (not just one!) and concatenate them
+	stmt.sel:bind_values(os.time(), get_ipaddr(pid), get_ipaddr(pid));
+	for row in stmt.sel:rows() do
+		setup_badcap_exp(pid, row[4]);
+		for x in string.gmatch(row[3], "%S+") do
+			grant_cap(pid, "badcap:"..x);
+			table.insert(badcap_exp[pid][row[4]], "badcap:"..x);
+		end
+	end
+end
+
+local function ban(startaddr, endaddr, bantime, expires, name, comment, bannedby, flags)
 	-- Shove in database
-	stmt.ban:bind_values(startaddr, endaddr, bantime, expires, name, comment, bannedby);
+	stmt.ban:bind_values(startaddr, endaddr, bantime, expires, name, comment, bannedby, flags);
 	stmt.ban:step();
 	stmt.ban:reset();
 	-- TODO: detect updates to database and kick if someone found there; may need inotify, checking often enough or ipc of some sorts
@@ -21,11 +83,11 @@ local function ban(startaddr, endaddr, bantime, expires, name, comment, bannedby
 		if (is_connected(i)) then
 			local addr = get_ipaddr(i);
 			if(startaddr <= addr and endaddr >= addr and addr ~= 2130706433) then
-				-- TODO: func for consistent logging identifier?
-				-- TODO: banned for how long?
-				log("Banned %s (#%u)", get_name(i), i);
-				send_chat(PID_BROADCAST, get_name(i).." was banned", 2, 0);
-				disconnect(i, 1);
+				setup_badcap_exp(i, expires);
+				for x in string.gmatch(flags, "%S+") do
+					grant_cap(i, "badcap:"..x);
+					table.insert(badcap_exp[i][expires], "badcap:"..x);
+				end
 			end
 		end
 	end
@@ -82,31 +144,28 @@ local function moveban(id, add, rm)
 	end
 end
 
-local function is_banned(name, addr)
-	local banned;
-
-	-- TODO: queue up os.time calls into one? (maybe do something similar with get_time()
-	stmt.sel:bind_values(os.time(), addr, addr);
-	banned = stmt.sel:step() == sql.ROW;
-	stmt.sel:reset();
-
-	return banned;
+local attemptingconnect = false
+-- TODO: doesn't this seem a lot like temporary groups? -- should i merge half of this with auth.lua, maybe make tmp_groups.lua and add bans.lua as a thin layer over that?
+-- TODO: or maybe make caps.lua and make auth and bans (tmp_caps?) a dependent?
+function mod.after.on_cap_grant(pid, cap)
+	-- TODO: func for consistent logging identifier?
+	-- TODO: banned for how long?
+	if (not attemptingconnect and cap == "badcap:ban") then
+		log("Banned %s (#%u)", get_name(pid), pid);
+		send_chat(PID_BROADCAST, get_name(pid).." was banned", 2, 0);
+		disconnect(pid, 1);
+	end
 end
 
 local function check_banneds(msg)
 	for i in piditer(PID_BROADCAST) do
-		if (is_banned(get_name(i), get_ipaddr(i))) then
-			--send_chat(32, ":3 <"..i..">", 2, 0);
-			log(msg.." %s (#%u)", get_name(i), i);
-			send_chat(PID_BROADCAST, get_name(i).." was banned", 2, 0);
-			disconnect(i, 1);
-		end
+		add_badcaps(i);
 	end
 end
 
 local function send_query(vals, pid)
 	-- TODO: should comment be COLLATE NOCASE and greppable?
-	send_chat(pid, string.format("#%i: <%s> banned on %s by %s: %s", vals[1], vals[6], os.date("!%Y-%m-%dT%H:%M:%SZ", vals[4]), vals[8], vals[7]), 2, 0);
+	send_chat(pid, string.format("#%i: <%s> banned on %s by %s: %s (flags: %s)", vals[1], vals[6], os.date("!%Y-%m-%dT%H:%M:%SZ", vals[4]), vals[8], vals[7], vals[9]), 2, 0);
 end
 
 local function query_addr(statement, startaddr, endaddr, pid)
@@ -132,8 +191,14 @@ local function query_name(statement, name, pid)
 end
 
 function mod.on_any_connect(pid)
+	badcap_exp[pid] = {};
+	badcap_exp_next[pid] = nil;
+	attemptingconnect = true;
 	-- TODO: how would i let things hook/override specifically this version of the func?
-	if (is_banned(get_name(pid), get_ipaddr(pid))) then
+	add_badcaps(pid);
+	attemptingconnect = false;
+	-- TODO: just send the "attempted to connect" message, not also the "Banned" one
+	if (has_cap(pid, "badcap:ban")) then
 		-- TODO: pretty-print the ipaddr
 		-- TODO: which port
 		log("%s:%u (#%u) attempted to connect but is banned", get_ipaddr(pid), 42069, pid);
@@ -158,7 +223,7 @@ end
 
 function mod.on_load()
 	local code, msg;
-	db, code, msg = sql.open("rw/bans.db");
+	db, code, msg = sql.open(bans_db);
 
 	if (db == nil) then
 		error("sql.open: " .. msg);
@@ -169,26 +234,34 @@ function mod.on_load()
 	db:exec[[
 		PRAGMA journal_mode = WAL;
 		PRAGMA temp_store = memory;
-		CREATE TABLE IF NOT EXISTS BanRanges(id INTEGER PRIMARY KEY AUTOINCREMENT, startaddr INTEGER, endaddr INTEGER, bantime INTEGER, expires INTEGER, name TEXT COLLATE NOCASE, comment TEXT, bannedby TEXT COLLATE NOCASE);
-		CREATE TABLE IF NOT EXISTS ArchivedBans(id INTEGER PRIMARY KEY, startaddr INTEGER, endaddr INTEGER, bantime INTEGER, expires INTEGER, name TEXT COLLATE NOCASE, comment TEXT, bannedby TEXT COLLATE NOCASE);
+		CREATE TABLE IF NOT EXISTS BanRanges(id INTEGER PRIMARY KEY AUTOINCREMENT, startaddr INTEGER, endaddr INTEGER, bantime INTEGER, expires INTEGER, name TEXT COLLATE NOCASE, comment TEXT, bannedby TEXT COLLATE NOCASE, flags TEXT COLLATE NOCASE);
+		CREATE TABLE IF NOT EXISTS ArchivedBans(id INTEGER PRIMARY KEY, startaddr INTEGER, endaddr INTEGER, bantime INTEGER, expires INTEGER, name TEXT COLLATE NOCASE, comment TEXT, bannedby TEXT COLLATE NOCASE, flags TEXT COLLATE NOCASE);
 	]];
 
-	-- TODO: add pledge(2)-style flags col -- ban, mute, purgatory, etc.
-	createstmt("sel",          "SELECT name, comment FROM BanRanges WHERE expires > ? AND startaddr <= ? AND endaddr >= ?;");
-	createstmt("queryaddr",    "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby FROM BanRanges WHERE endaddr >= ? AND startaddr <= ? ORDER BY bantime;");
-	createstmt("queryname",    "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby FROM BanRanges WHERE name = ? ORDER BY bantime;");
-	createstmt("queryaddrarc", "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby FROM ArchivedBans WHERE endaddr >= ? AND startaddr <= ? ORDER BY bantime;");
-	createstmt("querynamearc", "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby FROM ArchivedBans WHERE name = ? ORDER BY bantime;");
-	createstmt("ban",          "INSERT INTO BanRanges VALUES(NULL, ?, ?, ?, ?, ?, ?, ?);");
+	createstmt("sel",          "SELECT name, comment, flags, expires FROM BanRanges WHERE expires > ? AND startaddr <= ? AND endaddr >= ?;");
+	createstmt("queryaddr",    "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby, flags FROM BanRanges WHERE endaddr >= ? AND startaddr <= ? ORDER BY bantime;");
+	createstmt("queryname",    "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby, flags FROM BanRanges WHERE name = ? ORDER BY bantime;");
+	createstmt("queryaddrarc", "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby, flags FROM ArchivedBans WHERE endaddr >= ? AND startaddr <= ? ORDER BY bantime;");
+	createstmt("querynamearc", "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby, flags FROM ArchivedBans WHERE name = ? ORDER BY bantime;");
+	createstmt("ban",          "INSERT INTO BanRanges VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?);");
 	createstmt("addarchive",   "INSERT INTO ArchivedBans SELECT * FROM BanRanges WHERE id = ?;");
 	createstmt("rmarchive",    "DELETE FROM BanRanges WHERE id = ?;");
 	createstmt("addunarchive",   "INSERT INTO BanRanges SELECT * FROM ArchivedBans WHERE id = ?;");
 	createstmt("rmunarchive",    "DELETE FROM ArchivedBans WHERE id = ?;");
 
+
+	badcap_exp = {};
+	badcap_exp_next = {};
+	for i in piditer(PID_BROADCAST) do
+		badcap_exp[i] = {};
+		-- badcap_exp_next[i] is implicitly nil
+	end
+
 	-- TODO: you can find a better message than "Found ban for"
 	check_banneds("Found ban for");
 end
 
+-- TODO: remove bancaps on unload?
 function mod.on_unload()
 	for _,y in pairs(stmt) do
 		y:finalize();
@@ -199,14 +272,40 @@ function mod.on_unload()
 	end
 end
 
-local cmd = {name="ban", caps="ban"};
+function mod.after.tick()
+	tick_badcaps();
+end
+
+local cmd = {name="ban", caps="ban", usage="player duration comment", desc="Ban a naughty player."};
 function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 3);
+	local banpid = get_arg_pid("player", pid, cmd, argv[1]);
+	-- TODO: get_arg_time?
+	local duration = get_arg_time("duration", pid, cmd, argv[2]);
+	local reason = argv[3];
+	local addr = get_ipaddr(banpid);
+
 	local now = os.time();
-	--ban(0, 1024, now, now+60, "jeff", "dirty haxor. . .", "notaburner's leaked password");
-	if (ban(2130706433, 2130706433, now, now+60, "not a burner", "he's ugly", "a mouse") == 1) then
-		send_chat(pid, "You can't ban a loopback address!", 2, 0);
-		return;
-	end
+	-- TODO: link up with auth.lua for banner name determination
+	ban(addr, addr, now, now+duration, get_name(banpid), reason, get_name(pid), bans_default_badcaps);
+	-- TODO: make from arg optional in send_chat
+	-- Hopefully this plays well with self-bans. . .
+	send_chat(pid, "Ban ID: #"..db:last_insert_rowid(), 2, 0);
+end
+register_command(cmd);
+
+local cmd = {name="banflags", caps="ban", usage="player duration comment flags...", desc="Give a naughty player some ban flags."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv > 3);
+	local banpid = get_arg_pid("player", pid, cmd, argv[1]);
+	-- TODO: get_arg_time?
+	local duration = get_arg_time("duration", pid, cmd, argv[2]);
+	local reason = argv[3];
+	local addr = get_ipaddr(banpid);
+
+	local now = os.time();
+	-- TODO: link up with auth.lua for banner name determination
+	ban(addr, addr, now, now+duration, get_name(banpid), reason, get_name(pid), table.concat(argv, " ", 4));
 	-- TODO: make from arg optional in send_chat
 	-- Hopefully this plays well with self-bans. . .
 	send_chat(pid, "Ban ID: #"..db:last_insert_rowid(), 2, 0);

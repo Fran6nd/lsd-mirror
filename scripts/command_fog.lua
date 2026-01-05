@@ -2,12 +2,13 @@
 -- TODO: should it change config or just set_fog?
 
 -- TODO: some easy way to get color values and return consumed arg count?
-local cmd = {name="fog", caps="setfog", usage="rrr ggg bbb", desc="Set the fog color."};
+local cmd = {name="fog", caps="setfog", usage="r g b", desc="Set the fog color."};
 function cmd.func(pid, argv)
-	if (#argv ~= 3) then
-		send_usage(pid, cmd);
-		return;
-	end
-	set_fog({r=argv[1], g=argv[2], b=argv[3]});
+	cmd_assert(pid, cmd, #argv == 3);
+	set_fog{
+		r=get_arg_num_range("r", pid, cmd, argv[1], 0, 255),
+		g=get_arg_num_range("g", pid, cmd, argv[2], 0, 255),
+		b=get_arg_num_range("b", pid, cmd, argv[3], 0, 255),
+	};
 end
 register_command(cmd);

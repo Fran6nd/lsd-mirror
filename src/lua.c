@@ -156,7 +156,7 @@ static void push_color(const color color) {
 	lua_settable(l, -3);
 }
 
-const char *get_team_name(lua_State *l, unsigned team) {
+const char *get_team_name_cfg(lua_State *l, unsigned team) {
 	const char *result;
 
 	lua_pushnumber(l, team);
@@ -185,10 +185,10 @@ void read_config_values(lua_State *l, struct State *st) {
 		LERR(l, "team_name should be a table");
 
 	memset(st->globals.teamname[0], 0, 10);
-	strncpy(st->globals.teamname[0], get_team_name(l, 1), 9);
+	strncpy(st->globals.teamname[0], get_team_name_cfg(l, 1), 9);
 
 	memset(st->globals.teamname[1], 0, 10);
-	strncpy(st->globals.teamname[1], get_team_name(l, 2), 9);
+	strncpy(st->globals.teamname[1], get_team_name_cfg(l, 2), 9);
 	lua_settop(l, 0);
 
 
@@ -616,6 +616,16 @@ static int get_fog(lua_State *l) {
 	return 1;
 }
 
+static int get_team_name(lua_State *l) {
+	unsigned team = luaL_checknumber(l, 1);
+	/* TODO: support -1 too? */
+	if (team == 255)
+		lua_pushliteral(l, "Spectator");
+	else
+		lua_pushstring(l, st->globals.teamname[team]);
+	return 1;
+}
+
 /* TODO: ammunition estimation */
 #if 0
 static int get_ammo(lua_State *l) {
@@ -691,6 +701,22 @@ static int get_mouse_inputs(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 
 	lua_pushnumber(l, st->p[pid].mouseInputs);
+	return 1;
+}
+
+/* TODO: weapon -> gun? */
+static int get_weapon(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	lua_pushnumber(l, st->p[pid].weapon);
+	return 1;
+}
+
+/* Weapon that the player will have on next respawn; switching weapon sets this, for example. */
+static int get_next_weapon(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+
+	lua_pushnumber(l, st->p[pid].newweapon);
 	return 1;
 }
 
@@ -825,6 +851,7 @@ static const struct luaL_Reg funcs[] = {
 	{"simulate_grenade_physics", simulate_grenade_physics},
 	{"is_solid", is_solid},
 	{"get_fog", get_fog},
+	{"get_team_name", get_team_name},
 	{"get_hp", get_hp},
 	{"get_ipaddr", get_ipaddr},
 	{"get_tentloc", get_tentloc},
@@ -832,6 +859,8 @@ static const struct luaL_Reg funcs[] = {
 	{"get_position", get_position},
 	{"get_orientation", get_orientation},
 	{"get_mouse_inputs", get_mouse_inputs},
+	{"get_weapon", get_weapon},
+	{"get_next_weapon", get_next_weapon},
 	{"get_tool", get_tool},
 	{"get_inputs", get_inputs},
 	{"is_airborne", is_airborne},

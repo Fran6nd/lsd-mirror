@@ -91,7 +91,7 @@ local login_first_msg = {
 };
 
 function mod.try_run_command(cmd, pid, argv, msg)
-	if (not has_cap(pid, "login") and not has_cap(pid, cmd.caps)) then
+	if (cmd.caps ~= nil and not has_cap(pid, "login") and not has_cap(pid, cmd.caps)) then
 		l10n_send_chat(pid, login_first_msg);
 		return;
 	end

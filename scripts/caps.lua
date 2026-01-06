@@ -170,11 +170,9 @@ local need_cap_msg = {
 
 -- Abusing register to interface cleanly with commands.lua
 function mod.try_run_command(cmd, pid, argv, msg)
-	if (cmd.caps ~= nil) then
-		if (not has_cap(pid, cmd.caps) and not has_cap(pid, "cmd:"..get_cmd_canonical_name(cmd))) then
-			l10n_send_chat(pid, need_cap_msg);
-			return;
-		end
+	if (cmd.caps ~= nil and not has_cap(pid, cmd.caps) and not has_cap(pid, "cmd:"..get_cmd_canonical_name(cmd))) then
+		l10n_send_chat(pid, need_cap_msg);
+		return;
 	end
 
 	next_call("try_run_command", mod.try_run_command)(cmd, pid, argv, msg);

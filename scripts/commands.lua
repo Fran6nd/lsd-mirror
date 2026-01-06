@@ -1,4 +1,5 @@
 -- commands.lua -- Handles chat messages beginning with a / as commands
+require "lib_l10n";
 local mod = {};
 -- TODO: do we really want to clear all the commands on load?
 commands = {};
@@ -66,19 +67,36 @@ function get_arg_str(argname, pid, cmd, arg)
 	return arg;
 end
 
+-- TODO: should l10n format decimal values in a language-specific manner?
+local delta_msg = {
+	en="%(arg) should be a time delta."
+};
+
+local finite_msg = {
+	en="%(arg) should be finite."
+};
+
+local unit_msg = {
+	en="%(arg) should use at most one of the following units: s, min, h, d, w, month, y."
+};
+
+local range_msg = {
+	en="%(arg) should be between %(min) and %(max)"
+};
+
 function get_arg_time(argname, pid, cmd, arg)
 	local umap = {s=1, min=60, h=60*60, d=60*60*24, w=60*60*24*7, month=60*60*24*30, y=60*60*24*365};
 	local num, unit = string.match(arg, "^(%d+)(%a*)$");
 	num = tonumber(num);
 	if (num == nil) then
 		send_usage(pid, cmd);
-		send_chat(pid, argname.." should be a time delta.", 2, 0);
+		l10n_send_chat(pid, delta_msg, {arg=argname});
 		error(stexec);
 	end
 	-- TODO: It should probably be finite, right?
 	if (not (num > -math.huge and num < math.huge)) then
 		send_usage(pid, cmd);
-		send_chat(pid, argname.." should be finite.", 2, 0);
+		l10n_send_chat(pid, finite_msg, {arg=argname});
 		error(stexec);
 	end
 
@@ -90,7 +108,7 @@ function get_arg_time(argname, pid, cmd, arg)
 	end
 
 	send_usage(pid, cmd);
-	send_chat(pid, argname.." should use at most one of the following units: s, min, h, d, w, month, y.", 2, 0);
+	l10n_send_chat(pid, unit_msg, {arg=argname});
 	error(stexec);
 end
 
@@ -111,7 +129,7 @@ function get_arg_num_range(argname, pid, cmd, arg, start, endval)
 	end
 	if (not (num >= start and num <= endval)) then
 		send_usage(pid, cmd);
-		send_chat(pid, string.format("%s should be between %f and %f", argname, start, endval), 2, 0);
+		l10n_send_chat(pid, range_msg, {arg=argname, min=start, max=endval});
 		error(stexec);
 	end
 	return num;
@@ -124,7 +142,7 @@ function get_arg_num_finite_opt(argname, pid, cmd, arg)
 	local num = tonumber(arg);
 	if (num == nil or not (num > -math.huge and num < math.huge)) then
 		send_usage(pid, cmd);
-		send_chat(pid, argname.." should be a finite number.", 2, 0);
+		l10n_send_chat(pid, finite_msg, {arg=argname});
 		error(stexec);
 	end
 	return num;
@@ -139,18 +157,34 @@ function get_arg_num_finite(argname, pid, cmd, arg)
 	return num;
 end
 
+local substr_not_found_msg = {
+	en="%(arg): Player not found."
+};
+
+local pid_not_connected_msg = {
+	en="%(arg): Player not connected."
+};
+
+local substr_ambiguous_msg = {
+	en="%(arg): Ambiguous player."
+};
+
+local pid_invalid_msg = {
+	en="%(arg): Invalid player ID."
+};
+
 function get_arg_pid_opt(argname, pid, cmd, arg)
 	local plr = get_player_by_str(arg);
 	if (plr ~= nil and plr < 0) then
 		send_usage(pid, cmd);
 		if (plr == -1) then
-			send_chat(pid, argname..": Player not found.", 2, 0);
+			l10n_send_chat(pid, substr_not_found_msg, {arg=argname});
 		elseif (plr == -2) then
-			send_chat(pid, argname..": Player not connected.", 2, 0);
+			l10n_send_chat(pid, pid_not_connected_msg, {arg=argname});
 		elseif (plr == -3) then
-			send_chat(pid, argname..": Ambiguous player.", 2, 0);
+			l10n_send_chat(pid, substr_ambiguous_msg, {arg=argname});
 		elseif (plr == -4) then
-			send_chat(pid, argname..": Invalid player ID.", 2, 0);
+			l10n_send_chat(pid, pid_invalid_msg, {arg=argname});
 		end
 		error(stexec);
 	end
@@ -172,6 +206,15 @@ function unregister(module)
 	orig_unreg(module);
 end
 
+-- TODO: should this be punctuated?
+local unknown_cmd_msg = {
+	en="Unknown command"
+};
+
+local cmd_err_msg = {
+	en="Some error occurred with that command :("
+};
+
 -- TODO: log
 -- TODO: /mute
 -- TODO: redact certain args?
@@ -188,7 +231,7 @@ local function handle_command(pid, msg)
 	log("%s: /%s", get_name(pid), msg);
 
 	if (commands[string.lower(argv[0])] == nil) then
-		send_chat(pid, "Unknown command", 2, 0);
+		l10n_send_chat(pid, unknown_cmd_msg);
 		return;
 	end
 
@@ -198,7 +241,7 @@ end
 function try_run_command(cmd, pid, argv, msg)
 	local status, err = pcall(cmd.func, pid, argv, msg);
 	if (not status and err ~= stexec) then
-		send_chat(pid, "Some error occurred with that command :(", 2, 0);
+		l10n_send_chat(pid, cmd_err_msg);
 		error(err);
 	end
 end

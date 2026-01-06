@@ -1,8 +1,21 @@
 -- medkit.lua -- Use /m for morphine
+require "lib_l10n";
 local mod = {after={}};
 local kits = {};
 getcfg("medkit_heal", 40);
 getcfg("medkit_quantity", 1);
+
+local dead_msg = {
+	en="The medkit cannot bring you back from the dead."
+};
+
+local none_left_msg = {
+	en="You've already used all your medkits! Restock at the tent."
+};
+
+local full_hp_msg = {
+	en="The medkit only heals physical wounds."
+};
 
 function mod.on_load()
 	for i in piditer(PID_BROADCAST) do
@@ -25,19 +38,19 @@ function cmd.func(pid)
 
 	if (not is_alive(pid)) then
 		-- TODO: wonder how the pyspades medkit reacts to dead men
-		send_chat(pid, "The medkit cannot bring you back from the dead.", 2, 0);
+		l10n_send_chat(pid, dead_msg);
 		return;
 	end
 
 	if (kits[pid] == 0) then
 		-- Of course, the restock part is only valid if tent restocking is enabled.
-		send_chat(pid, "You've already used all your medkits! Restock at the tent.", 2, 0);
+		l10n_send_chat(pid, none_left_msg);
 		return;
 	end
 
 	hp = get_hp(pid);
 	if (hp >= 100) then
-		send_chat(pid, "The medkit only heals physical wounds.", 2, 0);
+		l10n_send_chat(pid, full_hp_msg);
 		return;
 	end
 

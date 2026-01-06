@@ -1,7 +1,20 @@
 -- babel.lua -- The gamemode where nobody can cooperate
+require "lib_l10n";
 local mod = {after={}};
 local drop_timeout = 0;
 local platform_rebuild_time;
+
+local platform_destroyed_msg = {
+	en=">:("
+};
+
+local no_build_msg = {
+	en="Can't do that there!",
+};
+
+local not_holding_msg = {
+	en="You're not holding the intel!"
+};
 
 -- TODO: team starts at 0 or 1?
 -- TODO: i think some places use 0 and others use 1, unify that
@@ -112,7 +125,7 @@ end
 -- Handle the few that tear it down anyway
 function mod.after.finish_cull()
 	if (not is_solid{x=plat_start.x, y=plat_start.y, z=plat_z}) then
-		send_chat(PID_BROADCAST, ">:(", 2, 0);
+		l10n_send_chat(PID_BROADCAST, platform_destroyed_msg);
 		build_platform();
 		-- Most of the clients don't process block line/action immediately when recieved.
 		-- They do some cursed queueing thing that, for instance, lets you break and place
@@ -126,7 +139,7 @@ end
 -- TODO: i definitely agree with this, use something crap_packet-style (maybe use different return values to mean different things)
 function mod.on_block_action(pid, pos, type)
 	if (not legal_pos(pos, type)) then
-		send_chat(pid, "Can't do that there!", 2, 0);
+		l10n_send_chat(pid, no_build_msg);
 		stop_exec();
 	end
 
@@ -288,7 +301,7 @@ end
 local cmd = {name="drop", desc="Drop the intel if you're holding it."};
 function cmd.func(pid)
 	if (not try_drop(pid)) then
-		send_chat(pid, "You're not holding the intel!", 2, 0);
+		send_chat(pid, not_holding_msg);
 		-- TODO: add delay before intel pickup, maybe put in dedicated script
 	end
 end

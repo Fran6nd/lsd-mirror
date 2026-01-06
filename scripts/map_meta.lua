@@ -1,8 +1,17 @@
 -- map_meta.lua -- Extract metadata from maps without executing arbitrary code
 -- TODO: optional arbitrary code execution?
 local mod = {before={}};
+require "lib_l10n";
 local scraper = require "lib_pyscrape";
 local meta = {};
+
+local next_up_msg_noauthor = {
+	en="Next up: %(name)"
+};
+
+local next_up_msg_author = {
+	en="Next up: %(name) by %(author)"
+};
 
 function mod.on_load()
 	-- TODO: autoload metadata?
@@ -28,14 +37,18 @@ function mod.before.load_map_from_file(path)
 	end
 
 	if (meta.name) then
-		local authorstr = "";
+		local str;
 
-		if (meta.author) then
-			authorstr = " by " .. meta.author;
+		for i in piditer(PID_BROADCAST) do
+			if (meta.author) then
+				str = l10n_get_str_pid(PID_BROADCAST, next_up_msg_author, {name=meta.name, author=meta.author});
+			else
+				str = l10n_get_str_pid(PID_BROADCAST, next_up_msg_noauthor, {name=meta.name});
+			end
+
+			-- TODO: thanks to betterspades for making a 2nd standard that i have to support
+			send_chat(PID_BROADCAST, "N% "..str, 2, 0);
 		end
-
-		-- TODO: thanks to betterspades for making a 2nd standard that i have to support
-		send_chat(PID_BROADCAST, "N% Next up: " .. meta.name .. authorstr, 2, 0);
 	end
 
 	file:close();

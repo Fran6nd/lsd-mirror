@@ -1,4 +1,9 @@
 -- command_switch.lua -- Shuffle other players' teams around
+require "lib_l10n";
+
+local invalid_team_msg = {
+	en="team should be one of 0, 1, 255, -1, spec, spectator, %(firstteam), %(secondteam)."
+};
 
 -- TODO: switch from spec -> red, you die in red spawn, -> blue, you are still in red but will switch to blue on next spawn
 -- TODO: /kick
@@ -25,8 +30,7 @@ function cmd.func(pid, argv)
 		end
 		if (teamid == nil) then
 			send_usage(pid, cmd);
-			-- TODO: get team name, and add to map too
-			send_chat(pid, string.format("team should be one of 0, 1, 255, -1, spec, spectator, %s, %s.", string.lower(get_team_name(0)), string.lower(get_team_name(1))), 2, 0);
+			l10n_send_chat(pid, invalid_team_msg, {firstteam=string.lower(get_team_name(0)), secondteam=string.lower(get_team_name(0))});
 			return;
 		end
 	else

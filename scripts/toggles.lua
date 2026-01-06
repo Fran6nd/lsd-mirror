@@ -1,6 +1,15 @@
 -- toggles.lua -- Toggle building, killing, talking, moving, etc.
+require "lib_l10n";
 local mod = {};
 -- TODO: automute based on regexp, muted player only knows after he's sent a few messages but normal players never see anything
+
+local added_msg = {
+	en="Added %(cap) to %(name)"
+};
+
+local removed_msg = {
+	en="Removed %(cap) from %(name)"
+};
 
 -- TODO: block line, also in babel
 function mod.on_block_action(pid, pos, type)
@@ -29,8 +38,9 @@ function mod.on_chat(pid, msg, type)
 end
 
 local function toggle(pid, cmd, argv, cap)
-	local nowactive = toggle_cap(get_arg_pid("player", pid, cmd, argv[1]), cap);
-	send_chat(pid, string.format("%s %s %s %s.", nowactive and "Added" or "Removed", cap, nowactive and "to" or "from", get_name(pid)), 2, 0);
+	local who = get_arg_pid("player", pid, cmd, argv[1]);
+	local nowactive = toggle_cap(who, cap);
+	l10n_send_chat(pid, nowactive and added_msg or removed_msg, {cap=cap, name=get_name(who)});
 end
 
 -- TODO: get pike-style player instead of toggling me

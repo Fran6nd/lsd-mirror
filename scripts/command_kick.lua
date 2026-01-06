@@ -1,4 +1,9 @@
 -- command_kick.lua -- Remove a silly player.
+require "lib_l10n";
+
+local kicked_msg = {
+	en="%(name) was kicked"
+}
 
 local cmd = {name="kick", caps="kick", desc="player", usage="Remove a silly player."};
 function cmd.func(pid, argv)
@@ -7,8 +12,7 @@ function cmd.func(pid, argv)
 
 	-- TODO: work around notafile's generous contribution to betterspades
 	-- TODO: it spread to ivspades too
-	-- TODO: add l10n send_chat
-	send_chat(PID_BROADCAST, get_name(who).." was kicked", 2, 0);
+	l10n_send_chat(PID_BROADCAST, kicked_msg, {name=get_name(who)});
 	disconnect(who, 2);
 end
 register_command(cmd);

@@ -1,4 +1,5 @@
 -- bans.lua -- Ban IP address ranges retrieved from an sqlite3 database
+require "lib_l10n";
 local mod = {after={}};
 local sql = require "lsqlite3";
 local db;
@@ -144,6 +145,11 @@ local function moveban(id, add, rm)
 	end
 end
 
+-- TODO: localize the log
+local banned_msg = {
+	en="%(name) was banned"
+};
+
 local attemptingconnect = false
 -- TODO: doesn't this seem a lot like temporary groups? -- should i merge half of this with auth.lua, maybe make tmp_groups.lua and add bans.lua as a thin layer over that?
 -- TODO: or maybe make caps.lua and make auth and bans (tmp_caps?) a dependent?
@@ -152,7 +158,7 @@ function mod.after.on_cap_grant(pid, cap)
 	-- TODO: banned for how long?
 	if (not attemptingconnect and cap == "badcap:ban") then
 		log("Banned %s (#%u)", get_name(pid), pid);
-		send_chat(PID_BROADCAST, get_name(pid).." was banned", 2, 0);
+		l10n_send_chat(PID_BROADCAST, banned_msg, {name=get_name(pid)});
 		disconnect(pid, 1);
 	end
 end
@@ -163,9 +169,13 @@ local function check_banneds(msg)
 	end
 end
 
+local query_msg = {
+	en="#%(id): <%(name)> banned on %(date) by %(banner): %(comment) (flags: %(flags))"
+};
+
 local function send_query(vals, pid)
 	-- TODO: should comment be COLLATE NOCASE and greppable?
-	send_chat(pid, string.format("#%i: <%s> banned on %s by %s: %s (flags: %s)", vals[1], vals[6], os.date("!%Y-%m-%dT%H:%M:%SZ", vals[4]), vals[8], vals[7], vals[9]), 2, 0);
+	l10n_send_chat(pid, query_msg, {id=vals[1], name=vals[6], date=os.date("!%Y-%m-%dT%H:%M:%SZ", vals[4]), banner=vals[8], comment=vals[7], flags=vals[9]});
 end
 
 local function query_addr(statement, startaddr, endaddr, pid)
@@ -276,6 +286,10 @@ function mod.after.tick()
 	tick_badcaps();
 end
 
+local ban_id_msg = {
+	en="Ban ID: #%(id)"
+};
+
 local cmd = {name="ban", caps="ban", usage="player duration comment", desc="Ban a naughty player."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 3);
@@ -290,7 +304,7 @@ function cmd.func(pid, argv)
 	ban(addr, addr, now, now+duration, get_name(banpid), reason, get_name(pid), bans_default_badcaps);
 	-- TODO: make from arg optional in send_chat
 	-- Hopefully this plays well with self-bans. . .
-	send_chat(pid, "Ban ID: #"..db:last_insert_rowid(), 2, 0);
+	l10n_send_chat(pid, ban_id_msg, {id=db:last_insert_rowid()});
 end
 register_command(cmd);
 
@@ -308,7 +322,7 @@ function cmd.func(pid, argv)
 	ban(addr, addr, now, now+duration, get_name(banpid), reason, get_name(pid), table.concat(argv, " ", 4));
 	-- TODO: make from arg optional in send_chat
 	-- Hopefully this plays well with self-bans. . .
-	send_chat(pid, "Ban ID: #"..db:last_insert_rowid(), 2, 0);
+	l10n_send_chat(pid, ban_id_msg, {id=db:last_insert_rowid()});
 end
 register_command(cmd);
 
@@ -327,6 +341,7 @@ end
 register_command(cmd);
 
 -- TODO: CIDR notation?
+-- TODO: completely redo this
 local cmd = {name="queryban", caps="ban"};
 function cmd.func(pid, argv)
 	local vals;

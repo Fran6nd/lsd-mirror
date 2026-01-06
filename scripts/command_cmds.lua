@@ -1,6 +1,12 @@
 -- command_cmds.lua -- List available commands
 -- TODO: /apropos
+require "lib_l10n";
 getcfg("cmds_pagesize", 5);
+
+-- TODO: should "Unknown command" from commands.lua be merged with this?
+local unknown_cmd_msg = {
+	en="Command not found."
+};
 
 local function sort_cmds(x, y)
 	return (x.name[1] or x.name) < (y.name[1] or y.name);
@@ -85,7 +91,7 @@ function cmd.func(pid, argv)
 	if (val ~= nil and can_see_command(pid, val)) then
 		send_chat(pid, print_cmd(val), 2, 0);
 	else
-		send_chat(pid, "Command not found.", 2, 0);
+		l10n_send_chat(pid, unknown_command_msg);
 	end
 end
 register_command(cmd);

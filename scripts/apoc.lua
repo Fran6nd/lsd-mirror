@@ -1,6 +1,7 @@
 -- apoc.lua -- Use /apoc to remove eardrums
-local mod = {after={}};
+require "lib_l10n";
 require "lib_bulk_destroy";
+local mod = {after={}};
 local white = {r=255, g=255, b=255};
 local white2 = {r=232, g=232, b=255};
 local black = {r=32, g=24, b=16};
@@ -52,6 +53,10 @@ function mod.after.boot_players_to_limbo()
 	end
 end
 
+local apoc_transfer_msg = {
+	en="%(originname)'s apocs have been given to %(destname)"
+};
+
 function mod.after.on_disconnect(pid)
 	local beststreak;
 
@@ -65,7 +70,7 @@ function mod.after.on_disconnect(pid)
 		end
 
 		if (beststreak ~= nil) then
-			send_chat(PID_BROADCAST, get_name(pid).."'s apocs have been given to "..get_name(beststreak), 2, 0);
+			l10n_send_chat(PID_BROADCAST, apoc_transfer_msg, {originname=get_name(pid), destname=get_name(beststreak)});
 			apocs[beststreak] = apocs[beststreak] + apocs[pid];
 		end
 	end
@@ -73,6 +78,10 @@ function mod.after.on_disconnect(pid)
 	streak[pid] = nil;
 	apocs[pid] = nil;
 end
+
+local apoc_grant_msg = {
+	en="%(name) can now use /apoc. . ."
+};
 
 -- TODO: on_kill -> get_spawn_position, then add on_kill for on_hit but with a kill
 -- would *not* be triggered by nade explosions though
@@ -85,7 +94,7 @@ function mod.after.kill(pid, type, killer)
 		if (streak[killer] == 20) then
 			apocs[killer] = apocs[killer] + 1;
 			streak[killer] = 0;
-			send_chat(PID_BROADCAST, get_name(killer).." can now use /apoc. . .", 2, 0);
+			l10n_send_chat(PID_BROADCAST, apoc_grant_msg, {name=get_name(killer)});
 		end
 	end
 end
@@ -104,15 +113,24 @@ local function start_apoc(pid)
 	nadepid = pid;
 end
 
+-- TODO: make killstreak check part of dedicated module, maybe i want to get the apoc in alternative ways
+local need_killstreak_msg = {
+	en="You need a %(needstreak) killstreak to use apoc! Current streak: %(curstreak)"
+};
+
+local apoc_ongoing_msg = {
+	en="Don't be so hasty!"
+};
+
 local cmd = {name="apoc", desc="Summon an apoc if you have a 20 killstreak."};
 function cmd.func(pid)
 	if (apocs[pid] == 0) then
-		send_chat(pid, "You need a 20 killstreak to use apoc! Current streak: "..tostring(streak[pid]), 2, 0);
+		l10n_send_chat(pid, need_killstreak_msg, {needstreak=20, curstreak=streak[pid]});
 		return;
 	end
 
 	if (nexttick ~= nil) then
-		send_chat(pid, "Don't be so hasty!", 2, 0);
+		l10n_send_chat(pid, apoc_ongoing_msg);
 		return;
 	end
 

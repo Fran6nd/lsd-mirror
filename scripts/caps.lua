@@ -164,11 +164,15 @@ local function get_cmd_canonical_name(cmd)
 	return cmd.name;
 end
 
+local need_cap_msg = {
+	en="You need the %(cap) capability to run that command."
+};
+
 -- Abusing register to interface cleanly with commands.lua
 function mod.try_run_command(cmd, pid, argv, msg)
 	if (cmd.caps ~= nil) then
 		if (not has_cap(pid, cmd.caps) and not has_cap(pid, "cmd:"..get_cmd_canonical_name(cmd))) then
-			send_chat(pid, "You need the "..cmd.caps.." capability to run that command.", 2, 0)
+			l10n_send_chat(pid, need_cap_msg);
 			return;
 		end
 	end

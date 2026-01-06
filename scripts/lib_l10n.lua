@@ -14,10 +14,10 @@ function l10n_get_str_lang(lang, msgtab, interptab)
 	local msg = msgtab[lang];
 	if (msg == nil) then
 		-- TODO: determine most preferable fallback for a given language
-		return msgtab["en"];
+		msg = msgtab["en"];
 	end
 
-	return msg;
+	return interp(msg, interptab);
 end
 
 -- Try to only pass a singular, non-broadcast PID.

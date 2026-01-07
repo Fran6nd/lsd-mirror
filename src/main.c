@@ -1302,6 +1302,9 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		SBAD((uint32_t)PACKET.end.y >= 512);
 		SBAD((uint32_t)PACKET.end.z >= 62);
 
+		/* Length can't be > 50 */
+		SBAD(1+abs(PACKET.end.x-PACKET.start.x)+abs(PACKET.end.y-PACKET.start.y)+abs(PACKET.end.z-PACKET.start.z) > 50);
+
 		SBAD(st->p[pid].tool != ToolTypeBlock);
 
 		/* TODO: block lines still work when the start is solid, right? */
@@ -1309,8 +1312,6 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 
 		SBAD(get_solid(PACKET.end, st));
 		SBAD(neighboring_voxels(PACKET.end, st) == 0);
-
-		/* TODO: limit len to 50 */
 
 		return 0;
 #undef PCKT
@@ -1918,6 +1919,20 @@ void set_position(plid pid, fvec3 pos, struct State *st) {
 	st->f.send_position(pid, pos, st);
 }
 
+void send_orientation(plid pid, fvec3 ori, struct State *st) {
+	struct PacketPositionData od;
+
+	od.packetID = PacketTypeOrientationData;
+	od.pos = ori;
+
+	SEND(pid, od);
+}
+
+void set_orientation(plid pid, fvec3 ori, struct State *st) {
+	st->p[pid].ori = ori;
+	st->f.send_orientation(pid, ori, st);
+}
+
 void set_jump(plid pid, struct State *st) {
 	struct PacketInput ip;
 
@@ -2146,6 +2161,8 @@ void set_funcs(struct State *st) {
 	st->f.spawn_grenade = spawn_grenade;
 	st->f.send_fog = send_fog;
 	st->f.load_initial_map = load_initial_map;
+	st->f.send_orientation = send_orientation;
+	st->f.set_orientation = set_orientation;
 }
 
 void set_defaults(struct State *st) {

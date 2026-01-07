@@ -5,6 +5,7 @@
 -- TODO: special: prefix, so root doesn't get it? but how would that work with i.e. login? make a user and login cap? would it be easier to use a real table?
 -- TODO: you probably DO want to keep the =, for things like limiting ban time (TODO: how would you validate that the cap is formatted correcty?), but should defer user to auth.lua
 -- TODO: auth uses caps="login" a lot, how should that be handled?
+require "lib_l10n";
 local mod = {after={}};
 getcfg("cap_groups", {
 	guard = {
@@ -171,7 +172,7 @@ local need_cap_msg = {
 -- Abusing register to interface cleanly with commands.lua
 function mod.try_run_command(cmd, pid, argv, msg)
 	if (cmd.caps ~= nil and not has_cap(pid, cmd.caps) and not has_cap(pid, "cmd:"..get_cmd_canonical_name(cmd))) then
-		l10n_send_chat(pid, need_cap_msg);
+		l10n_send_chat(pid, need_cap_msg, {cap=cmd.caps});
 		return;
 	end
 

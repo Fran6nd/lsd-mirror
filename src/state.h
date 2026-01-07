@@ -161,6 +161,7 @@ struct Functions {
 	void (*send_block_line)(plid pid, ivec3 start, ivec3 end, plid from, struct State *st);
 	void (*send_set_color)(plid pid, color color, plid from, struct State *st);
 	void (*send_player_update)(plid pid, struct State *st); /* TODO: hide too-far players, /ups */
+	void (*send_orientation)(plid pid, fvec3 ori, struct State *st);
 	void (*send_position)(plid pid, fvec3 pos, struct State *st);
 	void (*send_reload)(plid pid, unsigned mag, unsigned reserve, plid from, struct State *st);
 	void (*send_intel_capture)(plid pid, bint winning, plid from, struct State *st);

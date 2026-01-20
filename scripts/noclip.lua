@@ -1,13 +1,9 @@
 -- noclip.lua -- when i'm feeling tired i can just... fly around
 local mod = {after={}};
 
-local clips = {};
+local clips = pid_joined_table(nil);
 -- TODO: should jumpctr be player-specific or global?
-local jumpctr = {};
-function mod.after.on_join(pid)
-	clips[pid] = nil;
-	jumpctr[pid] = 0;
-end
+local jumpctr = pid_joined_table(0);
 
 local function get_right(vec)
 	local len = math.sqrt(vec.x*vec.x + vec.y*vec.y);
@@ -65,7 +61,7 @@ local function noclip_phys(pid, delta)
 
 	-- Loop through map borders. TODO: optional?
 	-- is there even a need with the crap packet destroyer (not going to look for haxors in the border)?
-	new = {x=new.x % 512, y=new.y % 512; z=new.z};
+	new = {x=new.x % 512, y=new.y % 512, z=new.z};
 
 	set_position(pid, new);
 
@@ -84,6 +80,7 @@ function mod.on_position(pid, delta)
 	end
 end
 
+-- TODO: still calculate velocity, but not position?
 -- TODO: pretty sure jump is forced on until /noclip is disabled
 function mod.tick_player_physics(pid, delta)
 	if (clips[pid]) then
@@ -94,6 +91,7 @@ function mod.tick_player_physics(pid, delta)
 	next_call("tick_player_physics", mod.tick_player_physics)(pid, delta);
 end
 
+-- TODO: double-tap V to noclip
 local cmd = {name="noclip", caps="noclip", desc="Fly around."};
 function cmd.func(pid)
 	clips[pid] = not clips[pid];

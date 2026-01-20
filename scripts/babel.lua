@@ -1,6 +1,6 @@
 -- babel.lua -- The gamemode where nobody can cooperate
 require "lib_l10n";
-local mod = {after={}};
+local mod = {after={},before={}};
 local drop_timeout = 0;
 local platform_rebuild_time;
 
@@ -256,13 +256,14 @@ end
 -- TODO: maybe on_hotload?
 -- TODO: what happens if i load it *while* the map is loading?
 function mod.on_load()
+	masterlist_set_gamemode("babel");
 	build_platform();
 	putback_intel();
 end
 
 -- TODO: intel position callback on map load?
 -- TODO: hook after load and before send
-function mod.after.load_map_from_file()
+function mod.before.finish_map_load()
 	-- TODO: don't send packets for this. . .
 	build_platform();
 	putback_intel();
@@ -298,10 +299,11 @@ local function try_drop(pid)
 	return false;
 end
 
+-- TODO: allow dropping other players
 local cmd = {name="drop", desc="Drop the intel if you're holding it."};
 function cmd.func(pid)
 	if (not try_drop(pid)) then
-		send_chat(pid, not_holding_msg);
+		l10n_send_chat(pid, not_holding_msg);
 		-- TODO: add delay before intel pickup, maybe put in dedicated script
 	end
 end

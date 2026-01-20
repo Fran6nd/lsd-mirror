@@ -11,7 +11,7 @@ local invalid_team_msg = {
 -- TODO: respawn time outside of core
 -- TODO: retarded pyspades uses 1,2 -> 0,1
 local teammap = {["0"]=0, ["1"]=1, ["255"]=255, ["-1"]=255, spec=255, spectator=255};
-local cmd = {name="switch", caps="switch", usage="[player] [team]", desc="Move a player (or you) to a different team."};
+local cmd = {name="switch", caps="switch", fakepid=true, usage="[player] [team]", desc="Move a player (or you) to a different team."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv <= 2);
 	local who = get_arg_pid_opt("player", pid, cmd, argv[1]);
@@ -41,3 +41,5 @@ function cmd.func(pid, argv)
 	on_switch(who, teamid, get_next_weapon(who));
 end
 register_command(cmd);
+
+return {};

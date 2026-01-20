@@ -1,5 +1,5 @@
 -- Of course, all of this can be overridden by scripts, right?
-name = "[LS2] democracy24"
+masterlist_name = "[LS2] democracy24"
 team_name = {"bread", "cowboys"}
 team_color = {
 	{r=0, g=32, b=255},
@@ -8,11 +8,14 @@ team_color = {
 fog = {r=32, g=64, b=128}
 max_score = 24
 
+load "pid_tables"
 load "commands"
 load "command_exec"
 load "command_modutils"
 load "command_cmds"
 load "command_kill"
+load "command_say"
+load "command_caps"
 
 --load "motd"
 motd = [[
@@ -37,6 +40,7 @@ tips = {
 tip_frequency = 5*60
 
 --load "team_block_colors"
+load "masterlist"
 load "map_queue"
 load "map_meta"
 load "fall_damage"
@@ -44,4 +48,7 @@ load "babel"
 load "noclip"
 load "jp"
 load "trashheap"
+load "caps"
+register(maptime);
+load "stdio_console"
 --load "purgatory"

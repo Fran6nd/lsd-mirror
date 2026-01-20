@@ -21,6 +21,12 @@
 #ifdef __linux__
 #ifdef WITH_UNSHARE
 #define MOUNT(id, source, target, fstype, mntflags, data) do{if (mount(source, target, fstype, mntflags, data)) ERR("mount-"id);}while(0)
+/* TODO: should it just ignore bind-path fail instead of mkdir'ing? */
+#define MNT(path, flags) do { \
+	if (mkdir(path, 0755) != 0 && errno != EEXIST) ERR("mkdir"); \
+	MOUNT("bind-"path, path, "/tmp/"path, NULL, MS_SILENT | MS_BIND | MS_REC, NULL); \
+	MOUNT("remount-"path, NULL, "/tmp/"path, NULL, MS_SILENT | MS_REMOUNT | MS_BIND | MS_NODEV | MS_NOSUID | MS_REC | flags, NULL); \
+} while (0)
 static void pivot(void) {
 	/* TODO: is landlock worth using? */
 	struct __user_cap_header_struct hdr = {_LINUX_CAPABILITY_VERSION_3, 0};
@@ -51,13 +57,9 @@ static void pivot(void) {
 	if (close(fd)) ERR("close2");
 
 	MOUNT("/", NULL, "/", NULL, MS_SILENT | MS_REC | MS_SLAVE, NULL);
-	MOUNT("bind", ".", "/tmp", NULL, MS_SILENT | MS_BIND | MS_REC, NULL);
-	MOUNT("ro", NULL, "/tmp", NULL, MS_SILENT | MS_REMOUNT | MS_BIND | MS_NODEV | MS_NOSUID /*| MS_NOEXEC // loading binary lua modules depends on exec */ | MS_RDONLY | MS_REC, NULL);
-
-	/* TODO: should it just ignore bind-rw fail instead of mkdir'ing? */
-	if (mkdir("./rw", 0755) != 0 && errno != EEXIST) ERR("mkdir");
-	MOUNT("bind-rw", "./rw", "/tmp/rw", NULL, MS_SILENT | MS_BIND | MS_REC, NULL);
-	MOUNT("remount-rw", NULL, "/tmp/rw", NULL, MS_SILENT | MS_REMOUNT | MS_BIND | MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_REC, NULL);
+	MNT(".", MS_NOEXEC | MS_RDONLY);
+	MNT("rw", MS_NOEXEC);
+	MNT("exec", MS_RDONLY);
 
 	if (syscall(SYS_pivot_root, "/tmp", "/tmp")) ERR("pivot_root");
 	if (umount2("/", MNT_DETACH)) ERR("umount2");
@@ -73,6 +75,7 @@ void sandbox(void) {
 	unveil("./maps/", "r");
 	unveil("./scripts/", "r");
 	unveil("./config.lua", "r");
+	unveil("./exec/", "rx");
 	unveil("./rw/", "rwc");
 	unveil(NULL, NULL);
 
@@ -126,6 +129,22 @@ void sandbox(void) {
 		"fdatasync",
 		"unlink",
 		"ftruncate",
+		/* needed for linenoise */
+		"write",
+#if 0
+		/* needed for openmp */
+		"sched_yield",
+		"sched_getaffinity",
+		"membarrier",
+		"sched_setaffinity",
+		"rt_sigaction",
+		"rt_sigprocmask",
+		"prlimit64",
+		"clone",
+		"tkill",
+		"futex",
+		"getuid",
+#endif
 		NULL
 	};
 

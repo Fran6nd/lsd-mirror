@@ -34,7 +34,10 @@ ENetHost *bringup_host(ENetAddress *addr) {
 	if (host == NULL)
 		return NULL;
 
-	enet_host_compress_with_range_coder(host);
+	if (enet_host_compress_with_range_coder(host) != 0) {
+		enet_host_destroy(host);
+		return NULL;
+	}
 
 	return host;
 }
@@ -90,7 +93,10 @@ void handle_event(ENetEvent *event, struct State *st) {
 			st->f.on_crap_packet(event->peer->incomingPeerID, event->packet, st);
 		else
 			st->f.on_sane_packet(event->peer->incomingPeerID, event->packet, st);
-		} break;
+		}
+
+		enet_packet_destroy(event->packet);
+		break;
 	case ENET_EVENT_TYPE_NONE:
 		break;
 	}
@@ -99,9 +105,12 @@ void handle_event(ENetEvent *event, struct State *st) {
 void do_loop(struct State *st) {
 	ENetEvent event;
 
+	/* TODO: service main host and masterlist host simultaniously? */
 	while (enet_host_service(st->host, &event, to_ms(time_until(st->nextTickTime))) > 0) {
 		handle_event(&event, st);
 	}
+
+	masterlist_service(&st->ms);
 
 	st->nextTickTime += st->tickrate;
 	st->f.tick(st);
@@ -160,9 +169,13 @@ int send_packet_unreliable(plid pid, const void *data, size_t length, struct Sta
 	return send_packet_flags(pid, data, length, 0, st);
 }
 
+void before_log(struct State *st) {}
+void after_log(struct State *st) {}
+
+/* TODO: integrate logging with lua better */
 #define SEND(pid, data) st->f.send_packet(pid, &(data), sizeof(data), st)
-#define LOG(x, ...) fprintf(stderr, x"\n", __VA_ARGS__)
-#define LOG1(x) fputs(x"\n", stderr)
+#define LOG(x, ...) do {st->f.before_log(st); fprintf(stderr, x"\n", __VA_ARGS__); st->f.after_log(st);} while (0)
+#define LOG1(x) do {st->f.before_log(st); fputs(x"\n", stderr); st->f.after_log(st);} while (0)
 
 void send_fog(plid pid, color color, struct State *st) {
 	struct PacketFogColor cf;
@@ -499,7 +512,7 @@ uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) 
 
 	if (mask == 0)
 		type = 0;
-	else
+	else if (!st->globals.loadingMap)
 		st->f.send_block_action(PID_BROADCAST, pos, type, from, st);
 
 	return mask | (type << 30);
@@ -559,7 +572,8 @@ void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
 	case 0: /* Build */
 		set_solid(pos, st);
 		set_vox_color(pos, st->p[from].blockColor, st);
-		st->f.send_block_action(PID_BROADCAST, pos, type, from, st);
+		if (!st->globals.loadingMap)
+			st->f.send_block_action(PID_BROADCAST, pos, type, from, st);
 		break;
 	default: /* Any of the destroy family */
 		st->f.block_action_cull(pos, st->f.block_action_rm(pos, type, from, st), st);
@@ -819,17 +833,16 @@ struct isal_zstream init_deflate(void) {
 	stream.flush = NO_FLUSH;
 	stream.gzip_flag = IGZIP_ZLIB;
 	stream.end_of_stream = 0;
-	stream.level = 2;
-	stream.level_buf = malloc(ISAL_DEF_LVL2_DEFAULT);
-	stream.level_buf_size = ISAL_DEF_LVL2_DEFAULT;
+	stream.level = 0;
+	stream.level_buf = malloc(ISAL_DEF_LVL0_DEFAULT);
+	stream.level_buf_size = ISAL_DEF_LVL0_DEFAULT;
 
 	return stream;
 }
 
 void send_compressed_map(plid pid, struct State *st) {
 	struct isal_zstream stream;
-	size_t cols, buflen;
-	uint8_t vxlbuf[512*8*65*4];
+	size_t cols;
 	/* TODO: determine isa-l magic numbers */
 	uint8_t outbuf[1+512*8*65*4+330];
 
@@ -838,26 +851,32 @@ void send_compressed_map(plid pid, struct State *st) {
 
 	stream = init_deflate();
 
+#pragma omp parallel for ordered
 	for (cols=0;cols<512*512;cols += 512*8) {
+		size_t buflen;
+		uint8_t vxlbuf[512*8*65*4];
 		buflen = get_vxl_chunk(vxlbuf, cols, 512*8, st);
 
-		stream.next_in = vxlbuf;
-		stream.avail_in = buflen;
+#pragma omp ordered
+		{
+			stream.next_in = vxlbuf;
+			stream.avail_in = buflen;
 
-		if (cols == 512*512-512*8)
-			stream.end_of_stream = 1;
+			if (cols == 512*512-512*8)
+				stream.end_of_stream = 1;
 
-		do {
-			stream.next_out = outbuf+1;
-			stream.avail_out = 512*8*65*4+330;
+			do {
+				stream.next_out = outbuf+1;
+				stream.avail_out = 512*8*65*4+330;
 
-			if (isal_deflate(&stream) != ISAL_DECOMP_OK) {
-				LOG1("Some deflate err!");
-				return;
-			}
+				if (isal_deflate(&stream) != ISAL_DECOMP_OK) {
+					LOG1("Some deflate err!");
+					break;
+				}
 
-			st->f.send_packet(pid, outbuf, stream.next_out-outbuf, st);
-		} while (stream.avail_in != 0);
+				st->f.send_packet(pid, outbuf, stream.next_out-outbuf, st);
+			} while (stream.avail_in != 0);
+		}
 	}
 
 	free(stream.level_buf);
@@ -1047,7 +1066,7 @@ int stuck_in_a_block(fvec3 pos, struct State *st) {
 
 /* TODO: does spawning affect openspades' position send time? didn't i already mention this somewhere? */
 /* TODO: horizontal speed limit inexplicably being screwed at 94-ish min with openspades (most seen: 115.501671) */
-#define HORIZONTAL_SPEED_LIMIT_SQR 111.82 /* Nominally 108.16 */
+#define HORIZONTAL_SPEED_LIMIT_SQR 115.6 /* Nominally 108.16 */
 #define COMBINED_SPEED_LIMIT_SQR 1069.46 /* Usually 1034.2656, except when it's not */
 
 /* TODO: these ones don't account for positiondata timing fuckery -- document that outside of this todo! */
@@ -1203,9 +1222,12 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 
 		SBAD(st->p[pid].tool != ToolTypeGun && st->p[pid].tool != ToolTypeSpade);
 
-		/* TODO: witchcraft-based range validation */
 		SBAD(st->p[pid].tool == ToolTypeGun && PACKET.type > 3);
 		SBAD(st->p[pid].tool == ToolTypeSpade && PACKET.type != 4);
+
+		/* witchcraft-based range validation -- could probably be triggered with enough lag unless the target is stationary */
+		if (sqr_dist2(st->p[pid].lastagreedpos, st->p[PACKET.playerID].pos) > 128*128+HORIZONTAL_SPEED_LIMIT_SQR) LOG("dist2: %f", sqr_dist2(st->p[pid].lastagreedpos, st->p[PACKET.playerID].pos));
+		SBAD(sqr_dist2(st->p[pid].lastagreedpos, st->p[PACKET.playerID].pos) > 128*128+HORIZONTAL_SPEED_LIMIT_SQR);
 		
 		return 0;
 #undef PCKT
@@ -1553,6 +1575,23 @@ static int pvx_dump_bitmask_all(uint_fast32_t x, uint_fast32_t y, uint_fast32_t 
 	return 0;
 }
 
+/* TODO: should it send packets? */
+void clear_map(struct State *st) {
+	memset(st->globals.map.solidData, 0, (512*512*64+7)/8);
+}
+
+void prepare_map_load(struct State *st) {
+	st->globals.loadingMap = 1;
+	clear_map(st);
+}
+
+void finish_map_load(struct State *st) {
+	st->globals.loadingMap = 0;
+
+	/* TODO: don't bother sending map if no players are connected, don't bother reencoding the vxl if we can reuse the loaded one, if the input vxl is zlib-compressed send it along the wire as-is */
+	st->f.send_map(PID_BROADCAST, st);
+}
+
 void load_map_from_file(const char *path, struct State *st) {
 	struct PVX_VXLStreamConfig config;
 	char err[PVX_ERRBUF_SIZE];
@@ -1568,7 +1607,7 @@ void load_map_from_file(const char *path, struct State *st) {
 	config.customReadCall = pvx_dump_bitmask_all;
 	config.customReadUdata = &st->globals.map;
 
-	memset(st->globals.map.solidData, 0, (512*512*64+7)/8);
+	st->f.prepare_map_load(st);
 	if (pvx_vxl_stream_stateless(buf, size, &config) != 0) {
 		/* TODO: recover */
 		fprintf(stderr, "pvx_vxl_stream_stateless: %s\n", err);
@@ -1577,9 +1616,7 @@ void load_map_from_file(const char *path, struct State *st) {
 
 	munmap(buf, size);
 
-	/* TODO: don't bother if nobody is home, and deal with compression, reusing the loaded vxl instead of making a new one, whatever */
-	/* TODO: what the hell does the previous TODO mean? */
-	st->f.send_map(PID_BROADCAST, st);
+	st->f.finish_map_load(st);
 }
 
 /* You probably want to call this after game end and before map load. TODO: you can figure it out */
@@ -1601,6 +1638,10 @@ void boot_players_to_limbo(struct State *st) {
 /* TODO: wonder if it should be given a reason arg */
 /* TODO: do you think lua could add extra args to funcs to pass to other lua scripts? */
 void on_game_end(struct State *st) {
+	return;
+}
+
+void on_shutdown(struct State *st) {
 	return;
 }
 
@@ -1896,7 +1937,8 @@ void on_block_action(plid pid, ivec3 pos, unsigned type, struct State *st) {
 
 void block_line(ivec3 start, ivec3 end, plid from, struct State *st) {
 	dcore_block_line(start.x, start.y, start.z, end.x, end.y, end.z, &st->globals.map, st->p[from].blockColor);
-	st->f.send_block_line(PID_BROADCAST, start, end, from, st);
+	if (!st->globals.loadingMap)
+		st->f.send_block_line(PID_BROADCAST, start, end, from, st);
 }
 
 void on_block_line(plid pid, ivec3 start, ivec3 end, struct State *st) {
@@ -2033,7 +2075,9 @@ void move_tent(unsigned team, fvec3 pos, struct State *st) {
 }
 
 void on_crap_packet(plid pid, ENetPacket *packet, struct State *st) {
-	LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
+	//LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
+	/* TODO: remove need for \r with linenoise */
+	LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\r\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
 
 	if (packet->dataLength > 0)
 	switch (packet->data[0]) {
@@ -2061,6 +2105,7 @@ int intercept(ENetHost *host, ENetEvent *event) {
 
 	(void)event;
 
+#define st ((struct State *)host->peers->data)
 	if (host->receivedDataLength == 5 && !memcmp(host->receivedData, "HELLO", 5)) {
 		buf.data = "HI";
 		buf.dataLength = 2;
@@ -2083,10 +2128,14 @@ int intercept(ENetHost *host, ENetEvent *event) {
 		return 1;
 	}
 
+#undef st
+
 	return 0;
 }
 
 void set_funcs(struct State *st) {
+	st->f.before_log = before_log;
+	st->f.after_log = after_log;
 	st->f.tick = tick;
 	st->f.on_any_connect = on_any_connect;
 	st->f.on_successful_connect = on_successful_connect;
@@ -2103,6 +2152,9 @@ void set_funcs(struct State *st) {
 	st->f.on_chat = on_chat;
 	st->f.send_chat = send_chat;
 	st->f.set_fog = set_fog;
+	st->f.prepare_map_load = prepare_map_load;
+	st->f.finish_map_load = finish_map_load;
+	st->f.clear_map = clear_map;
 	st->f.load_map_from_file = load_map_from_file;
 	st->f.on_tool_change = on_tool_change;
 	st->f.on_block_action = on_block_action;
@@ -2151,6 +2203,7 @@ void set_funcs(struct State *st) {
 	st->f.send_move_object = send_move_object;
 	st->f.after_player_destroy = after_player_destroy;
 	st->f.on_game_end = on_game_end;
+	st->f.on_shutdown = on_shutdown;
 	st->f.boot_players_to_limbo = boot_players_to_limbo;
 	st->f.send_map_start = send_map_start;
 	st->f.send_packet = send_packet;
@@ -2189,6 +2242,7 @@ void set_defaults(struct State *st) {
 
 const char *cfg = "config.lua";
 /* config_path is relative to root_path, root_path defaults to . */
+/* TODO: assert(config_path[0] != '/') */
 #define USAGE "usage: %s [-c config_path] [-d root_path]\n"
 void parse_args(int argc, char **argv) {
 	int ch;
@@ -2209,12 +2263,35 @@ void parse_args(int argc, char **argv) {
 
 void hook_lua(const char *cfg, struct State *st);
 
-int main(int argc, char **argv) {
+static struct State *exit_st;
+static void atexit_server(void) {
+	plid i;
+
+	exit_st->f.on_shutdown(exit_st);
+
+	for (i=0;i<MAX_PLAYERS;i++) {
+		if (exit_st->host->peers[i].state == ENET_PEER_STATE_CONNECTED)
+			enet_peer_disconnect_now(exit_st->host->peers+i, 5); /* "Server shutdown" to betterspades and maybe iv of spades */
+	}
+
+	for (i=0;i<MASTERLIST_MAX_PEERS;i++) {
+		if (exit_st->ms.host->peers[i].state == ENET_PEER_STATE_CONNECTED)
+			enet_peer_disconnect_now(exit_st->ms.host->peers+i, 0);
+	}
+
+	masterlist_deinit(&exit_st->ms);
+
+	free(keepSolid);
+	free(rememberedSolidity);
+	pvx_destroy_bitmask(&exit_st->globals.map);
+	enet_host_destroy(exit_st->host);
+	free(exit_st->globals.grenades);
+	free(exit_st);
+}
+
+static struct State *st_init(void) {
 	ENetAddress addr;
 	struct State *st;
-
-	parse_args(argc, argv);
-	sandbox();
 
 	st = calloc(1, sizeof(struct State));
 	if (st == NULL)
@@ -2247,6 +2324,23 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
+	if (masterlist_init(&st->ms) != 0)
+		ERR("masterlist_init");
+
+	st->ms.port = addr.port;
+	st->ms.maxplayers = MAX_PLAYERS;
+
+	return st;
+}
+
+int main(int argc, char **argv) {
+	struct State *st;
+
+	parse_args(argc, argv);
+	sandbox();
+
+	st = st_init();
+
 	if (init_cull_stack(stackData) != 0)
 		ERR("malloc");
 	if ((rememberedSolidity = calloc(1, 512*512*sizeof(uint64_t))) == NULL)
@@ -2254,9 +2348,19 @@ int main(int argc, char **argv) {
 	if ((keepSolid = calloc(1, 512*512*sizeof(uint64_t))) == NULL)
 		ERR("calloc");
 
+	exit_st = st;
+	if (atexit(atexit_server)) {
+		fputs("atexit register failure\n", stderr);
+		exit(EXIT_FAILURE);
+	}
+
 	hook_lua(cfg, st);
 
 	st->f.load_initial_map(st);
+	/*ENetAddress maddr = {0,0};
+	enet_address_set_host(&maddr, "66.135.15.57");
+	maddr.port = 32886;
+	masterlist_connect(&maddr, &st->ms);*/
 
 	while (1)
 		do_loop(st);

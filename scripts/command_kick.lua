@@ -16,3 +16,5 @@ function cmd.func(pid, argv)
 	disconnect(who, 2);
 end
 register_command(cmd);
+
+return {};

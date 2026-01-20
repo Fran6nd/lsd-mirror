@@ -12,8 +12,9 @@ local lastprime;
 local ctr;
 local resetctr;
 local nadepid;
-local streak = {};
-local apocs = {};
+-- TODO: should alive implicitly be joined and joined implicitly be connected?
+local streak = pid_spawn_table(0);
+local apocs = pid_joined_table(0);
 -- TODO: you can find a better way than "oldfog"
 -- TODO: maybe send instead of set?
 --local oldfog;
@@ -22,34 +23,14 @@ local apocs = {};
 -- TODO on_unload stuff
 function mod.on_load()
 	nexttick = nil;
-	for i in piditer(PID_BROADCAST) do
-		streak[i] = 0;
-		apocs[i] = 0;
-	end
+	streak = pid_spawn_table(0);
+	apocs = pid_joined_table(0);
 end
 
 function mod.on_unload()
 	destroy_strike();
 	if (nexttick) then
 		send_fog(PID_BROADCAST, get_fog());
-	end
-end
-
-function mod.after.on_successful_connect(pid)
-	streak[pid] = 0;
-	apocs[pid] = 0;
-end
-
--- Resetting on spawn instead of on_player_destroy gives last-second nades just a moment to churn before streak reset
--- NOTE: spectators can spawn too
-function mod.after.spawn_player(pid)
-	streak[pid] = 0;
-end
-
-function mod.after.boot_players_to_limbo()
-	for i in piditer(PID_BROADCAST) do
-		streak[i] = 0;
-		apocs[i] = 0;
 	end
 end
 
@@ -74,9 +55,6 @@ function mod.after.on_disconnect(pid)
 			apocs[beststreak] = apocs[beststreak] + apocs[pid];
 		end
 	end
-
-	streak[pid] = nil;
-	apocs[pid] = nil;
 end
 
 local apoc_grant_msg = {
@@ -139,8 +117,8 @@ function cmd.func(pid)
 end
 register_command(cmd);
 
--- TODO: better way to signify "use the cmd: cap"
-local cmd = {name="forceapoc", caps="", desc="Summon an apoc without bothering to check for killstreak."};
+-- TODO: allow console to start apocs
+local cmd = {name="forceapoc", caps="forceapoc", desc="Summon an apoc without bothering to check for killstreak."};
 function cmd.func(pid)
 	start_apoc(pid);
 end

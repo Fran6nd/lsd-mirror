@@ -47,7 +47,7 @@ end
 -- TODO: disable family of commands
 -- TODO: can i toggle other people with the toggles cap?
 -- TODO: hook toggles into bans
-local cmd = {name={"togglebuild", "tb"}, caps="toggles", usage="player", desc="Prevent a player from directly altering the map."};
+local cmd = {name={"togglebuild", "tb"}, caps="toggles", fakepid=true, usage="player", desc="Prevent a player from directly altering the map."};
 function cmd.func(pid, argv)
 	toggle(pid, cmd, argv, "badcap:nobuild");
 end
@@ -55,14 +55,14 @@ register_command(cmd);
 
 -- TODO: grenade damage
 -- TODO: wonder how that would work with apoc
-local cmd = {name={"togglekill", "tk"}, caps="toggles", usage="player", desc="Prevent a player from directly damaging others."};
+local cmd = {name={"togglekill", "tk"}, caps="toggles", fakepid=true, usage="player", desc="Prevent a player from directly damaging others."};
 function cmd.func(pid, argv)
 	toggle(pid, cmd, argv, "badcap:nodamage");
 end
 register_command(cmd);
 
 -- TODO: muted player should probably be able to run commands
-local cmd = {name={"mute", "togglechat", "tc"}, caps="toggles", usage="player", desc="Shut a noisy player up."};
+local cmd = {name={"mute", "togglechat", "tc"}, caps="toggles", fakepid=true, usage="player", desc="Shut a noisy player up."};
 function cmd.func(pid, argv)
 	toggle(pid, cmd, argv, "badcap:mute");
 end

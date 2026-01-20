@@ -114,7 +114,7 @@ static int detect_and_push_columns(int_fast16_t x,
 
 	while (z <= bottom) { /* Greatest entrance Z: 62. Minumum entrance Z: 1. Real max: 55. */
 		/* Skip over any non-solid voxels and find the top of a solid voxel column, recording its position. */
-		while (!pvx_voxel_get_solidity4(solidData, i, z)) /* Infinite loop here; z too high.  */ /* Likely verdict: completely empty column. */
+		while (z < MAP_SIZE_Z && !pvx_voxel_get_solidity4(solidData, i, z)) /* Infinite loop here; z too high.  */ /* Likely verdict: completely empty column. */
 			z++;
 
 		if (z > bottom)

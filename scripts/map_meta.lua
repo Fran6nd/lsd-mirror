@@ -1,6 +1,6 @@
 -- map_meta.lua -- Extract metadata from maps without executing arbitrary code
 -- TODO: optional arbitrary code execution?
-local mod = {before={}};
+local mod = {before={},after={}};
 require "lib_l10n";
 local scraper = require "lib_pyscrape";
 local meta = {};
@@ -54,8 +54,15 @@ function mod.before.load_map_from_file(path)
 	file:close();
 end
 
+function mod.after.load_map_from_file(path)
+	if (meta.name) then
+		-- TODO: truncate in lua.c and add potential for length extension?
+		masterlist_set_map(string.sub(meta.name, 1, 20));
+	end
+end
+
 -- TODO: don't depend on fmtval for this
-local cmd = {name={"mapinfo", "mapname"}, desc="Dump the current map's metadata."};
+local cmd = {name={"mapinfo", "mapname"}, fakepid=true, desc="Dump the current map's metadata."};
 function cmd.func(pid)
 	send_chat(pid, fmtval(meta), 2, 0);
 end

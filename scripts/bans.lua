@@ -290,7 +290,7 @@ local ban_id_msg = {
 	en="Ban ID: #%(id)"
 };
 
-local cmd = {name="ban", caps="ban", usage="player duration comment", desc="Ban a naughty player."};
+local cmd = {name="ban", caps="ban", fakepid=true, usage="player duration comment", desc="Ban a naughty player."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 3);
 	local banpid = get_arg_pid("player", pid, cmd, argv[1]);
@@ -308,7 +308,7 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="banflags", caps="ban", usage="player duration comment flags...", desc="Give a naughty player some ban flags."};
+local cmd = {name="banflags", caps="ban", fakepid=true, usage="player duration comment flags...", desc="Give a naughty player some ban flags."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv > 3);
 	local banpid = get_arg_pid("player", pid, cmd, argv[1]);
@@ -327,13 +327,13 @@ end
 register_command(cmd);
 
 -- TODO: get rid of commands and most traces on unreg
-local cmd = {name="unban", caps="ban"};
+local cmd = {name="unban", caps="ban", fakepid=true};
 function cmd.func(pid, argv)
 	moveban(argv[1], stmt.addarchive, stmt.rmarchive);
 end
 register_command(cmd);
 
-local cmd = {name="reban", caps="ban"};
+local cmd = {name="reban", caps="ban", fakepid=true};
 function cmd.func(pid, argv)
 	moveban(argv[1], stmt.addunarchive, stmt.rmunarchive);
 	check_banneds("Banned");
@@ -342,7 +342,7 @@ register_command(cmd);
 
 -- TODO: CIDR notation?
 -- TODO: completely redo this
-local cmd = {name="queryban", caps="ban"};
+local cmd = {name="queryban", caps="ban", fakepid=true};
 function cmd.func(pid, argv)
 	local vals;
 
@@ -356,7 +356,7 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="queryoldban", caps="ban"};
+local cmd = {name="queryoldban", caps="ban", fakepid=true};
 function cmd.func(pid, argv)
 	local vals;
 

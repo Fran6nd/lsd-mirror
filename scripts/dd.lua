@@ -44,13 +44,21 @@ function close_to(val1, val2)
 	return close_to_tol(val1, val2, 0.00005);
 end
 
+-- TODO: or should it use on_cap_grant
+local function destroy(pid)
+	if (not has_cap(pid, "badcap:dd")) then
+		sc("!% "..tostring(pid).." is a big kaker");
+		grant_cap(pid, "badcap:dd");
+	end
+end
+
 -- Head position, anyway.
 -- TODO: use smooth position?
 local function get_kentuckyfried_position(pos, ori)
 	local vec = {x=pos.x, y=pos.y, z=pos.z};
 	local right = get_right(ori);
 	local down = cross(ori, right);
-	-- TODO: this sub/add seems suspicious
+
 	vec.z = vec.z + 0.2;
 	down = mult31(down, 0.3);
 	vec = sub(vec, down);
@@ -59,6 +67,7 @@ local function get_kentuckyfried_position(pos, ori)
 end
 
 -- See if our friend is looking exactly at someone
+-- TODO: check crap packets too
 function mod.after.on_position(pid, pos)
 	local ori = get_orientation(pid);
 	if (ori.x == 0 or ori.y == 0 or ori.z == 0) then
@@ -74,11 +83,11 @@ function mod.after.on_position(pid, pos)
 		local testvec = {x=ori.x*veclen, y=ori.y*veclen, z=ori.z*veclen};
 		-- TODO: kfc target position changes depending on target orientation
 		if (vec ~= nil and close_to(vec.x, testvec.x) and close_to(vec.y, testvec.y) and close_to(vec.z, testvec.z)) then
-			sc("!% "..tostring(pid).." is a big kaker");
+			destroy(pid);
 		end
 		if (pid == 1 and vec ~= nil) then
 			--scl("(vec)"..fmtval(vec) .. " -- (testvec)" .. fmtval(testvec));
-			scl(string.format("diff={x=%.6f, y=%.6f, z=%.6f}", vec.x-testvec.x, vec.y-testvec.y, vec.z-testvec.z));
+			--scl(string.format("diff={x=%.6f, y=%.6f, z=%.6f}", vec.x-testvec.x, vec.y-testvec.y, vec.z-testvec.z));
 		end
 		::continue::
 	end

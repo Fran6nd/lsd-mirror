@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <math.h>
 #include <arpa/inet.h>
+#include <errno.h>
 #include <luajit-2.1/lua.h>
 #include <luajit-2.1/lauxlib.h>
 #include <luajit-2.1/lualib.h>
 #include "state.h"
 #include "demoncore.h"
-#include "cull.h"
+#include <poll.h>
 
 #define LOG(x, ...) fprintf(stderr, x"\n", __VA_ARGS__)
 #define LOG1(x) fputs(x"\n", stderr);
@@ -569,6 +570,15 @@ static int simulate_grenade_physics(lua_State *l) {
 	return 3;
 }
 
+static int input_on_stdin(lua_State *l) {
+	struct pollfd fd[1];
+	fd->fd = 0;
+	fd->events = POLLIN;
+
+	lua_pushboolean(l, poll(fd, 1, 0) > 0);
+	return 1;
+}
+
 static int raycast(lua_State *l) {
 	fvec3 start = get_fvec3(l, 1);
 	fvec3 end = get_fvec3(l, 1);
@@ -602,6 +612,96 @@ static int disconnect_now(lua_State *l) {
 	unsigned reason = luaL_checknumber(l, 2);
 	enet_peer_disconnect_now(st->host->peers+pid, reason);
 	return 0;
+}
+
+static int masterlist_set_port(lua_State *l) {
+	uint16_t port = luaL_checknumber(l, 1);
+	st->ms.port = port;
+	return 0;
+}
+
+static int masterlist_get_port(lua_State *l) {
+	lua_pushnumber(l, st->ms.port);
+	return 1;
+}
+
+static int masterlist_set_players(lua_State *l) {
+	uint8_t players = luaL_checknumber(l, 1);
+	st->ms.players = players;
+	return 0;
+}
+
+static int masterlist_get_players(lua_State *l) {
+	lua_pushnumber(l, st->ms.players);
+	return 1;
+}
+
+static int masterlist_set_max_players(lua_State *l) {
+	uint8_t maxplayers = luaL_checknumber(l, 1);
+	st->ms.maxplayers = maxplayers;
+	return 0;
+}
+
+static int masterlist_get_max_players(lua_State *l) {
+	lua_pushnumber(l, st->ms.maxplayers);
+	return 1;
+}
+
+static int masterlist_set_name(lua_State *l) {
+	size_t len;
+	const char *name = luaL_checklstring(l, 1, &len);
+	if (len+1 > sizeof(st->ms.name))
+		LERR(l, "masterlist_set_name: name length should be less than %lu", sizeof(st->ms.name));
+	memcpy(st->ms.name, name, len+1);
+	return 0;
+}
+
+static int masterlist_get_name(lua_State *l) {
+	lua_pushstring(l, st->ms.name);
+	return 1;
+}
+
+static int masterlist_set_gamemode(lua_State *l) {
+	size_t len;
+	const char *gamemode = luaL_checklstring(l, 1, &len);
+	if (len+1 > sizeof(st->ms.gamemode))
+		LERR(l, "masterlist_set_gamemode: gamemode length should be less than %lu", sizeof(st->ms.gamemode));
+	memcpy(st->ms.gamemode, gamemode, len+1);
+	return 0;
+}
+
+static int masterlist_get_gamemode(lua_State *l) {
+	lua_pushstring(l, st->ms.gamemode);
+	return 1;
+}
+
+static int masterlist_set_map(lua_State *l) {
+	size_t len;
+	const char *map = luaL_checklstring(l, 1, &len);
+	if (len+1 > sizeof(st->ms.map))
+		LERR(l, "masterlist_set_map: map length should be less than %lu", sizeof(st->ms.map));
+	memcpy(st->ms.map, map, len+1);
+	return 0;
+}
+
+static int masterlist_get_map(lua_State *l) {
+	lua_pushstring(l, st->ms.map);
+	return 1;
+}
+
+static int lmasterlist_connect(lua_State *l) {
+	uint32_t peer;
+	ENetAddress addr;
+	addr.port = 32886;
+
+	if (enet_address_set_host(&addr, luaL_checkstring(l, 1)) < 0)
+		LERR(l, "masterlist_connect: enet_address_set_host: %s", strerror(errno));
+
+	if ((peer = masterlist_connect(&addr, &st->ms)) == (uint32_t)-1)
+		LERR(l, "masterlist_connect: enet_host_connect: %s", strerror(errno));
+
+	lua_pushnumber(l, peer);
+	return 1;
 }
 
 int get_solid(ivec3 pos, struct State *st);
@@ -646,6 +746,13 @@ static int get_hp(lua_State *l) {
 static int get_ipaddr(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 	lua_pushnumber(l, ntohl(st->host->peers[pid].address.host));
+	return 1;
+}
+
+/* More popularly referred to as "ping" */
+static int get_round_trip_time(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	lua_pushnumber(l, st->host->peers[pid].roundTripTime);
 	return 1;
 }
 
@@ -845,8 +952,25 @@ static const struct luaL_Reg funcs[] = {
 	{"disconnect", disconnect},
 	{"disconnect_now", disconnect_now},
 
+	{"masterlist_get_port", masterlist_get_port},
+	{"masterlist_get_players", masterlist_get_players},
+	{"masterlist_get_max_players", masterlist_get_max_players},
+	{"masterlist_get_name", masterlist_get_name},
+	{"masterlist_get_map", masterlist_get_map},
+	{"masterlist_get_gamemode", masterlist_get_gamemode},
+
+	{"masterlist_set_port", masterlist_set_port},
+	{"masterlist_set_players", masterlist_set_players},
+	{"masterlist_set_max_players", masterlist_set_max_players},
+	{"masterlist_set_name", masterlist_set_name},
+	{"masterlist_set_map", masterlist_set_map},
+	{"masterlist_set_gamemode", masterlist_set_gamemode},
+
+	{"masterlist_connect", lmasterlist_connect},
+
 	{"piditer", piditer},
 
+	{"input_on_stdin", input_on_stdin},
 	{"raycast", raycast},
 	{"simulate_grenade_physics", simulate_grenade_physics},
 	{"is_solid", is_solid},
@@ -854,6 +978,7 @@ static const struct luaL_Reg funcs[] = {
 	{"get_team_name", get_team_name},
 	{"get_hp", get_hp},
 	{"get_ipaddr", get_ipaddr},
+	{"get_round_trip_time", get_round_trip_time},
 	{"get_tentloc", get_tentloc},
 	{"get_intelloc", get_intelloc},
 	{"get_position", get_position},

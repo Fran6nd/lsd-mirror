@@ -30,11 +30,11 @@ end
 
 -- TODO: this definitely needs to be forced as the first
 function can_see_command(pid, cmd)
-	return true;
+	return not is_fakepid(pid) or cmd.fakepid;
 end
 server.can_see_command = can_see_command;
 
-local cmd = {name={"cmds", "commands"}, usage="[page]", desc="Print an alphabetically ordered list of all commands."};
+local cmd = {name={"cmds", "commands"}, fakepid=true, usage="[page]", desc="Print an alphabetically ordered list of all commands."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv <= 1);
 	local sorted = {};
@@ -74,12 +74,13 @@ function cmd.func(pid, argv)
 
 	table.sort(sorted);
 
+	-- TODO: limit line length
 	send_chat(pid, table.concat(sorted, ", "), 2, 0);
 end
 register_command(cmd);
 
 -- TODO: should /help display usage for unseen commands? their existence can be confirmed by just attempting to run it, but /help denies it
-local cmd = {name={"help", "man"}, usage="command", desc="Display the invocation and description of a command."};
+local cmd = {name={"help", "man"}, fakepid=true, usage="command", desc="Display the invocation and description of a command."};
 function cmd.func(pid, argv)
 	local val = commands.help;
 
@@ -95,3 +96,5 @@ function cmd.func(pid, argv)
 	end
 end
 register_command(cmd);
+
+return {};

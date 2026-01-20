@@ -14,6 +14,7 @@ function register_command(cmd)
 	end
 end
 
+-- TODO: make a version that only operates on joined and a version that only operates on connected
 function get_player_by_str(str)
 	-- Substring not found
 	local found = -1;
@@ -57,6 +58,10 @@ function cmd_assert(pid, cmd, condition)
 		send_usage(pid, cmd);
 		error(stexec);
 	end
+end
+
+function is_fakepid(pid)
+	return pid >= MAX_PLAYERS and pid < 0x20000000;
 end
 
 function get_arg_str(argname, pid, cmd, arg)
@@ -201,10 +206,10 @@ function get_arg_pid(argname, pid, cmd, arg)
 end
 
 -- TODO: unregister commands somehow
-local orig_unreg = unregister;
-function unregister(module)
-	orig_unreg(module);
-end
+-- local orig_unreg = unregister;
+-- function unregister(module)
+-- 	orig_unreg(module);
+-- end
 
 -- TODO: should this be punctuated?
 local unknown_cmd_msg = {
@@ -215,10 +220,14 @@ local cmd_err_msg = {
 	en="Some error occurred with that command :("
 };
 
+local not_in_game_msg = {
+	en="This command can only be run while in-game."
+}
+
 -- TODO: log
 -- TODO: /mute
 -- TODO: redact certain args?
-local function handle_command(pid, msg)
+function handle_command(pid, msg, nolog)
 	local i = 0;
 	local argv = {};
 
@@ -227,10 +236,12 @@ local function handle_command(pid, msg)
 		i = i + 1;
 	end
 
-	send_chat(pid, "> /"..msg, 2, 0);
-	log("%s: /%s", get_name(pid), msg);
+	if (not nolog) then
+		send_chat(pid, "> /"..msg, 2, 0);
+		log("%s: /%s", get_name(pid), msg);
+	end
 
-	if (commands[string.lower(argv[0])] == nil) then
+	if (argv[0] == nil or commands[string.lower(argv[0])] == nil) then
 		l10n_send_chat(pid, unknown_cmd_msg);
 		return;
 	end
@@ -239,6 +250,10 @@ local function handle_command(pid, msg)
 end
 
 function try_run_command(cmd, pid, argv, msg)
+	if (is_fakepid(pid) and not cmd.fakepid) then
+		l10n_send_chat(pid, not_in_game_msg);
+		return;
+	end
 	local status, err = pcall(cmd.func, pid, argv, msg);
 	if (not status and err ~= stexec) then
 		l10n_send_chat(pid, cmd_err_msg);

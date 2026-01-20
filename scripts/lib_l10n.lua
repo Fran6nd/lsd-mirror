@@ -26,8 +26,14 @@ function l10n_get_str_pid(pid, msgtab, interptab)
 end
 
 -- TODO: support e.g. pt-BR, pt
+-- TODO: make BROADCAST_ plids unsigned?
 function l10n_send_chat(pid, msgtab, interptab)
+	if (is_fakepid(pid)) then
+		send_chat(pid, l10n_get_str_pid(pid, msgtab, interptab), 2, 0);
+		return;
+	end
+	-- TODO: support invalid PIDs?
 	for i in piditer(pid) do
-		send_chat(i, l10n_get_str_pid(pid, msgtab, interptab), 2, 0);
+		send_chat(i, l10n_get_str_pid(i, msgtab, interptab), 2, 0);
 	end
 end

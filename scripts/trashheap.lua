@@ -90,7 +90,7 @@ function nuketest()
 		end
 	end
 	sc("delta: "..tostring(get_time()-start));
-	log("%s", "delta: "..tostring(get_time()-start));
+	log("delta: %.5f", get_time()-start);
 end
 
 function nuketest2()
@@ -103,7 +103,7 @@ function nuketest2()
 		end
 	end
 	sc("delta: "..tostring(get_time()-start));
-	log("%s", "delta: "..tostring(get_time()-start));
+	log("delta: %.5f", get_time()-start);
 end
 
 function nuketest3()
@@ -115,7 +115,27 @@ function nuketest3()
 	end
 	bdestroy_finish();
 	sc("delta: "..tostring(get_time()-start));
-	log("%s", "delta: "..tostring(get_time()-start));
+	log("delta: %.5f", get_time()-start);
 end
+
+maptime = {};
+function maptime.send_map(pid)
+	local start = get_time();
+	log("start");
+	next_call("send_map", maptime.send_map)(pid);
+	log("delta: %.5f", get_time()-start);
+end
+
+local cmd = {name="countvox", caps="test"}
+function cmd.func()
+	local num = 0;
+	for y=0,511 do
+		for x=0,511 do
+			num = num + (is_solid{x=x, y=y, z=61} and 1 or 0);
+		end
+	end
+	log("%f", num);
+end
+--register_command(cmd);
 
 return {};

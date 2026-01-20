@@ -3,6 +3,7 @@
 #include <enet/enet.h>
 #include "protocol.h"
 #include "bitmask.h"
+#include "masterlist.h"
 
 /* For blocks and block lines when no player has placed them */
 #define PID_COLOR_ANONYMOUS 32
@@ -113,6 +114,10 @@ struct Functions {
 	/* TODO: make name less ambiguous? refers to players dying/disconnecting/whatever but could be interpreted as block destroying */
 	void (*after_player_destroy)(plid pid, struct State *st);
 	void (*on_game_end)(struct State *st);
+	void (*on_shutdown)(struct State *st);
+	/* TODO: just have "log" */
+	void (*before_log)(struct State *st);
+	void (*after_log)(struct State *st);
 
 	/*
 	 * Actions -- set pid to PID_BROADCAST to broadcast to all players,
@@ -127,6 +132,9 @@ struct Functions {
 
 	/* vxl, scientists hypothesize pvx may one day become available */
 	void (*load_initial_map)(struct State *st);
+	void (*clear_map)(struct State *st);
+	void (*prepare_map_load)(struct State *st);
+	void (*finish_map_load)(struct State *st);
 	void (*load_map_from_file)(const char *path, struct State *st);
 	void (*finish_cull)(struct State *st);
 	uint32_t (*block_action_rm)(ivec3 pos, unsigned type, plid from, struct State *st);
@@ -194,6 +202,7 @@ struct Functions {
 
 struct Globals {
 	struct BitmaskUData map;
+	int loadingMap;
 	struct Grenade *grenades;
 	size_t grenadeSize;
 	size_t grenadeCount;
@@ -212,6 +221,7 @@ struct State {
 	struct Player p[256];
 	struct Globals globals;
 	struct Functions f;
+	struct MasterState ms;
 	/* default map */
 	clk epoch; /* Time the server was started at, as measured by get_time() */
 	clk nextTickTime;

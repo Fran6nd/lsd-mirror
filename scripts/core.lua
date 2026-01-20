@@ -1,11 +1,13 @@
 -- core.lua -- Glue for other scripts
 package.path = "./scripts/?.lua"
+package.cpath = "./exec/?.so"
 
 -- TODO: make next_call work like pcall -- give it varargs
 -- TODO: also maybe require the module to call a function to get its dedicated version of next_call, which already knows the module to look for
 function log(fmt, ...)
 	io.stderr:write(string.format(fmt.."\n", ...));
 end
+server.log = log;
 
 function getcfg(key, default)
 	if (_G[key] == nil) then
@@ -28,12 +30,19 @@ callchain = {};
 -- TODO: names?
 modules = {};
 function register(module)
-	log("Loaded %s", module);
+	-- TODO: force modules to return tables
+	log("Loaded %s", module.name or module);
 	table.insert(modules, module);
 	if (module.before ~= nil) then
 		for x,y in pairs(module.before) do
 			local patch;
-			patch = function(...) y(...); next_call(x, patch)(...); end
+			if (module.after ~= nil and module.after[x] ~= nil) then
+				local z = module.after[x];
+				patch = function(...) y(...); next_call(x, patch)(...); z(...); end
+				module.after[x] = nil;
+			else
+				patch = function(...) y(...); next_call(x, patch)(...); end
+			end
 			-- TODO: do you think overwriting things in the module will screw things up?
 			-- TODO: especially if one mod registers both a before and an after
 			module[x] = patch;
@@ -62,7 +71,7 @@ function register(module)
 	end
 end
 
-function unregister(module)
+function unregister(module, norm)
 	local found = false;
 	local status = true, err;
 
@@ -74,14 +83,16 @@ function unregister(module)
 	for key, val in ipairs(modules) do
 		if val == module then
 			found = true;
-			log("Unloaded %s", val);
-			table.remove(modules, key);
+			log("Unloaded %s", module.name or module);
+			if (not norm) then
+				table.remove(modules, key);
+			end
 			break;
 		end
 	end
 
 	if (not found) then
-		log("Couldn't unload %s", module);
+		log("Couldn't unload %s", module.name or module);
 		return;
 	end
 
@@ -127,9 +138,26 @@ function stop_exec()
 	error(stexec);
 end
 
+-- TODO: remove dependency on require
 function load(modname)
 	mod = require(modname);
 	if (type(mod) == "table") then
+		mod.name = modname;
 		register(mod);
 	end
 end
+
+-- Just sets boilerplate
+function init_mod()
+	return {before={},after={}};
+end
+
+-- Unregister everything on_shutdown -- most importantly this calls on_unload
+local nextshutdown = on_shutdown;
+function on_shutdown()
+	for _,y in ipairs(modules) do
+		unregister(y, true);
+	end
+	nextshutdown();
+end
+server.on_shutdown = on_shutdown;

@@ -6,7 +6,7 @@
 -- TODO: you probably DO want to keep the =, for things like limiting ban time (TODO: how would you validate that the cap is formatted correcty?), but should defer user to auth.lua
 -- TODO: auth uses caps="login" a lot, how should that be handled?
 require "lib_l10n";
-local mod = {after={}};
+local mod = init_mod();
 getcfg("cap_groups", {
 	guard = {
 		"cmd:advance",
@@ -33,12 +33,15 @@ getcfg("cap_groups", {
 		"badcap:mute",
 		"badcap:nobuild",
 		"badcap:nodamage"
+	},
+	["badcap:dd"] = {
+		"badcap:neuter"
 	}
 });
 
 -- caps is recursively calculated from groups
-local groups = {};
-local caps = {};
+local groups = pid_connected_table(function() return {} end);
+local caps = pid_connected_table(function() return {} end);
 
 -- TODO: wonder how "all" would be handled here; should the cap be kept a secret and users be forced to check every grant/drop?
 function on_cap_grant(pid, cap)end
@@ -57,14 +60,13 @@ local function parse_cap_val(str)
 	return cap, val;
 end
 
--- TODO: recursion refuses to work
 local function grant_subcaps(pid, cap)
 	local cap, val = parse_cap_val(cap);
 
 	if (caps[pid][cap] == nil) then
 		caps[pid][cap] = val;
 		if (cap_groups[cap]) then
-			for x in ipairs(cap_groups[cap]) do
+			for _,x in ipairs(cap_groups[cap]) do
 				-- Try not to make infinite loops.
 				grant_subcaps(pid, x);
 			end
@@ -96,6 +98,12 @@ function drop_cap(pid, cap)
 		end
 		on_cap_drop(pid, cap);
 	end
+end
+
+-- Don't use this if you think on_cap_drop should be called
+function clear_caps(pid)
+	groups[pid] = {};
+	caps[pid] = {};
 end
 
 function toggle_cap(pid, cap)
@@ -142,19 +150,9 @@ function get_caps(pid)
 end
 
 function mod.on_load()
-	groups = {};
-	caps = {};
-end
-
--- TODO: need deinit_connection func or something
-function mod.after.on_disconnect(pid)
-	groups[pid] = {};
-	caps[pid] = {};
-end
-
-function mod.after.disconnect_now(pid)
-	groups[pid] = {};
-	caps[pid] = {};
+	-- TODO: do i need this?
+	groups = pid_connected_table(function() return {} end);
+	caps = pid_connected_table(function() return {} end);
 end
 
 local function get_cmd_canonical_name(cmd)

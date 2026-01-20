@@ -12,6 +12,8 @@ local user = {};
 
 getcfg("auth_db", "rw/auth.db");
 
+-- TODO: need to associate account name with fakepid's
+
 local function verifystmt(name, code)
 	if (stmt[name] == nil) then
 		-- Throwing an error causes unregister to be called
@@ -41,17 +43,17 @@ function mod.on_load()
 	db:exec[[
 		PRAGMA journal_mode = WAL;
 		PRAGMA temp_store = memory;
-		CREATE TABLE IF NOT EXISTS Users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE COLLATE NOCASE, groups TEXT COLLATE NOCASE, caps TEXT COLLATE NOCASE, password TEXT, totp BLOB, totptype TEXT, totpinterval INTEGER);
+		CREATE TABLE IF NOT EXISTS Users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE COLLATE NOCASE, caps TEXT COLLATE NOCASE, password TEXT, totp BLOB, totptype TEXT, totpinterval INTEGER);
 	]];
 
 	-- TODO: instead of this VALUES array, use a map?
-	-- TODO: merge groups and caps?
-	createstmt("useradd",   "INSERT INTO Users VALUES(NULL, ?, ?, ?, ?, ?, ?, ?);");
+	createstmt("useradd",   "INSERT INTO Users VALUES(NULL, ?, ?, ?, ?, ?, ?);");
 	---- selects name for case-sensitivity whatever? why would the name not be lowercase, actually?
 	--createstmt("id",        "SELECT name, groups, caps FROM Users WHERE name = ?;");
-	createstmt("getpasswd", "SELECT name, groups, caps, password, totp, totptype, totpinterval FROM Users WHERE name = ?;");
+	createstmt("getpasswd", "SELECT name, caps, password, totp, totptype, totpinterval FROM Users WHERE name = ?;");
 	createstmt("setpasswd", "UPDATE USERS SET password = ? WHERE name = ?;");
 	createstmt("settotp", "UPDATE USERS SET totp = ?, totptype = ?, totpinterval = ? WHERE name = ?;");
+	createstmt("setcaps", "UPDATE USERS SET caps = ? WHERE name = ?;");
 
 	granted = {};
 	user = {};
@@ -122,13 +124,9 @@ local name_taken_msg = {
 	en="Can't register; are you sure that name isn't taken?"
 };
 
-local cmd = {name="register", usage="name password", desc="Create an account."};
+local cmd = {name="register", fakepid=true, usage="name password", desc="Create an account."};
 function cmd.func(pid, argv)
-	if (#argv ~= 2) then
-		-- TODO: auto-generate usage?
-		send_usage(pid, cmd);
-		return;
-	end
+	cmd_assert(pid, cmd, #argv == 2);
 
 	local name = argv[1];
 	local pwd = argv[2];
@@ -142,7 +140,7 @@ function cmd.func(pid, argv)
 	-- TODO: do i need to handle sodium errors?
 	-- TODO: add cooldown time to /register to prevent dos from password hashing (unless you want to spin up a new thread)
 	-- TODO: pass NULL to this stuff?
-	stmt.useradd:bind_values(name, "", "", sodium.crypto_pwhash_str(pwd, sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE, sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE), "", "", 0);
+	stmt.useradd:bind_values(name, "", sodium.crypto_pwhash_str(pwd, sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE, sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE), "", "", 0);
 	if (stmt.useradd:step() ~= sql.DONE) then
 		stmt.useradd:reset();
 		l10n_send_chat(pid, name_taken_msg);
@@ -153,12 +151,9 @@ end
 register_command(cmd);
 
 -- TODO: -> totp_gen?
-local cmd = {name="set_totp", caps="login", desc="Configure TOTP for your account."};
+local cmd = {name="settotp", caps="login", desc="Configure TOTP for your account."};
 function cmd.func(pid, argv)
-	if (#argv ~= 0) then
-		send_usage(pid, cmd);
-		return;
-	end
+	cmd_assert(pid, cmd, #argv == 0);
 
 	-- TODO: tie into logins
 
@@ -186,6 +181,26 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
+-- TODO: use
+local function exec_stmt(name, ...)
+	stmt[name]:reset();
+	stmt[name]:bind_values(...);
+	code = stmt[name]:step();
+	if (code ~= sql.DONE) then
+		error(name..":step: "..code);
+	end
+end
+
+local cmd = {name="authcaps", caps="authcaps", fakepid=true, usage="user caps...", desc="Set an account's capabilities."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv >= 1);
+
+	-- TODO: update caps of connected player with user[player] == arg.user
+	-- TODO: pretty errors for nonexistent user
+	exec_stmt("setcaps", table.concat(argv, " ", 2), argv[1]);
+end
+register_command(cmd);
+
 local cmd = {name="chpasswd", caps="login", desc="Change your account's password."};
 function cmd.func(pid, argv)
 	-- TODO
@@ -203,11 +218,7 @@ local bad_login_msg = {
 
 local cmd = {name="login", usage="name password [otp]", desc="Login to an account."};
 function cmd.func(pid, argv)
-	if (#argv ~= 2 and #argv ~= 3) then
-		-- TODO: totp
-		send_usage(pid, cmd);
-		return;
-	end
+	cmd_assert(pid, cmd, #argv == 2 or #argv == 3);
 
 	local name = argv[1];
 	local pwd = argv[2];
@@ -230,15 +241,15 @@ function cmd.func(pid, argv)
 	vals = stmt.getpasswd:get_values();
 	-- TODO: should i reset after?
 
-	if (not sodium.crypto_pwhash_str_verify(vals[4], pwd)) then
+	if (not sodium.crypto_pwhash_str_verify(vals[3], pwd)) then
 		l10n_send_chat(pid, bad_login_msg);
 		return;
 	end
 
-	if (vals[5] ~= "") then
-		local totp_key = vals[5];
-		local totp_type = vals[6];
-		local totp_interval = vals[7];
+	if (vals[4] ~= "") then
+		local totp_key = vals[4];
+		local totp_type = vals[5];
+		local totp_interval = vals[6];
 		local ctr = os.time()/totp_interval;
 
 		for i=-1,0,1 do
@@ -260,12 +271,11 @@ function cmd.func(pid, argv)
 
 	-- TODO: remove caps from table
 	user[pid] = vals[1];
-	-- TODO: caps-groups merge
 	drop_granted(pid);
 	granted[pid] = {};
 	table.insert(granted[pid], "login");
 	grant_cap(pid, "login");
-	for x in string.gmatch(vals[2] .. " " .. vals[3], "%S+") do
+	for x in string.gmatch(vals[2], "%S+") do
 		table.insert(granted[pid], x);
 		grant_cap(pid, x);
 	end

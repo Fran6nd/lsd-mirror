@@ -86,6 +86,10 @@ function extract_name(arg) {
 			printf("\t"pullfunc"\n", argv[i], i);
 		}
 
+		# TODO: <= or just ==?
+		if (argc <= 1)
+			printf("\t(void)l;\n");
+
 		if (defer != "") {
 			printf("\n%s", defer);
 		}
@@ -98,7 +102,7 @@ function extract_name(arg) {
 		}
 		printf(");\n\treturn 0;\n}\n\n");
 
-		printf("static void c%s(%s) {\n\tlua_getglobal(l, \"%s\");\n\n", name, args, name);
+		printf("static void c%s(%s) {\n\t(void)st;\n\tlua_getglobal(l, \"%s\");\n\n", name, args, name);
 		for (i=1;i<argc;i++) {
 			if (match(argv[i], /^plid /))
 				pushfunc = "lua_pushnumber(l, %s);";

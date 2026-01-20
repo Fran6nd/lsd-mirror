@@ -9,6 +9,7 @@ static int lon_any_connect(lua_State *l) {
 }
 
 static void con_any_connect(plid pid, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_any_connect");
 
 	lua_pushnumber(l, pid);
@@ -26,6 +27,7 @@ static int lon_successful_connect(lua_State *l) {
 }
 
 static void con_successful_connect(plid pid, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_successful_connect");
 
 	lua_pushnumber(l, pid);
@@ -43,6 +45,7 @@ static int lon_disconnect(lua_State *l) {
 }
 
 static void con_disconnect(plid pid, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_disconnect");
 
 	lua_pushnumber(l, pid);
@@ -63,6 +66,7 @@ static int lon_join(lua_State *l) {
 }
 
 static void con_join(plid pid, unsigned team, unsigned weapon, const char *name, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_join");
 
 	lua_pushnumber(l, pid);
@@ -85,6 +89,7 @@ static int lon_switch(lua_State *l) {
 }
 
 static void con_switch(plid pid, unsigned team, unsigned weapon, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_switch");
 
 	lua_pushnumber(l, pid);
@@ -105,6 +110,7 @@ static int lon_position(lua_State *l) {
 }
 
 static void con_position(plid pid, fvec3 pos, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_position");
 
 	lua_pushnumber(l, pid);
@@ -124,6 +130,7 @@ static int lon_orientation(lua_State *l) {
 }
 
 static void con_orientation(plid pid, fvec3 ori, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_orientation");
 
 	lua_pushnumber(l, pid);
@@ -143,6 +150,7 @@ static int lon_move_input(lua_State *l) {
 }
 
 static void con_move_input(plid pid, unsigned bitmask, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_move_input");
 
 	lua_pushnumber(l, pid);
@@ -162,6 +170,7 @@ static int lon_mouse_input(lua_State *l) {
 }
 
 static void con_mouse_input(plid pid, unsigned bitmask, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_mouse_input");
 
 	lua_pushnumber(l, pid);
@@ -183,6 +192,7 @@ static int lon_color_change(lua_State *l) {
 }
 
 static void con_color_change(plid pid, color color, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_color_change");
 
 	lua_pushnumber(l, pid);
@@ -203,6 +213,7 @@ static int lon_block_action(lua_State *l) {
 }
 
 static void con_block_action(plid pid, ivec3 pos, unsigned type, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_block_action");
 
 	lua_pushnumber(l, pid);
@@ -224,6 +235,7 @@ static int lon_block_line(lua_State *l) {
 }
 
 static void con_block_line(plid pid, ivec3 start, ivec3 end, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_block_line");
 
 	lua_pushnumber(l, pid);
@@ -245,6 +257,7 @@ static int lon_chat(lua_State *l) {
 }
 
 static void con_chat(plid pid, const char *msg, unsigned type, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_chat");
 
 	lua_pushnumber(l, pid);
@@ -265,6 +278,7 @@ static int lon_tool_change(lua_State *l) {
 }
 
 static void con_tool_change(plid pid, unsigned tool, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_tool_change");
 
 	lua_pushnumber(l, pid);
@@ -285,6 +299,7 @@ static int lon_hit(lua_State *l) {
 }
 
 static void con_hit(plid pid, unsigned type, plid hitPlayer, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_hit");
 
 	lua_pushnumber(l, pid);
@@ -307,6 +322,7 @@ static int lon_grenade(lua_State *l) {
 }
 
 static void con_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_grenade");
 
 	lua_pushnumber(l, pid);
@@ -329,6 +345,7 @@ static int lon_reload(lua_State *l) {
 }
 
 static void con_reload(plid pid, unsigned mag, unsigned reserve, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_reload");
 
 	lua_pushnumber(l, pid);
@@ -348,6 +365,7 @@ static int lafter_player_destroy(lua_State *l) {
 }
 
 static void cafter_player_destroy(plid pid, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "after_player_destroy");
 
 	lua_pushnumber(l, pid);
@@ -358,12 +376,14 @@ static void cafter_player_destroy(plid pid, struct State *st) {
 
 
 static int lon_game_end(lua_State *l) {
+	(void)l;
 
 	f.on_game_end(st);
 	return 0;
 }
 
 static void con_game_end(struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_game_end");
 
 
@@ -373,12 +393,14 @@ static void con_game_end(struct State *st) {
 
 
 static int lon_shutdown(lua_State *l) {
+	(void)l;
 
 	f.on_shutdown(st);
 	return 0;
 }
 
 static void con_shutdown(struct State *st) {
+	(void)st;
 	lua_getglobal(l, "on_shutdown");
 
 
@@ -388,12 +410,14 @@ static void con_shutdown(struct State *st) {
 
 
 static int lbefore_log(lua_State *l) {
+	(void)l;
 
 	f.before_log(st);
 	return 0;
 }
 
 static void cbefore_log(struct State *st) {
+	(void)st;
 	lua_getglobal(l, "before_log");
 
 
@@ -403,12 +427,14 @@ static void cbefore_log(struct State *st) {
 
 
 static int lafter_log(lua_State *l) {
+	(void)l;
 
 	f.after_log(st);
 	return 0;
 }
 
 static void cafter_log(struct State *st) {
+	(void)st;
 	lua_getglobal(l, "after_log");
 
 
@@ -418,12 +444,14 @@ static void cafter_log(struct State *st) {
 
 
 static int ltick(lua_State *l) {
+	(void)l;
 
 	f.tick(st);
 	return 0;
 }
 
 static void ctick(struct State *st) {
+	(void)st;
 	lua_getglobal(l, "tick");
 
 
@@ -433,12 +461,14 @@ static void ctick(struct State *st) {
 
 
 static int lload_initial_map(lua_State *l) {
+	(void)l;
 
 	f.load_initial_map(st);
 	return 0;
 }
 
 static void cload_initial_map(struct State *st) {
+	(void)st;
 	lua_getglobal(l, "load_initial_map");
 
 
@@ -448,12 +478,14 @@ static void cload_initial_map(struct State *st) {
 
 
 static int lclear_map(lua_State *l) {
+	(void)l;
 
 	f.clear_map(st);
 	return 0;
 }
 
 static void cclear_map(struct State *st) {
+	(void)st;
 	lua_getglobal(l, "clear_map");
 
 
@@ -463,12 +495,14 @@ static void cclear_map(struct State *st) {
 
 
 static int lprepare_map_load(lua_State *l) {
+	(void)l;
 
 	f.prepare_map_load(st);
 	return 0;
 }
 
 static void cprepare_map_load(struct State *st) {
+	(void)st;
 	lua_getglobal(l, "prepare_map_load");
 
 
@@ -478,12 +512,14 @@ static void cprepare_map_load(struct State *st) {
 
 
 static int lfinish_map_load(lua_State *l) {
+	(void)l;
 
 	f.finish_map_load(st);
 	return 0;
 }
 
 static void cfinish_map_load(struct State *st) {
+	(void)st;
 	lua_getglobal(l, "finish_map_load");
 
 
@@ -500,6 +536,7 @@ static int lload_map_from_file(lua_State *l) {
 }
 
 static void cload_map_from_file(const char *path, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "load_map_from_file");
 
 	lua_pushstring(l, path);
@@ -510,12 +547,14 @@ static void cload_map_from_file(const char *path, struct State *st) {
 
 
 static int lfinish_cull(lua_State *l) {
+	(void)l;
 
 	f.finish_cull(st);
 	return 0;
 }
 
 static void cfinish_cull(struct State *st) {
+	(void)st;
 	lua_getglobal(l, "finish_cull");
 
 
@@ -533,6 +572,7 @@ static int lblock_action_cull(lua_State *l) {
 }
 
 static void cblock_action_cull(ivec3 pos, uint32_t mask, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "block_action_cull");
 
 	push_ivec3(pos);
@@ -553,6 +593,7 @@ static int lblock_action(lua_State *l) {
 }
 
 static void cblock_action(ivec3 pos, unsigned type, plid from, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "block_action");
 
 	push_ivec3(pos);
@@ -574,6 +615,7 @@ static int lblock_line(lua_State *l) {
 }
 
 static void cblock_line(ivec3 start, ivec3 end, plid from, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "block_line");
 
 	push_ivec3(start);
@@ -595,6 +637,7 @@ static int lset_fog(lua_State *l) {
 }
 
 static void cset_fog(color color, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "set_fog");
 
 	push_color(color);
@@ -613,6 +656,7 @@ static int ltick_player_physics(lua_State *l) {
 }
 
 static void ctick_player_physics(plid pid, float timeDelta, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "tick_player_physics");
 
 	lua_pushnumber(l, pid);
@@ -631,6 +675,7 @@ static int ldetonate_grenade(lua_State *l) {
 }
 
 static void cdetonate_grenade(size_t index, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "detonate_grenade");
 
 	lua_pushnumber(l, index);
@@ -641,12 +686,14 @@ static void cdetonate_grenade(size_t index, struct State *st) {
 
 
 static int lboot_players_to_limbo(lua_State *l) {
+	(void)l;
 
 	f.boot_players_to_limbo(st);
 	return 0;
 }
 
 static void cboot_players_to_limbo(struct State *st) {
+	(void)st;
 	lua_getglobal(l, "boot_players_to_limbo");
 
 
@@ -667,6 +714,7 @@ static int lsend_grenade(lua_State *l) {
 }
 
 static void csend_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_grenade");
 
 	lua_pushnumber(l, pid);
@@ -688,6 +736,7 @@ static int lsend_map(lua_State *l) {
 }
 
 static void csend_map(plid pid, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_map");
 
 	lua_pushnumber(l, pid);
@@ -705,6 +754,7 @@ static int lsend_state(lua_State *l) {
 }
 
 static void csend_state(plid pid, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_state");
 
 	lua_pushnumber(l, pid);
@@ -722,6 +772,7 @@ static int lsend_connected_players(lua_State *l) {
 }
 
 static void csend_connected_players(plid pid, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_connected_players");
 
 	lua_pushnumber(l, pid);
@@ -739,6 +790,7 @@ static int lspawn_player(lua_State *l) {
 }
 
 static void cspawn_player(plid pid, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "spawn_player");
 
 	lua_pushnumber(l, pid);
@@ -759,6 +811,7 @@ static int lsend_chat(lua_State *l) {
 }
 
 static void csend_chat(plid pid, const char *msg, unsigned type, plid from, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_chat");
 
 	lua_pushnumber(l, pid);
@@ -782,6 +835,7 @@ static int lsend_block_action(lua_State *l) {
 }
 
 static void csend_block_action(plid pid, ivec3 pos, unsigned type, plid from, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_block_action");
 
 	lua_pushnumber(l, pid);
@@ -805,6 +859,7 @@ static int lsend_block_line(lua_State *l) {
 }
 
 static void csend_block_line(plid pid, ivec3 start, ivec3 end, plid from, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_block_line");
 
 	lua_pushnumber(l, pid);
@@ -829,6 +884,7 @@ static int lsend_set_color(lua_State *l) {
 }
 
 static void csend_set_color(plid pid, color color, plid from, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_set_color");
 
 	lua_pushnumber(l, pid);
@@ -848,6 +904,7 @@ static int lsend_player_update(lua_State *l) {
 }
 
 static void csend_player_update(plid pid, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_player_update");
 
 	lua_pushnumber(l, pid);
@@ -866,6 +923,7 @@ static int lsend_orientation(lua_State *l) {
 }
 
 static void csend_orientation(plid pid, fvec3 ori, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_orientation");
 
 	lua_pushnumber(l, pid);
@@ -885,6 +943,7 @@ static int lsend_position(lua_State *l) {
 }
 
 static void csend_position(plid pid, fvec3 pos, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_position");
 
 	lua_pushnumber(l, pid);
@@ -906,6 +965,7 @@ static int lsend_reload(lua_State *l) {
 }
 
 static void csend_reload(plid pid, unsigned mag, unsigned reserve, plid from, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_reload");
 
 	lua_pushnumber(l, pid);
@@ -928,6 +988,7 @@ static int lsend_intel_capture(lua_State *l) {
 }
 
 static void csend_intel_capture(plid pid, bint winning, plid from, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_intel_capture");
 
 	lua_pushnumber(l, pid);
@@ -948,6 +1009,7 @@ static int lsend_intel_pickup(lua_State *l) {
 }
 
 static void csend_intel_pickup(plid pid, plid from, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_intel_pickup");
 
 	lua_pushnumber(l, pid);
@@ -968,6 +1030,7 @@ static int lsend_intel_drop(lua_State *l) {
 }
 
 static void csend_intel_drop(plid pid, fvec3 pos, plid from, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_intel_drop");
 
 	lua_pushnumber(l, pid);
@@ -988,6 +1051,7 @@ static int lsend_restock(lua_State *l) {
 }
 
 static void csend_restock(plid pid, plid from, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_restock");
 
 	lua_pushnumber(l, pid);
@@ -1009,6 +1073,7 @@ static int lsend_move_object(lua_State *l) {
 }
 
 static void csend_move_object(plid pid, fvec3 pos, unsigned id, unsigned team, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_move_object");
 
 	lua_pushnumber(l, pid);
@@ -1030,6 +1095,7 @@ static int lsend_map_start(lua_State *l) {
 }
 
 static void csend_map_start(plid pid, unsigned size, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_map_start");
 
 	lua_pushnumber(l, pid);
@@ -1051,6 +1117,7 @@ static int lsend_fog(lua_State *l) {
 }
 
 static void csend_fog(plid pid, color color, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "send_fog");
 
 	lua_pushnumber(l, pid);
@@ -1069,6 +1136,7 @@ static int lrestock(lua_State *l) {
 }
 
 static void crestock(plid pid, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "restock");
 
 	lua_pushnumber(l, pid);
@@ -1088,6 +1156,7 @@ static int lkill(lua_State *l) {
 }
 
 static void ckill(plid pid, unsigned type, plid killer, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "kill");
 
 	lua_pushnumber(l, pid);
@@ -1109,6 +1178,7 @@ static int lset_ammo(lua_State *l) {
 }
 
 static void cset_ammo(plid pid, unsigned mag, unsigned reserve, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "set_ammo");
 
 	lua_pushnumber(l, pid);
@@ -1129,6 +1199,7 @@ static int lset_hp(lua_State *l) {
 }
 
 static void cset_hp(plid pid, int hp, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "set_hp");
 
 	lua_pushnumber(l, pid);
@@ -1149,6 +1220,7 @@ static int lset_hp_directional(lua_State *l) {
 }
 
 static void cset_hp_directional(plid pid, int hp, fvec3 pos, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "set_hp_directional");
 
 	lua_pushnumber(l, pid);
@@ -1169,6 +1241,7 @@ static int lset_tool(lua_State *l) {
 }
 
 static void cset_tool(plid pid, unsigned tool, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "set_tool");
 
 	lua_pushnumber(l, pid);
@@ -1190,6 +1263,7 @@ static int lset_color(lua_State *l) {
 }
 
 static void cset_color(plid pid, color color, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "set_color");
 
 	lua_pushnumber(l, pid);
@@ -1209,6 +1283,7 @@ static int lset_position(lua_State *l) {
 }
 
 static void cset_position(plid pid, fvec3 pos, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "set_position");
 
 	lua_pushnumber(l, pid);
@@ -1228,6 +1303,7 @@ static int lset_orientation(lua_State *l) {
 }
 
 static void cset_orientation(plid pid, fvec3 ori, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "set_orientation");
 
 	lua_pushnumber(l, pid);
@@ -1246,6 +1322,7 @@ static int lset_jump(lua_State *l) {
 }
 
 static void cset_jump(plid pid, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "set_jump");
 
 	lua_pushnumber(l, pid);
@@ -1264,6 +1341,7 @@ static int lcapture_intel(lua_State *l) {
 }
 
 static void ccapture_intel(plid pid, bint winning, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "capture_intel");
 
 	lua_pushnumber(l, pid);
@@ -1282,6 +1360,7 @@ static int lpickup_intel(lua_State *l) {
 }
 
 static void cpickup_intel(plid pid, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "pickup_intel");
 
 	lua_pushnumber(l, pid);
@@ -1300,6 +1379,7 @@ static int ldrop_intel(lua_State *l) {
 }
 
 static void cdrop_intel(plid pid, fvec3 pos, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "drop_intel");
 
 	lua_pushnumber(l, pid);
@@ -1319,6 +1399,7 @@ static int lmove_intel(lua_State *l) {
 }
 
 static void cmove_intel(unsigned team, fvec3 pos, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "move_intel");
 
 	lua_pushnumber(l, team);
@@ -1338,6 +1419,7 @@ static int lmove_tent(lua_State *l) {
 }
 
 static void cmove_tent(unsigned team, fvec3 pos, struct State *st) {
+	(void)st;
 	lua_getglobal(l, "move_tent");
 
 	lua_pushnumber(l, team);

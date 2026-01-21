@@ -25,7 +25,7 @@ serverg: src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/
 
 dist.tar.gz: serverstatic aloha.lua exec scripts maps dirty
 	mkdir -p dist/exec dist/scripts dist/maps
-	ln serverstatic dist/server
+	cp serverstatic dist/server
 	cp /lib/ld-musl-x86_64.so.1 dist/
 	patchelf --set-interpreter './ld-musl-x86_64.so.1' dist/server
 	printf '%s\n' 'log("You probably want to run this as ./server -c babel.lua");' > dist/config.lua

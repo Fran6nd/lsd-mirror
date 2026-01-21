@@ -1,5 +1,6 @@
 #include <time.h>
 #include <stdio.h>
+#include <signal.h>
 #include <math.h>
 #include <isa-l.h>
 #include "state.h"
@@ -512,8 +513,11 @@ uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) 
 
 	if (mask == 0)
 		type = 0;
-	else if (!st->globals.loadingMap)
-		st->f.send_block_action(PID_BROADCAST, pos, type, from, st);
+	else if (!st->globals.loadingMap) {
+		/* TODO: is there even a reason to not send pid to others? */
+		st->f.send_block_action(from, pos, type, from, st);
+		st->f.send_block_action(PID_BROADCAST_EXCEPT(from), pos, type, 0, st);
+	}
 
 	return mask | (type << 30);
 }
@@ -1697,7 +1701,8 @@ clk on_kill(plid pid, struct State *st) {
 /* TODO: should kill still kill dead men? (probably yes) */
 /* TODO: move spawn time into lua */
 /* TODO: kill packet only gets sent if pid 0 is joined */
-void kill(plid pid, unsigned type, plid killer, struct State *st) {
+/* This one is named func_kill instead of kill because POSIX took that name. */
+void func_kill(plid pid, unsigned type, plid killer, struct State *st) {
 	struct PacketKill kl;
 
 	st->p[pid].spawntime = st->f.on_kill(pid, st);
@@ -1932,7 +1937,7 @@ void on_color_change(plid pid, color color, struct State *st) {
 }
 
 void on_block_action(plid pid, ivec3 pos, unsigned type, struct State *st) {
-	st->f.block_action(pos, type, type == 0 ? pid : 0, st);
+	st->f.block_action(pos, type, pid, st);
 }
 
 void block_line(ivec3 start, ivec3 end, plid from, struct State *st) {
@@ -2176,7 +2181,7 @@ void set_funcs(struct State *st) {
 	st->f.on_block_line = on_block_line;
 	st->f.send_block_line = send_block_line;
 	st->f.on_hit = on_hit;
-	st->f.kill = kill;
+	st->f.kill = func_kill;
 	st->f.on_kill = on_kill;
 	st->f.get_hit_damage = get_hit_damage;
 	st->f.set_hp = set_hp;
@@ -2333,8 +2338,16 @@ static struct State *st_init(void) {
 	return st;
 }
 
+volatile sig_atomic_t keepRunning = 1;
+static void sig_handler(int sig) {
+	keepRunning = 0;
+}
+
 int main(int argc, char **argv) {
 	struct State *st;
+
+	signal(SIGINT, sig_handler);
+	signal(SIGTERM, sig_handler);
 
 	parse_args(argc, argv);
 	sandbox();
@@ -2357,11 +2370,9 @@ int main(int argc, char **argv) {
 	hook_lua(cfg, st);
 
 	st->f.load_initial_map(st);
-	/*ENetAddress maddr = {0,0};
-	enet_address_set_host(&maddr, "66.135.15.57");
-	maddr.port = 32886;
-	masterlist_connect(&maddr, &st->ms);*/
 
-	while (1)
+	while (keepRunning)
 		do_loop(st);
+
+	exit(EXIT_SUCCESS);
 }

@@ -118,6 +118,7 @@ void sandbox(void) {
 		"restart_syscall",
 		"exit_group",
 		"getrandom",
+		"rt_sigreturn",
 		/* needed for lsqlite3 */
 		"getcwd",
 		"lstat",

@@ -123,7 +123,7 @@ function maptime.send_map(pid)
 	local start = get_time();
 	log("start");
 	next_call("send_map", maptime.send_map)(pid);
-	log("delta: %.5f", get_time()-start);
+	log("delta: %.2f ms", (get_time()-start)*1000);
 end
 
 local cmd = {name="countvox", caps="test"}

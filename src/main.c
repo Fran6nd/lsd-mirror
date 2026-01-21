@@ -515,8 +515,12 @@ uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) 
 		type = 0;
 	else if (!st->globals.loadingMap) {
 		/* TODO: is there even a reason to not send pid to others? */
-		st->f.send_block_action(from, pos, type, from, st);
-		st->f.send_block_action(PID_BROADCAST_EXCEPT(from), pos, type, 0, st);
+		if (type == 3)
+			st->f.send_block_action(PID_BROADCAST, pos, type, 0, st);
+		else {
+			st->f.send_block_action(from, pos, type, from, st);
+			st->f.send_block_action(PID_BROADCAST_EXCEPT(from), pos, type, 0, st);
+		}
 	}
 
 	return mask | (type << 30);
@@ -621,7 +625,7 @@ void detonate_grenade(size_t index, struct State *st) {
 	ipos.y = floorf(nade.pos.y);
 	ipos.z = floorf(nade.pos.z);
 
-	st->f.block_action(ipos, BlockActionTypeGrenadeDestroy, 0, st);
+	st->f.block_action(ipos, BlockActionTypeGrenadeDestroy, nade.pid, st);
 }
 
 void send_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, struct State *st) {

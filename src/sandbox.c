@@ -79,7 +79,7 @@ void sandbox(void) {
 	unveil("./rw/", "rwc");
 	unveil(NULL, NULL);
 
-	pledge("stdio rpath inet", "");
+	pledge("stdio rpath inet prot_exec flock", "");
 #endif
 
 #ifdef __linux__

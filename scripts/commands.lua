@@ -222,7 +222,7 @@ local cmd_err_msg = {
 
 local not_in_game_msg = {
 	en="This command can only be run while in-game."
-}
+};
 
 -- TODO: log
 -- TODO: /mute

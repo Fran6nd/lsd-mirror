@@ -4,7 +4,7 @@ local mod = {};
 function mod.load_map_from_file(path)
 	if (string.sub(path, -4, -1) == ".lua") then
 		local oldpath = package.path;
-		package.loaded.platforms=nil;
+		package.loaded[string.sub(path, 1, -5)] = nil;
 
 		-- TODO: dofile/loadfile instead of require? limit scope of visible functions?
 		-- TODO: make load() use dofile instead of require?

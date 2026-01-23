@@ -43,6 +43,7 @@ tip_frequency = 5*60
 load "masterlist"
 load "map_queue"
 load "map_meta"
+load "mapscripts"
 load "fall_damage"
 load "babel"
 load "noclip"

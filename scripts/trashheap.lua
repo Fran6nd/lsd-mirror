@@ -118,12 +118,22 @@ function nuketest3()
 	log("delta: %.5f", get_time()-start);
 end
 
-maptime = {};
+maptime = init_mod();
 function maptime.send_map(pid)
 	local start = get_time();
-	log("start");
+	log("send-start");
 	next_call("send_map", maptime.send_map)(pid);
-	log("delta: %.2f ms", (get_time()-start)*1000);
+	log("send-delta: %.2f ms", (get_time()-start)*1000);
+end
+
+local mlstart;
+function maptime.after.prepare_map_load()
+	mlstart = get_time();
+	log("load-start");
+end
+
+function maptime.before.finish_map_load()
+	log("load-delta: %.2f ms", (get_time()-mlstart)*1000);
 end
 
 local cmd = {name="countvox", caps="test"}

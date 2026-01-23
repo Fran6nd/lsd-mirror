@@ -1,6 +1,7 @@
 -- lib_totp.lua -- not a burner copied the SHA-1 implementation off of wikipedia
 -- Don't use this for anything too serious ;p
 local mod = {};
+local bit = require("bit");
 
 local h = {
 	0x67452301,

@@ -82,6 +82,7 @@ end
 function mod.on_unload()
 	if (editing) then
 		ln.linenoiseEditStop(ls);
+		editing = false;
 	end
 	unloading = true;
 	-- TODO: cleanup random buffers?

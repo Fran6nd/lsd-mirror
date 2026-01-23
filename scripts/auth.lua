@@ -124,7 +124,8 @@ local name_taken_msg = {
 	en="Can't register; are you sure that name isn't taken?"
 };
 
-local cmd = {name="register", fakepid=true, usage="name password", desc="Create an account."};
+-- TODO: make register a default cap?
+local cmd = {name="register", caps="register", fakepid=true, usage="name password", desc="Create an account."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 2);
 

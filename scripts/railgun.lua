@@ -1,5 +1,6 @@
 -- railgun.lua -- Blast holes in things.
 local mod = {after={}};
+local bit = require("bit");
 require "lib_bulk_destroy";
 
 -- Some swizzle functions

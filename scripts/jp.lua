@@ -1,5 +1,6 @@
 -- jp.lua -- An implementation of that jetpack command
 local mod = {after={},before={}};
+local bit = require("bit");
 
 local flies = {};
 function mod.after.on_join(pid)

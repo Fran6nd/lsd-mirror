@@ -8,6 +8,10 @@
 require "lib_l10n";
 local mod = init_mod();
 getcfg("cap_groups", {
+	default = {
+		-- auth.lua account creation
+		"register"
+	},
 	guard = {
 		"cmd:advance",
 		"ban=1h",
@@ -153,6 +157,10 @@ function mod.on_load()
 	-- TODO: do i need this?
 	groups = pid_connected_table(function() return {} end);
 	caps = pid_connected_table(function() return {} end);
+end
+
+function mod.after.on_successful_connect(pid)
+	grant_cap(pid, "default");
 end
 
 local function get_cmd_canonical_name(cmd)

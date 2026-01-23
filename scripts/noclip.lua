@@ -1,5 +1,6 @@
 -- noclip.lua -- when i'm feeling tired i can just... fly around
 local mod = {after={}};
+local bit = require("bit");
 
 local clips = pid_joined_table(nil);
 -- TODO: should jumpctr be player-specific or global?

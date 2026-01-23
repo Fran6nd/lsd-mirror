@@ -92,7 +92,7 @@ function cmd.func(pid, argv)
 	if (val ~= nil and can_see_command(pid, val)) then
 		send_chat(pid, print_cmd(val), 2, 0);
 	else
-		l10n_send_chat(pid, unknown_command_msg);
+		l10n_send_chat(pid, unknown_cmd_msg);
 	end
 end
 register_command(cmd);

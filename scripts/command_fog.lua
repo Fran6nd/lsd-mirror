@@ -13,7 +13,7 @@ local color_msg = {
 };
 
 -- TODO: some easy way to get color values and return consumed arg count?
-local cmd = {name="fog", fakepid=true, usage="r g b", desc="Set the fog color."};
+local cmd = {name="fog", fakepid=true, usage="r g b", desc="Get or set the fog color."};
 function cmd.func(pid, argv)
 	if (argv[1]) then
 		if (not has_cap(pid, "fog")) then

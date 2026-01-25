@@ -128,6 +128,7 @@ void sandbox(void) {
 		"geteuid",
 		"pwrite64",
 		"fdatasync",
+		"fsync", /* needed on alpine but not void */
 		"unlink",
 		"ftruncate",
 		/* needed for linenoise */

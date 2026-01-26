@@ -14,7 +14,7 @@ local spawning_msg = {
 };
 
 -- TODO: pycapi-style noarg option?
-local cmd = {name="setspawn", caps="setspawn", desc="Toggle respawning at your current position"};
+local cmd = {name="setspawn", caps="setspawn", desc="Toggle respawning at your current position."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
 

@@ -72,14 +72,12 @@ static void pivot(void) {
 
 void sandbox(void) {
 #ifdef __OpenBSD__
-	unveil("./maps/", "r");
-	unveil("./scripts/", "r");
-	unveil("./config.lua", "r");
+	unveil("./", "r");
 	unveil("./exec/", "rx");
 	unveil("./rw/", "rwc");
 	unveil(NULL, NULL);
 
-	pledge("stdio rpath inet prot_exec flock", "");
+	pledge("stdio rpath wpath cpath inet prot_exec flock fattr dns", "");
 #endif
 
 #ifdef __linux__

@@ -24,9 +24,14 @@ function cmd.func(pid, argv)
 	else
 		-- TODO: mention somewhere that dead people can use /setspawn
 		spawnpos[pid] = get_position(pid);
-		l10n_send_chat(pid, spawning_msg, spawnpos[pid]);
+		l10n_send_chat(pid, spawning_msg, {
+			x=string.format("%.2f", spawnpos[pid].x),
+			y=string.format("%.2f", spawnpos[pid].y),
+			z=string.format("%.2f", spawnpos[pid].z)
+		});
 	end
 end
+register_command(cmd);
 
 -- TODO: next_call("xyz", mod.xyz) -> next_call(mod, "xyz")? maybe shorten "next_call" to nc (maybe not that short) or something too
 function mod.on_player_spawn(pid)

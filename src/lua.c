@@ -12,9 +12,9 @@
 #define LOG(x, ...) fprintf(stderr, x"\n", __VA_ARGS__)
 #define LOG1(x) fputs(x"\n", stderr);
 #define LERR luaL_error
-#define CBAIL(x, ...) do {fprintf(stderr, x"\n", __VA_ARGS__); return;} while (0)
-#define CBAILN1(x, ...) do {fprintf(stderr, x"\n", __VA_ARGS__); return -1;} while (0)
-#define CBAIL1N1(x, ...) do {fputs(x"\n", stderr); return -1;} while (0)
+#define CBAIL(x, ...) do {LOG(x, __VA_ARGS__); return;} while (0)
+#define CBAILN1(x, ...) do {LOG(x, __VA_ARGS__); return -1;} while (0)
+#define CBAIL1N1(x, ...) do {LOG1(x); return -1;} while (0)
 
 static lua_State *l;
 
@@ -514,6 +514,7 @@ static uint32_t cblock_action_rm(ivec3 pos, unsigned type, plid from, struct Sta
 	lua_pushnumber(l, type);
 	lua_pushnumber(l, from);
 
+	/* TODO: wouldn't returning -1 here destroy everything */
 	if (lua_pcall(l, 3, 1, 0) != 0)
 		CBAILN1("block_action_rm: %s", luaL_checkstring(l, -1));
 
@@ -521,6 +522,32 @@ static uint32_t cblock_action_rm(ivec3 pos, unsigned type, plid from, struct Sta
 		CBAIL1N1("block_action_rm: should return a number");
 
 	ret = lua_tonumber(l, -1);
+	lua_pop(l, 1);
+
+	return ret;
+}
+
+static int lon_player_spawn(lua_State *l) {
+	plid pid = luaL_checknumber(l, 1);
+	push_fvec3(st->f.on_player_spawn(pid, st));
+	return 1;
+}
+
+static fvec3 con_player_spawn(plid pid, struct State *st) {
+	fvec3 ret;
+
+	lua_getglobal(l, "on_player_spawn");
+
+	lua_pushnumber(l, pid);
+
+	/* TODO: think some more about deferring to core implementation with lua errors */
+	if (lua_pcall(l, 1, 1, 0) != 0) {
+		LOG("on_player_spawn: %s", luaL_checkstring(l, -1));
+		return f.on_player_spawn(pid, st);
+	}
+
+	/* TODO: make -2 less unexpected -- it really refers to -1 (i think? hope? or can i just use an absolute index?) */
+	ret = get_fvec3(l, -2);
 	lua_pop(l, 1);
 
 	return ret;
@@ -947,6 +974,7 @@ static const struct luaL_Reg funcs[] = {
 	{"register_grenade", lregister_grenade},
 	{"spawn_grenade", lspawn_grenade},
 	{"block_action_rm", lblock_action_rm},
+	{"on_player_spawn", lon_player_spawn},
 
 	/* TODO: these two are not like the rest */
 	{"disconnect", disconnect},
@@ -1023,6 +1051,7 @@ void register_functions(lua_State *l, struct State *st) {
 	st->f.register_grenade = cregister_grenade;
 	st->f.spawn_grenade = cspawn_grenade;
 	st->f.block_action_rm = cblock_action_rm;
+	st->f.on_player_spawn = con_player_spawn;
 	register_luaawk(l, st);
 }
 

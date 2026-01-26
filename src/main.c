@@ -1521,6 +1521,7 @@ void spawn_player(plid pid, struct State *st) {
 	st->p[pid].weapon = st->p[pid].newweapon;
 
 	/* TODO: what if on_player_spawn doesn't want the player to spawn, and what about spectators */
+	/* TODO: on_player_spawn -> on_spawn_player? */
 	st->p[pid].pos = st->f.on_player_spawn(pid, st);
 	st->p[pid].ori.x = st->p[pid].team == 0 ? 1 : -1;
 	st->p[pid].ori.y = 0;

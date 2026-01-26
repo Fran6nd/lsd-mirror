@@ -66,11 +66,11 @@ function mod.after.disconnect_now(pid)
 	clear_pid_table(pid, clear_disconnect);
 end
 
--- TODO: before?
-function mod.after.on_join(pid)
+function mod.before.on_join(pid)
 	clear_pid_table(pid, clear_join);
 end
 
+-- TODO: before?
 function mod.after.spawn_player(pid)
 	clear_pid_table(pid, clear_spawn);
 end

@@ -529,7 +529,7 @@ static uint32_t cblock_action_rm(ivec3 pos, unsigned type, plid from, struct Sta
 
 static int lon_player_spawn(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
-	push_fvec3(st->f.on_player_spawn(pid, st));
+	push_fvec3(f.on_player_spawn(pid, st));
 	return 1;
 }
 

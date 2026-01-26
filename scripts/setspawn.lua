@@ -29,7 +29,7 @@ function cmd.func(pid, argv)
 end
 
 -- TODO: next_call("xyz", mod.xyz) -> next_call(mod, "xyz")? maybe shorten "next_call" to nc (maybe not that short) or something too
-mod.on_player_spawn(pid)
+function mod.on_player_spawn(pid)
 	if (spawnpos[pid]) then
 		return spawnpos[pid];
 	end

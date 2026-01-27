@@ -125,6 +125,14 @@ function mod.send_chat(pid, msg, type, from)
 	next_call("send_chat", mod.send_chat)(pid, msg, type, from);
 end
 
+function mod.get_name(pid)
+	if (pid == 32) then
+		-- TODO: should this be configurable? should i make lots of random trash configurable?
+		return "console";
+	end
+	return next_call("get_name", mod.get_name)(pid);
+end
+
 local function handle_line(line)
 	-- TODO: handle '/' at start?
 	if (#line ~= 0) then

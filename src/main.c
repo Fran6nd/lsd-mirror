@@ -730,7 +730,7 @@ void tick(struct State *st) {
 		move_grenade(st->globals.grenades+i, (double)st->tickrate/1000000000, st->globals.map.solidData, 1);
 	}
 
-	send_player_update(PID_BROADCAST, st);
+	st->f.send_player_update(PID_BROADCAST, st);
 }
 
 const char *host_ip(ENetAddress *addr) {

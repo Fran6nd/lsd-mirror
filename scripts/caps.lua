@@ -40,6 +40,10 @@ getcfg("cap_groups", {
 	},
 	["badcap:dd"] = {
 		"badcap:neuter"
+	},
+	-- TODO: need to make a silentnopm and regular nopm and maybe a shadowmute
+	["badcap:mute"] = {
+		"badcap:nopm"
 	}
 });
 

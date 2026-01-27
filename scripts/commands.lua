@@ -23,6 +23,7 @@ function get_player_by_str(str)
 		return nil;
 	end
 
+	-- TODO: should /^#.*[^0-9]/ (i.e. not /^#%d+$/) just do a substr match?
 	if (string.sub(str, 1, 1) == "#") then
 		local found = tonumber(string.sub(str, 2, -1));
 		-- TODO: implement validation into is_connected

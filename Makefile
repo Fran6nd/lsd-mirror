@@ -8,20 +8,23 @@ CFLAGSG=-Wall -Wextra -g
 LIBS=-lenet -lisal -lluajit-5.1 -lm -lseccomp
 LDFLAGS=$(LIBS)
 
-server: src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h
+server: src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
 	$(CC) $(CFLAGS) -o server src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o $(LDFLAGS)
 
 # Not really static, musl doesn't like dlopen with static
 # See https://www.openwall.com/lists/musl/2021/09/24/6
 # You could definitely make a truly static build if you
 # don't bother loading anything in the exec dir, though.
-serverstatic: src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h
+serverstatic: src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
 	$(CC) $(CFLAGS) -o serverstatic src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o \
 		-Wl,-Bstatic -static-libgcc $(LDFLAGS) -Wl,-Bdynamic '-Wl,--export-dynamic-symbol=lua_*' '-Wl,--export-dynamic-symbol=luaL_*' -fvisibility=hidden
-servernative: src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h
+servernative: src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
 	$(CC) $(CFLAGSNATIVE) -o servernative src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o $(LDFLAGS)
-serverg: src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h
+serverg: src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
 	$(CC) $(CFLAGSG) -g -o serverg src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o $(LDFLAGS)
+
+exec/libunixsock.so: src/exec/unixsock.c
+	$(CC) $(CFLAGS) -static --shared -o exec/libunixsock.so src/exec/unixsock.c -Wl,--exclude-libs,ALL
 
 dist.tar.gz: serverstatic aloha.lua exec scripts maps dirty
 	mkdir -p dist/exec dist/scripts dist/maps

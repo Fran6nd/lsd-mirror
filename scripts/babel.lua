@@ -147,11 +147,11 @@ function mod.on_block_action(pid, pos, type)
 	next_call("on_block_action", mod.on_block_action)(pid, pos, type);
 end
 
-function length2(vec)
+local function length2(vec)
 	return math.sqrt(vec.x*vec.x + vec.y*vec.y);
 end
 
-function within_cylinder(pos, cylinderpos, radius, bottom, top)
+local function within_cylinder(pos, cylinderpos, radius, bottom, top)
 	pos.x = pos.x - cylinderpos.x;
 	pos.y = pos.y - cylinderpos.y;
 	pos.z = pos.z - cylinderpos.z;

@@ -1,15 +1,9 @@
 -- restock.lua -- Refill ammo and things at a tent
-local mod = {after={}};
-local timeout = {};
+local mod = init_mod();
+local timeout = pid_spawn_table(0);
 
-function mod.on_load()
-	for i in piditer(PID_BROADCAST) do
-		timeout[i] = 0;
-	end
-end
-
-function mod.after.spawn_player(pid)
-	timeout[pid] = 0;
+local function length2(vec)
+	return math.sqrt(vec.x*vec.x + vec.y*vec.y);
 end
 
 -- TODO: near_tent call or something like that

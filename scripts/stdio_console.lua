@@ -66,20 +66,23 @@ local buf;
 local buflen = 1024;
 local editing = false;
 local unloading = false;
+local conpid;
 
 function mod.on_load()
-	-- TODO: more durable way of doing this
-	if (grant_cap) then
-		grant_cap(32, "all");
-	end
 	ls = ffi.new("struct linenoiseState[1]");
 	buf = ffi.new("char[?]", buflen);
 	ln.linenoiseEditStart(ls, 0, 2, buf, buflen, "> ");
+	conpid = new_fakepid();
+	-- TODO: more durable way of doing this
+	if (grant_cap) then
+		grant_cap(conpid, "all");
+	end
 	editing = true;
 	unloading = false;
 end
 
 function mod.on_unload()
+	free_fakepid(conpid);
 	if (editing) then
 		ln.linenoiseEditStop(ls);
 		editing = false;
@@ -88,6 +91,7 @@ function mod.on_unload()
 	-- TODO: cleanup random buffers?
 end
 
+-- TODO: do i still need this?
 function mod.before.on_shutdown()
 	if (editing) then
 		ln.linenoiseEditStop(ls);
@@ -118,15 +122,15 @@ function mod.log(...)
 end
 
 function mod.send_chat(pid, msg, type, from)
-	if (pid == 32) then
-		log("%s", msg);
+	if (pid == conpid) then
+		io.stderr:write(msg.."\n");
 		return;
 	end
 	next_call("send_chat", mod.send_chat)(pid, msg, type, from);
 end
 
 function mod.get_name(pid)
-	if (pid == 32) then
+	if (pid == conpid) then
 		-- TODO: should this be configurable? should i make lots of random trash configurable?
 		return "console";
 	end
@@ -136,7 +140,7 @@ end
 local function handle_line(line)
 	-- TODO: handle '/' at start?
 	if (#line ~= 0) then
-		handle_command(32, line, true);
+		handle_command(conpid, line, true);
 	end
 end
 

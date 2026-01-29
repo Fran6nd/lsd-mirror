@@ -58,6 +58,10 @@ local function clear_pid_table(pid, tbl)
 	end
 end
 
+function clear_fakepid_table(pid)
+	clear_pid_table(pid, clear_disconnect);
+end
+
 function mod.after.on_disconnect(pid)
 	clear_pid_table(pid, clear_disconnect);
 end

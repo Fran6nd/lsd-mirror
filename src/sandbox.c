@@ -131,6 +131,11 @@ void sandbox(void) {
 		"ftruncate",
 		/* needed for linenoise */
 		"write",
+		/* needed for unixsock */
+		"listen",
+		"accept",
+		"recvfrom",
+		"sendto",
 #if 0
 		/* needed for openmp */
 		"sched_yield",

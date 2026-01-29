@@ -61,6 +61,26 @@ function cmd_assert(pid, cmd, condition)
 	end
 end
 
+local takenfakepid;
+function mod.on_load()
+	takenfakepid = {};
+	for i=0,MAX_PLAYERS-1 do
+		takenfakepid[i] = true;
+	end
+end
+
+function new_fakepid()
+	table.insert(takenfakepid, true);
+	return #takenfakepid;
+end
+
+function free_fakepid(pid)
+	takenfakepid[pid] = nil;
+	if (clear_fakepid_table) then
+		clear_fakepid_table(pid);
+	end
+end
+
 function is_fakepid(pid)
 	return pid >= MAX_PLAYERS and pid < 0x20000000;
 end

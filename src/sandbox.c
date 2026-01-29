@@ -77,7 +77,7 @@ void sandbox(void) {
 	unveil("./rw/", "rwc");
 	unveil(NULL, NULL);
 
-	pledge("stdio rpath wpath cpath inet prot_exec flock fattr dns", "");
+	pledge("stdio rpath wpath cpath inet prot_exec flock fattr dns unix", "");
 #endif
 
 #ifdef __linux__

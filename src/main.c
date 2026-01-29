@@ -1236,6 +1236,8 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		/* witchcraft-based range validation -- could probably be triggered with enough lag unless the target is stationary */
 		if (sqr_dist2(st->p[pid].lastagreedpos, st->p[PACKET.playerID].pos) > 128*128+HORIZONTAL_SPEED_LIMIT_SQR) LOG("dist2: %f", sqr_dist2(st->p[pid].lastagreedpos, st->p[PACKET.playerID].pos));
 		SBAD(sqr_dist2(st->p[pid].lastagreedpos, st->p[PACKET.playerID].pos) > 128*128+HORIZONTAL_SPEED_LIMIT_SQR);
+
+		/* TODO: validate spade dist */
 		
 		return 0;
 #undef PCKT

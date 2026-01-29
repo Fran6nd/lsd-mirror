@@ -132,10 +132,12 @@ function mod.after.tick()
 		if (recvlen == 0) then
 			rmcon(pid);
 			goto continue;
-		elseif (recvlen ~= -1) then
-			-- TODO: handle *actual* errors
-			con.buf:putcdata(buf, recvlen);
+		elseif (recvlen == -1) then
+			goto continue;
 		end
+
+		-- TODO: handle *actual* errors
+		con.buf:putcdata(buf, recvlen);
 
 		if (recvlen == buflen) then
 			-- Add some more junk to the buffer if possible

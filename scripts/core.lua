@@ -38,10 +38,10 @@ function register(module)
 			local patch;
 			if (module.after ~= nil and module.after[x] ~= nil) then
 				local z = module.after[x];
-				patch = function(...) y(...); next_call(x, patch)(...); z(...); end
+				patch = function(...) y(...); local ret = next_call(x, patch)(...); z(...); return ret; end
 				module.after[x] = nil;
 			else
-				patch = function(...) y(...); next_call(x, patch)(...); end
+				patch = function(...) y(...); return next_call(x, patch)(...); end
 			end
 			-- TODO: do you think overwriting things in the module will screw things up?
 			-- TODO: especially if one mod registers both a before and an after
@@ -51,7 +51,7 @@ function register(module)
 	if (module.after ~= nil) then
 		for x,y in pairs(module.after) do
 			local patch;
-			patch = function(...) next_call(x, patch)(...); y(...); end
+			patch = function(...) local ret = next_call(x, patch)(...); y(...); return ret; end
 			module[x] = patch;
 		end
 	end
@@ -155,8 +155,8 @@ end
 -- Unregister everything on_shutdown -- most importantly this calls on_unload
 local nextshutdown = on_shutdown;
 function on_shutdown()
-	for _,y in ipairs(modules) do
-		unregister(y, true);
+	for i=#modules,1,-1 do
+		unregister(modules[i], true);
 	end
 	nextshutdown();
 end

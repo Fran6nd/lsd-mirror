@@ -73,6 +73,7 @@ end
 
 -- TODO: tee core log output
 -- TODO: determine l10n language
+-- TODO: l10n language set func
 
 function mod.log(fmt, ...)
 	for pid,con in pairs(cons) do

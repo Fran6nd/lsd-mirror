@@ -130,12 +130,15 @@ struct Functions {
 	 * Global actions -- these'll update the global state and broadcast to all players
 	 */
 
-	/* vxl, scientists hypothesize pvx may one day become available */
 	void (*load_initial_map)(struct State *st);
 	void (*clear_map)(struct State *st);
 	void (*prepare_map_load)(struct State *st);
 	void (*finish_map_load)(struct State *st);
-	void (*load_map_from_file)(const char *path, struct State *st);
+	/* scientists hypothesize pvx may one day become available */
+	int (*load_vxl_from_mem)(const void *data, size_t len, struct State *st);
+	int (*load_vxl_from_file)(const char *path, struct State *st);
+	int (*begin_load_vxl_from_file)(const char *path, struct State *st);
+	int (*load_map)(const char *name, struct State *st);
 	void (*finish_cull)(struct State *st);
 	uint32_t (*block_action_rm)(ivec3 pos, unsigned type, plid from, struct State *st);
 	void (*block_action_cull)(ivec3 pos, uint32_t mask, struct State *st);
@@ -203,6 +206,15 @@ struct Functions {
 struct Globals {
 	struct BitmaskUData map;
 	int loadingMap;
+	/* pristineBuf points to some zlib-compressed map data if:
+	 * the current map was loaded with load_map(),
+	 * a PATH.zlib file existed at that time,
+	 * and the map hasn't been touched with e.g. block_action() since it was first loaded.
+	 * Otherwise it'll be NULL.
+	 * The rules for this'll probably change later, if it hasn't been 10 years yet.
+	 */
+	void *pristineBuf;
+	size_t pristineLen;
 	struct Grenade *grenades;
 	size_t grenadeSize;
 	size_t grenadeCount;

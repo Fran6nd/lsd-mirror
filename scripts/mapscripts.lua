@@ -1,15 +1,16 @@
 -- mapscripts.lua -- Execute arbitrary code and hopefully get a map out of it
 local mod = {};
 
-function mod.load_map_from_file(path)
-	if (string.sub(path, -4, -1) == ".lua") then
+-- TODO: allow loading vxl with .lua ext? remove maps/?.lua req and just allow ?
+function mod.load_map(name)
+	if (string.sub(name, -4, -1) == ".lua") then
 		local oldpath = package.path;
-		package.loaded[string.sub(path, 1, -5)] = nil;
+		package.loaded[string.sub(name, 1, -5)] = nil;
 
 		-- TODO: dofile/loadfile instead of require? limit scope of visible functions?
 		-- TODO: make load() use dofile instead of require?
 		package.path="./?.lua";
-		status, script = pcall(require, string.sub(path, 1, -5));
+		status, script = pcall(require, string.sub(name, 1, -5));
 		package.path = oldpath;
 
 		if (not status) then
@@ -19,6 +20,7 @@ function mod.load_map_from_file(path)
 
 		prepare_map_load();
 		status, err = pcall(script.generate, math.random());
+		boot_players_to_limbo();
 		finish_map_load();
 
 		if (not status) then
@@ -26,12 +28,12 @@ function mod.load_map_from_file(path)
 			error(err);
 		end
 
-		masterlist_set_map(string.match(path, "([^/]*).lua$"));
+		masterlist_set_map(string.match(name, "([^/]*).lua$"));
 
-		return;
+		return 0;
 	end
 
-	next_call("load_map_from_file", mod.load_map_from_file)(path);
+	return next_call("load_map", mod.load_map)(name);
 end
 
 return mod;

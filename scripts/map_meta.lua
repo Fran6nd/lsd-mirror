@@ -20,8 +20,9 @@ end
 
 -- TODO: /load of this here "before" doesn't quite unregister the old one
 -- TODO: plumb metadata into core masterlist
-function mod.before.load_map_from_file(path)
-	local file = io.open(string.gsub(path, "%.vxl$", "", 1)..".txt", "rt");
+function mod.before.load_map(name)
+	-- TODO: strip .lua? or put meta in .lua?
+	local file = io.open(string.gsub(name, "%.vxl$", "", 1)..".txt", "rt");
 	if (file == nil) then
 		meta = {};
 		return;
@@ -54,7 +55,8 @@ function mod.before.load_map_from_file(path)
 	file:close();
 end
 
-function mod.after.load_map_from_file(path)
+-- TODO: only bother if successful -- maybe it should throw an error on fail?
+function mod.after.load_map()
 	if (meta.name) then
 		-- TODO: truncate in lua.c and add potential for length extension?
 		masterlist_set_map(string.sub(meta.name, 1, 20));

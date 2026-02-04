@@ -35,8 +35,7 @@ end
 -- TODO: should you combine the boot/load into one function?
 -- TODO: what if the map is trash (not real/invalid/EOF)
 function mod.on_game_end()
-	boot_players_to_limbo();
-	load_map_from_file(get_next_map());
+	load_map(get_next_map());
 end
 
 -- TODO: should it be legal to put a space or 30 before the command name? because we have that right now

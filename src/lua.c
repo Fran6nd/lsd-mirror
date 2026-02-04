@@ -427,106 +427,6 @@ static int csend_packet_unreliable(plid pid, const void *data, size_t length, st
 	return ret;
 }
 
-static int lregister_grenade(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
-	unsigned team = luaL_checknumber(l, 2);
-	fvec3 pos = get_fvec3(l, 3);
-	fvec3 vel = get_fvec3(l, 4);
-	float fuse = luaL_checknumber(l, 5);
-
-	lua_pushnumber(l, f.register_grenade(pid, team, pos, vel, fuse, st));
-	return 1;
-}
-
-static size_t cregister_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
-	size_t ret;
-
-	lua_getglobal(l, "register_grenade");
-
-	lua_pushnumber(l, pid);
-	lua_pushnumber(l, team);
-	push_fvec3(pos);
-	push_fvec3(vel);
-	lua_pushnumber(l, fuse);
-
-	if (lua_pcall(l, 5, 1, 0) != 0)
-		CBAILN1("register_grenade: %s", luaL_checkstring(l, -1));
-
-	if (!lua_isnumber(l, -1))
-		CBAIL1N1("register_grenade: should return a number");
-
-	ret = lua_tonumber(l, -1);
-	lua_pop(l, 1);
-
-	return ret;
-}
-
-
-static int lspawn_grenade(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
-	unsigned team = luaL_checknumber(l, 2);
-	fvec3 pos = get_fvec3(l, 3);
-	fvec3 vel = get_fvec3(l, 4);
-	float fuse = luaL_checknumber(l, 5);
-
-	lua_pushnumber(l, f.spawn_grenade(pid, team, pos, vel, fuse, st));
-	return 1;
-}
-
-static size_t cspawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
-	size_t ret;
-
-	lua_getglobal(l, "spawn_grenade");
-
-	lua_pushnumber(l, pid);
-	lua_pushnumber(l, team);
-	push_fvec3(pos);
-	push_fvec3(vel);
-	lua_pushnumber(l, fuse);
-
-	if (lua_pcall(l, 5, 1, 0) != 0)
-		CBAILN1("spawn_grenade: %s", luaL_checkstring(l, -1));
-
-	if (!lua_isnumber(l, -1))
-		CBAIL1N1("spawn_grenade: should return a number");
-
-	ret = lua_tonumber(l, -1);
-	lua_pop(l, 1);
-
-	return ret;
-}
-
-static int lblock_action_rm(lua_State *l) {
-	ivec3 pos = get_ivec3(l, 1);
-	unsigned type = luaL_checknumber(l, 2);
-	plid from = luaL_checknumber(l, 3);
-
-	lua_pushnumber(l, f.block_action_rm(pos, type, from, st));
-	return 1;
-}
-
-static uint32_t cblock_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) {
-	uint32_t ret;
-
-	lua_getglobal(l, "block_action_rm");
-
-	push_ivec3(pos);
-	lua_pushnumber(l, type);
-	lua_pushnumber(l, from);
-
-	/* TODO: wouldn't returning -1 here destroy everything */
-	if (lua_pcall(l, 3, 1, 0) != 0)
-		CBAILN1("block_action_rm: %s", luaL_checkstring(l, -1));
-
-	if (!lua_isnumber(l, -1))
-		CBAIL1N1("block_action_rm: should return a number");
-
-	ret = lua_tonumber(l, -1);
-	lua_pop(l, 1);
-
-	return ret;
-}
-
 static int lon_player_spawn(lua_State *l) {
 	plid pid = luaL_checknumber(l, 1);
 	push_fvec3(f.on_player_spawn(pid, st));
@@ -971,9 +871,6 @@ static const struct luaL_Reg funcs[] = {
 	{"send_state_ctf", lsend_state_ctf},
 	{"send_packet", lsend_packet},
 	{"send_packet_unreliable", lsend_packet_unreliable},
-	{"register_grenade", lregister_grenade},
-	{"spawn_grenade", lspawn_grenade},
-	{"block_action_rm", lblock_action_rm},
 	{"on_player_spawn", lon_player_spawn},
 
 	/* TODO: these two are not like the rest */
@@ -1048,9 +945,6 @@ void register_functions(lua_State *l, struct State *st) {
 	st->f.send_state_ctf = csend_state_ctf;
 	st->f.send_packet = csend_packet;
 	st->f.send_packet_unreliable = csend_packet_unreliable;
-	st->f.register_grenade = cregister_grenade;
-	st->f.spawn_grenade = cspawn_grenade;
-	st->f.block_action_rm = cblock_action_rm;
 	st->f.on_player_spawn = con_player_spawn;
 	register_luaawk(l, st);
 }

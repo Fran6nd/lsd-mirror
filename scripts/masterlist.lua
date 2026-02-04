@@ -55,7 +55,8 @@ end
 
 -- TODO: actually connect to masterlist in this script, not hardcoded to magicserver
 -- TODO: move name into here from lua.c, and actually do something with it
-function mod.after.load_map_from_file(path)
+function mod.after.load_map(path)
+	-- TODO: .lua? need to make the custom loaders canonicalize the name for me. . .
 	local name = string.match(path, "([^/]*).vxl$");
 	if (name == nil) then
 		name = string.match(path, "([^/]*)$");

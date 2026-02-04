@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <math.h>
+#include <errno.h>
 #include <isa-l.h>
 #include "state.h"
 #include "pvx/src/vxl.h"
@@ -349,13 +350,13 @@ int neighboring_voxels(ivec3 pos, struct State *st) {
 	int count = 0;
 
 	for (off=-1;off<2;off+=2)
-		count += ((uint32_t)(pos.x+off) < 512 && get_solid3(pos.x+off, pos.y, pos.z, st));
+		count += (uint32_t)(pos.x+off) < 512 && get_solid3(pos.x+off, pos.y, pos.z, st);
 
 	for (off=-1;off<2;off+=2)
-		count += ((uint32_t)(pos.y+off) < 512 && get_solid3(pos.x, pos.y+off, pos.z, st));
+		count += (uint32_t)(pos.y+off) < 512 && get_solid3(pos.x, pos.y+off, pos.z, st);
 
 	for (off=-1;off<2;off+=2)
-		count += ((uint32_t)(pos.z+off) < 64 && get_solid3(pos.x, pos.y, pos.z+off, st));
+		count += (uint32_t)(pos.z+off) < 64 && get_solid3(pos.x, pos.y, pos.z+off, st);
 
 	return count;
 }
@@ -478,9 +479,18 @@ int grenade_destroy(ivec3 pos, struct State *st) {
 }
 #endif
 
+static void unpristine(struct State *st) {
+	if (st->globals.pristineBuf) {
+		munmap(st->globals.pristineBuf, st->globals.pristineLen);
+		st->globals.pristineBuf = NULL;
+	}
+}
+
 /* Don't try to build with this! */
 uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) {
 	uint32_t mask = 0;
+
+	unpristine(st);
 
 	switch (type) {
 	case 1: /* destroy */
@@ -528,6 +538,8 @@ uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) 
 
 void block_action_cull(ivec3 pos, uint32_t mask, struct State *st) {
 	uint32_t type = mask >> 30;
+
+	unpristine(st);
 
 	switch (type) {
 	case 1: /* Destroy */
@@ -578,6 +590,7 @@ static void fin_cull(struct State *st) {
 void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
 	switch (type) {
 	case 0: /* Build */
+		unpristine(st);
 		set_solid(pos, st);
 		set_vox_color(pos, st->p[from].blockColor, st);
 		if (!st->globals.loadingMap)
@@ -754,31 +767,48 @@ void on_any_connect(plid pid, struct State *st) {
 }
 
 #define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
-ssize_t get_fd_size(int fildes) {
+#define SOFTERR(func) LOG(func": %s", strerror(errno))
+ssize_t get_fd_size(int fildes, struct State *st) {
 	struct stat sb;
 
-	if (fstat(fildes, &sb) != 0)
-		ERR("fstat");
+	if (fstat(fildes, &sb) != 0) {
+		SOFTERR("fstat");
+		return -1;
+	}
 
 	return sb.st_size;
 }
 
-void *map_file(const char *path, ssize_t *size) {
+/* MAP_FAILED is a hack that gives us a 2nd return value for nonexistant files */
+#define MAP_FILE_ENOENT MAP_FAILED
+/* TODO: static literally all the functions */
+void *map_file(const char *path, ssize_t *size, struct State *st) {
 	int fd;
 	void *mem;
 
 	fd = open(path, O_RDONLY | O_CLOEXEC);
-	if (fd == -1)
-		ERR("open");
+	if (fd == -1) {
+		if (errno == ENOENT)
+			return MAP_FILE_ENOENT;
+		SOFTERR("open");
+		return NULL;
+	}
 
-	*size = get_fd_size(fd);
+	*size = get_fd_size(fd, st);
+	if (*size == -1) {
+		while (close(fd) == -1 && errno == EINTR);
+		return NULL;
+	}
 
-	mem = mmap(NULL, *size, PROT_READ, MAP_SHARED, fd, 0);
+	mem = mmap(NULL, *size, PROT_READ, MAP_PRIVATE, fd, 0);
 
-	if (mem == MAP_FAILED)
-		ERR("mmap");
+	if (mem == MAP_FAILED) {
+		SOFTERR("mmap");
+		while (close(fd) == -1 && errno == EINTR);
+		return NULL;
+	}
 
-	close(fd);
+	while (close(fd) == -1 && errno == EINTR);
 	return mem;
 }
 
@@ -848,7 +878,7 @@ struct isal_zstream init_deflate(void) {
 	return stream;
 }
 
-void send_compressed_map(plid pid, struct State *st) {
+static void send_compressed_map_unpristine(plid pid, struct State *st) {
 	struct isal_zstream stream;
 	size_t cols;
 	/* TODO: determine isa-l magic numbers */
@@ -888,6 +918,25 @@ void send_compressed_map(plid pid, struct State *st) {
 	}
 
 	free(stream.level_buf);
+}
+
+void send_compressed_map(plid pid, struct State *st) {
+	size_t i;
+	uint8_t outbuf[1+8192];
+	outbuf[0] = PacketTypeMapChunk;
+
+	if (st->globals.pristineBuf) {
+		for (i=0;i<st->globals.pristineLen;i += 8192) {
+			size_t len = 8192;
+			if (i+len > st->globals.pristineLen)
+				len = st->globals.pristineLen - i;
+
+			memcpy(outbuf+1, st->globals.pristineBuf+i, len);
+			st->f.send_packet(pid, outbuf, 1+len, st);
+		}
+
+	} else
+		send_compressed_map_unpristine(pid, st);
 }
 
 void send_map(plid pid, struct State *st) {
@@ -1603,13 +1652,9 @@ void finish_map_load(struct State *st) {
 	st->f.send_map(PID_BROADCAST, st);
 }
 
-void load_map_from_file(const char *path, struct State *st) {
+int load_vxl_from_mem(const void *data, size_t len, struct State *st) {
 	struct PVX_VXLStreamConfig config;
 	char err[PVX_ERRBUF_SIZE];
-	void *buf;
-	ssize_t size;
-
-	buf = map_file(path, &size);
 
 	strcpy(err, "no error message provided");
 
@@ -1618,16 +1663,112 @@ void load_map_from_file(const char *path, struct State *st) {
 	config.customReadCall = pvx_dump_bitmask_all;
 	config.customReadUdata = &st->globals.map;
 
-	st->f.prepare_map_load(st);
-	if (pvx_vxl_stream_stateless(buf, size, &config) != 0) {
+	if (pvx_vxl_stream_stateless(data, len, &config) != 0) {
 		/* TODO: recover */
-		fprintf(stderr, "pvx_vxl_stream_stateless: %s\n", err);
+		LOG("pvx_vxl_stream_stateless: %s", err);
 		exit(EXIT_FAILURE);
 	}
 
+	return 0;
+}
+
+/* Isn't this one similar to begin_load_vxl_from_file. . . Only difference is no prepare. (could be useful for mapscripts writing map then loading vxl after?) Should i kill it? */
+int load_vxl_from_file(const char *path, struct State *st) {
+	void *buf;
+	ssize_t size;
+
+	buf = map_file(path, &size, st);
+	if (buf == NULL)
+		return -1;
+	if (buf == MAP_FILE_ENOENT)
+		return -2;
+
+	st->f.load_vxl_from_mem(buf, size, st);
+
 	munmap(buf, size);
 
+	return 0;
+}
+
+int begin_load_vxl_from_file(const char *path, struct State *st) {
+	void *buf;
+	ssize_t size;
+
+	buf = map_file(path, &size, st);
+	if (buf == NULL)
+		return -1;
+	if (buf == MAP_FILE_ENOENT)
+		return -2;
+
+	st->f.prepare_map_load(st);
+	st->f.load_vxl_from_mem(buf, size, st);
+
+	munmap(buf, size);
+
+	return 0;
+}
+
+/* TODO: decompress zlib instead of using its associated .vxl friend */
+int load_map(const char *name, struct State *st) {
+	void *buf;
+	ssize_t size;
+
+	if (st->f.begin_load_vxl_from_file(name, st) < 0) {
+		int err;
+
+		/* TODO: copy my str cat implementation in here? */
+		void *strbuf = malloc(strlen("maps/")+strlen(name)+strlen(".vxl")+1);
+
+		/* That'd be annoying. */
+		if (strbuf == NULL)
+			return -1;
+
+		strcpy(strbuf, "maps/");
+		strcpy(strbuf+strlen(strbuf), name);
+		strcpy(strbuf+strlen(strbuf), ".vxl");
+
+		if ((err = st->f.begin_load_vxl_from_file(strbuf, st)) < 0) {
+			if (err == -2)
+				SOFTERR("open");
+			return -1;
+		}
+	}
+
+	do {
+		void *strbuf = malloc(strlen(name)+strlen(".zlib")+1);
+		if (strbuf == NULL)
+			break;
+
+		strcpy(strbuf, name);
+		strcpy(strbuf+strlen(strbuf), ".zlib");
+
+		buf = map_file(strbuf, &size, st);
+		free(strbuf);
+
+		if (buf == NULL || buf == MAP_FILE_ENOENT) {
+			strbuf = malloc(strlen("maps/")+strlen(name)+strlen(".vxl.zlib")+1);
+			if (strbuf == NULL)
+				break;
+
+			strcpy(strbuf, "maps/");
+			strcpy(strbuf+strlen(strbuf), name);
+			strcpy(strbuf+strlen(strbuf), ".vxl.zlib");
+
+			buf = map_file(strbuf, &size, st);
+			free(strbuf);
+		}
+	} while (0);
+
+	unpristine(st);
+	if (buf != NULL && buf != MAP_FILE_ENOENT) {
+		st->globals.pristineBuf = buf;
+		st->globals.pristineLen = size;
+	}
+
+	st->f.boot_players_to_limbo(st);
 	st->f.finish_map_load(st);
+
+	return 0;
 }
 
 /* You probably want to call this after game end and before map load. TODO: you can figure it out */
@@ -1948,6 +2089,8 @@ void on_block_action(plid pid, ivec3 pos, unsigned type, struct State *st) {
 }
 
 void block_line(ivec3 start, ivec3 end, plid from, struct State *st) {
+	unpristine(st);
+
 	dcore_block_line(start.x, start.y, start.z, end.x, end.y, end.z, &st->globals.map, st->p[from].blockColor);
 	if (!st->globals.loadingMap)
 		st->f.send_block_line(PID_BROADCAST, start, end, from, st);
@@ -2109,7 +2252,7 @@ void on_crap_packet(plid pid, ENetPacket *packet, struct State *st) {
 }
 
 void load_initial_map(struct State *st) {
-	st->f.load_map_from_file("maps/map.vxl", st);
+	st->f.load_map("map", st);
 }
 
 int intercept(ENetHost *host, ENetEvent *event) {
@@ -2167,7 +2310,10 @@ void set_funcs(struct State *st) {
 	st->f.prepare_map_load = prepare_map_load;
 	st->f.finish_map_load = finish_map_load;
 	st->f.clear_map = clear_map;
-	st->f.load_map_from_file = load_map_from_file;
+	st->f.load_vxl_from_mem = load_vxl_from_mem;
+	st->f.load_vxl_from_file = load_vxl_from_file;
+	st->f.begin_load_vxl_from_file = begin_load_vxl_from_file;
+	st->f.load_map = load_map;
 	st->f.on_tool_change = on_tool_change;
 	st->f.on_block_action = on_block_action;
 	st->f.finish_cull = fin_cull;

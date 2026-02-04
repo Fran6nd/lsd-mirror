@@ -109,6 +109,7 @@ size_t pvx_dump_vxl(struct BitmaskUData *mapData, uint_fast32_t x, uint_fast32_t
 	for (y=0;y<ySize;y++) {
 		for (x=0;x<xSize;x++) {
 loop:
+			/* TODO: instead of recalc all, just use e.g. + 64, - 64; . . . */
 			pvx_calc_solidity_i_group(&i, x, y, xSize, zSize);
 			z = 0;
 

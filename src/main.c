@@ -504,7 +504,7 @@ uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) 
 		/* TODO: only do cull on actually destroyed voxels in rl */
 		/* TODO: does piqueserver have that bug? test by building 2 blocks, then a floating block diagonal to the top of those 2, rmb spade the top of the 2 */
 		/* (TODO: betterspades could handle this weird, in which case i may have to polyfill it) */
-		if (pos.z < 61 && get_solid3(pos.x, pos.y, pos.z, st)) {
+		if (pos.z < 62 && get_solid3(pos.x, pos.y, pos.z, st)) {
 			set_empty(pos, st);
 			mask |= 1;
 		} if (pos.z < 61 && get_solid3(pos.x, pos.y, pos.z+1, st)) {

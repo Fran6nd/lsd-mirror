@@ -64,8 +64,8 @@ function register(module)
 	if (module.on_load ~= nil) then
 		local status, err = pcall(module.on_load);
 		if (not status) then
-			log("on_load failed, unregistering module");
 			unregister(module);
+			log("on_load failed, unregistered module");
 			error(err);
 		end
 	end
@@ -83,7 +83,6 @@ function unregister(module, norm)
 	for key, val in ipairs(modules) do
 		if val == module then
 			found = true;
-			log("Unloaded %s", module.name or module);
 			if (not norm) then
 				table.remove(modules, key);
 			end
@@ -111,6 +110,8 @@ function unregister(module, norm)
 		end
 		::continue::
 	end
+
+	log("Unloaded %s", module.name or module);
 
 	-- If module.unload threw an error, throw it again after it's unregistered
 	if (not status) then

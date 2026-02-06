@@ -111,6 +111,7 @@ local function websock_read_hdrs(sock, cid)
 			con.unsent:putcdata(buf, un.websockets_fill_handshake_buf(buf, con.wshdr));
 			con.unsent:put(con.wsunsent);
 			flush(con);
+			sock.on_ws_connect(sock, cid);
 		end
 		con.wshdr = nil;
 		con.wsunsent = nil;

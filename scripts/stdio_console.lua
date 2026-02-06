@@ -1,5 +1,7 @@
 -- stdio_console.lua -- Do something with stdin/stdout
-local mod = {before={},after={}};
+local mod = init_mod();
+
+getcfg("stdio_console_name", "@console");
 
 -- TODO: sometimes it thinks there's input on stdin when there is none and gets stuck -- reopen as nonblocking?
 local ffi = require("ffi");
@@ -133,7 +135,7 @@ end
 function mod.get_name(pid)
 	if (pid == conpid) then
 		-- TODO: should this be configurable? should i make lots of random trash configurable?
-		return "console";
+		return stdio_console_name;
 	end
 	return next_call("get_name", mod.get_name)(pid);
 end

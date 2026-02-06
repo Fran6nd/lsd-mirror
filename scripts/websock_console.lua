@@ -1,6 +1,9 @@
--- wscon.lua -- Console that listens on a websocket (TODO: change name?)
+-- websock_console.lua -- Console that listens on a websocket
 local mod = init_mod();
 local sock;
+
+getcfg("websock_console_addr", nil);
+getcfg("websock_console_port", 32777);
 
 local function on_connect(sock, con)
 	local pid = new_fakepid();
@@ -8,14 +11,13 @@ local function on_connect(sock, con)
 	return pid;
 end
 
-local function after_connect(sock, cip)
+local function after_connect(sock, pid)
+	-- TODO: log disconnect
+	-- TODO: go through ws connect/disconnect callbacks, these'll log plain HTTP requests too (that's bad)
+	-- TODO: do log http requests but don't give them fakepids
+	log("wscon: connected: %s (#%u)", get_name(pid), pid);
 	on_fakepid_connect(pid);
 end
-
---local function on_disconnect(sock, pid)
-	--free_fakepid(pid);
-	--websock_disconnect(sock, pid);
---end
 
 local function on_ws_recv(sock, pid)
 	local line = sock.cons[pid].wsbuf:get();
@@ -129,10 +131,10 @@ end
 
 function mod.on_load()
 	sock = nil;
-	sock = sock_new_tcp(nil, 8080);
+	sock = sock_new_tcp(websock_con_addr, websock_con_port);
 	sock.on_recv = websock_recv;
 	sock.on_connect = on_connect;
-	--sock.on_disconnect = on_disconnect;
+	sock.after_connect = after_connect;
 	sock.on_ws_recv = on_ws_recv;
 	sock.ws_invalid_hdrs = ws_invalid_hdrs;
 end

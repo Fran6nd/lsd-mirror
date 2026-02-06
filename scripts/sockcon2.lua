@@ -1,10 +1,13 @@
--- sockcon2.lua -- tampering with lib_sock.lua TODO CHANGEME
+-- sock_console.lua -- Run commands over a UNIX socket
 local mod = init_mod();
 local sock;
 
+getcfg("sock_console", "rw/console.sock");
+getcfg("sock_console_name", "@console");
+
 function mod.on_load()
 	sock = nil;
-	sock = sock_new_unix("rw/TESTSOCK");
+	sock = sock_new_unix(sock_console);
 end
 
 function mod.on_unload()
@@ -36,8 +39,7 @@ end
 
 function mod.get_name(pid)
 	if (sock.cons[pid]) then
-		-- TODO: should this be configurable? should i make lots of random trash configurable?
-		return "console";
+		return sock_console_name;
 	end
 	return next_call("get_name", mod.get_name)(pid);
 end

@@ -73,6 +73,7 @@ function mod.on_load()
 	buf = ffi.new("char[?]", buflen);
 	ln.linenoiseEditStart(ls, 0, 2, buf, buflen, "> ");
 	conpid = new_fakepid();
+	on_fakepid_connect(conpid);
 	-- TODO: more durable way of doing this
 	if (grant_cap) then
 		grant_cap(conpid, "all");

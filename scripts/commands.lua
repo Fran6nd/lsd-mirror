@@ -69,6 +69,11 @@ function mod.on_load()
 	end
 end
 
+-- TODO: just use on_successful_connect?
+function on_fakepid_connect(pid)
+end
+server.on_fakepid_connect = on_fakepid_connect;
+
 function new_fakepid()
 	table.insert(takenfakepid, true);
 	return #takenfakepid;

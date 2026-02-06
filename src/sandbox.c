@@ -7,8 +7,10 @@
 #include <linux/capability.h>
 #include <sched.h>
 #include <seccomp.h>
+#ifndef NO_DEFAULT_SANDBOX
 #define WITH_LIBSECCOMP
 #define WITH_UNSHARE
+#endif
 #endif
 #include <unistd.h>
 #include <fcntl.h>
@@ -136,6 +138,8 @@ void sandbox(void) {
 		"accept",
 		"recvfrom",
 		"sendto",
+		/* needed for unixsock TCP */
+		"connect",
 #if 0
 		/* needed for openmp */
 		"sched_yield",

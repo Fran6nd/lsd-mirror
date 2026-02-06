@@ -167,6 +167,10 @@ function mod.after.on_successful_connect(pid)
 	grant_cap(pid, "default");
 end
 
+function mod.after.on_fakepid_connect(pid)
+	grant_cap(pid, "default");
+end
+
 local function get_cmd_canonical_name(cmd)
 	if (type(cmd.name) == "table") then
 		return cmd.name[1];

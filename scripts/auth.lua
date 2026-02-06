@@ -8,7 +8,7 @@ local db;
 local stmt = {};
 
 local granted = {};
-local user = {};
+auth_users = {};
 
 getcfg("auth_db", "rw/auth.db");
 
@@ -56,7 +56,7 @@ function mod.on_load()
 	createstmt("setcaps", "UPDATE USERS SET caps = ? WHERE name = ?;");
 
 	granted = {};
-	user = {};
+	auth_users = {};
 end
 
 
@@ -70,7 +70,7 @@ end
 
 function mod.after.on_disconnect(pid)
 	drop_granted(pid);
-	user[pid] = nil;
+	auth_users[pid] = nil;
 	granted[pid] = nil;
 end
 
@@ -152,7 +152,7 @@ end
 register_command(cmd);
 
 -- TODO: -> totp_gen?
-local cmd = {name="settotp", caps="login", desc="Configure TOTP for your account."};
+local cmd = {name="settotp", caps="login", fakepid=true, desc="Configure TOTP for your account."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
 
@@ -202,7 +202,7 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="chpasswd", caps="login", desc="Change your account's password."};
+local cmd = {name="chpasswd", caps="login", fakepid=true, desc="Change your account's password."};
 function cmd.func(pid, argv)
 	-- TODO
 end
@@ -217,7 +217,7 @@ local bad_login_msg = {
 	en="Bad password or TOTP."
 };
 
-local cmd = {name="login", usage="name password [otp]", desc="Login to an account."};
+local cmd = {name="login", fakepid=true, usage="name password [otp]", desc="Login to an account."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 2 or #argv == 3);
 
@@ -271,7 +271,7 @@ function cmd.func(pid, argv)
 	send_chat(pid, "OK", 2, 0);
 
 	-- TODO: remove caps from table
-	user[pid] = vals[1];
+	auth_users[pid] = vals[1];
 	drop_granted(pid);
 	granted[pid] = {};
 	table.insert(granted[pid], "login");
@@ -283,18 +283,18 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="logout", caps="login", desc="Log out of your account."};
+local cmd = {name="logout", caps="login", fakepid=true, desc="Log out of your account."};
 function cmd.func(pid)
 	drop_granted(pid);
-	user[pid] = nil;
+	auth_users[pid] = nil;
 	granted[pid] = nil;
 end
 register_command(cmd);
 
 -- TODO: move user to caps so we don't clear everything on unload?
-local cmd = {name="id", caps="login", desc="Print your account name and groups."};
+local cmd = {name="id", caps="login", fakepid=true, desc="Print your account name and groups."};
 function cmd.func(pid, argv)
-	send_chat(pid, string.format("uid=%s groups=[%s] computed=[%s]", user[pid], get_cap_groups(pid), get_caps(pid)), 2, 0);
+	send_chat(pid, string.format("uid=%s groups=[%s] computed=[%s]", auth_users[pid], get_cap_groups(pid), get_caps(pid)), 2, 0);
 end
 register_command(cmd);
 

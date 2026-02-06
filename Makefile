@@ -4,7 +4,7 @@ CC=clang
 AWK=awk
 CFLAGS=-Wall -Wextra -s -O3 -flto -fuse-ld=lld
 CFLAGSNATIVE=-Wall -Wextra -s -O3 -flto -march=native -fuse-ld=lld
-CFLAGSG=-Wall -Wextra -g
+CFLAGSG=-Wall -Wextra -g -fsanitize=undefined
 LIBS=-lenet -lisal -lluajit-5.1 -lm -lseccomp
 LDFLAGS=$(LIBS)
 
@@ -23,8 +23,9 @@ servernative: src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c
 serverg: src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
 	$(CC) $(CFLAGSG) -g -o serverg src/main.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o $(LDFLAGS)
 
-exec/libunixsock.so: src/exec/unixsock.c
-	$(CC) $(CFLAGS) -static --shared -o exec/libunixsock.so src/exec/unixsock.c -Wl,--exclude-libs,ALL
+exec/libunixsock.so: src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c
+	# TODO: remove getaddrinfo malloc from unixsock tcp
+	$(CC) $(CFLAGS) --shared -o exec/libunixsock.so src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c -Wl,--exclude-libs,ALL
 
 dist.tar.gz: serverstatic aloha.lua exec scripts maps dirty
 	mkdir -p dist/exec dist/scripts dist/maps

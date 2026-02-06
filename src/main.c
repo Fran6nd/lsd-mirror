@@ -504,6 +504,7 @@ uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) 
 		/* TODO: only do cull on actually destroyed voxels in rl */
 		/* TODO: does piqueserver have that bug? test by building 2 blocks, then a floating block diagonal to the top of those 2, rmb spade the top of the 2 */
 		/* (TODO: betterspades could handle this weird, in which case i may have to polyfill it) */
+		/* TODO: do i need to verify that pos.z < 62 here, or do i trust that all calls have valid position? what do the clients do? */
 		if (pos.z < 62 && get_solid3(pos.x, pos.y, pos.z, st)) {
 			set_empty(pos, st);
 			mask |= 1;
@@ -1724,10 +1725,13 @@ int load_map(const char *name, struct State *st) {
 			return -1;
 
 		strcpy(strbuf, "maps/");
-		strcpy(strbuf+strlen(strbuf), name);
-		strcpy(strbuf+strlen(strbuf), ".vxl");
+		strcat(strbuf, name);
+		strcat(strbuf, ".vxl");
 
-		if ((err = st->f.begin_load_vxl_from_file(strbuf, st)) < 0) {
+		err = st->f.begin_load_vxl_from_file(strbuf, st);
+		free(strbuf);
+
+		if (err < 0) {
 			if (err == -2)
 				SOFTERR("open");
 			return -1;
@@ -1740,7 +1744,7 @@ int load_map(const char *name, struct State *st) {
 			break;
 
 		strcpy(strbuf, name);
-		strcpy(strbuf+strlen(strbuf), ".zlib");
+		strcat(strbuf, ".zlib");
 
 		buf = map_file(strbuf, &size, st);
 		free(strbuf);
@@ -1751,8 +1755,8 @@ int load_map(const char *name, struct State *st) {
 				break;
 
 			strcpy(strbuf, "maps/");
-			strcpy(strbuf+strlen(strbuf), name);
-			strcpy(strbuf+strlen(strbuf), ".vxl.zlib");
+			strcat(strbuf, name);
+			strcat(strbuf, ".vxl.zlib");
 
 			buf = map_file(strbuf, &size, st);
 			free(strbuf);
@@ -2441,6 +2445,7 @@ static void atexit_server(void) {
 
 	free(keepSolid);
 	free(rememberedSolidity);
+	free(stack.data);
 	pvx_destroy_bitmask(&exit_st->globals.map);
 	enet_host_destroy(exit_st->host);
 	free(exit_st->globals.grenades);

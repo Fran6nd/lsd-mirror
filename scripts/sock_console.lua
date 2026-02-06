@@ -124,6 +124,7 @@ function mod.after.tick()
 		end
 
 		cons[conpid] = {fd=newcon, buf=buffer.new(), unsent=buffer.new()};
+		on_fakepid_connect(conpid);
 	end
 
 	for pid,con in pairs(cons) do

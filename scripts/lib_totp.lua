@@ -45,7 +45,7 @@ local function sha1(data)
 		hb[i] = h[i];
 	end
 	for off=1,#data,64 do
-		for i=0,16 do
+		for i=0,15 do
 			words[i] = bytestoint(string.sub(data, off+i*4, off+3+i*4));
 		end
 
@@ -148,7 +148,7 @@ function mod.base32enc(data)
 
 			local val = getbits(op0, i % 8);
 			if (i % 8 > 3) then
-				val = bit.bor(val, bit.rshift(op1,  11-(i % 8)));
+				val = bit.bor(val, bit.rshift(op1, 11-(i % 8)));
 			end
 
 			out = out .. b32map[val];

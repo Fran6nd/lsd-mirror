@@ -129,7 +129,7 @@ extern int pid_matches(plid broadcast, plid pid, struct State *st) {
 		return st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED;
 	case 2:
 		/* PID_BROADCAST_EXCEPT */
-		return (st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED && pid != data);
+		return (st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED && pid != (plid)data);
 	case 3:
 		/* PID_BROADCAST_TEAM */
 		return (st->p[pid].joined && st->p[pid].team == data);
@@ -141,55 +141,13 @@ extern int pid_matches(plid broadcast, plid pid, struct State *st) {
 	}
 }
 
-static int send_packet_flags(plid pid, const void *data, size_t length, unsigned flags, struct State *st) {
-	ENetPacket *packet;
-
-	packet = enet_packet_create(data, length, flags);
-	if (packet == NULL)
-		return -1;
-
-	if (pid == PID_BROADCAST)
-		enet_host_broadcast(st->host, 0, packet);
-	else if ((uint32_t)pid < MAX_PLAYERS)
-		return enet_peer_send(st->host->peers+pid, 0, packet) == 0 ? 0 : -1;
-	else {
-		plid i;
-		for (i=0;i<MAX_PLAYERS;i++) {
-			if (pid_matches(pid, i, st))
-				enet_peer_send(st->host->peers+i, 0, packet);
-		}
-	}
-
-	return 0;
-}
-
-static int send_packet(plid pid, const void *data, size_t length, struct State *st) {
-	return send_packet_flags(pid, data, length, ENET_PACKET_FLAG_RELIABLE, st);
-}
-
-static int send_packet_unreliable(plid pid, const void *data, size_t length, struct State *st) {
-	return send_packet_flags(pid, data, length, 0, st);
-}
-
-void before_log(struct State *st) {}
-void after_log(struct State *st) {}
+void before_log(struct State *st) {(void)st;return;}
+void after_log(struct State *st) {(void)st;return;}
 
 /* TODO: integrate logging with lua better */
 #define SEND(pid, data) st->f.send_packet(pid, &(data), sizeof(data), st)
 #define LOG(x, ...) do {st->f.before_log(st); fprintf(stderr, x"\n", __VA_ARGS__); st->f.after_log(st);} while (0)
 #define LOG1(x) do {st->f.before_log(st); fputs(x"\n", stderr); st->f.after_log(st);} while (0)
-
-static void send_fog(plid pid, color color, struct State *st) {
-	struct PacketFogColor cf;
-
-	cf.packetID = PacketTypeFogColor;
-	cf.a = 0;
-	cf.color[0] = color[0];
-	cf.color[1] = color[1];
-	cf.color[2] = color[2];
-
-	SEND(pid, cf);
-}
 
 static void set_fog(color color, struct State *st) {
 	st->globals.fog[0] = color[0];
@@ -199,32 +157,8 @@ static void set_fog(color color, struct State *st) {
 	st->f.send_fog(PID_BROADCAST, color, st);
 }
 
-/* TODO: what if i'm the last player ID? i don't need my own position */
-static void send_player_update(plid pid, struct State *st) {
-	struct PacketWorldUpdate upd;
-	plid i, max = -1;
-
-	upd.packetID = PacketTypeWorldUpdate;
-
-	memset(upd.players, 0, sizeof(upd.players));
-
-	for (i=0;i<MAX_PLAYERS;i++) {
-		/* TODO: do i care about the position of dead people? spectators? */
-		if (!st->p[i].alive)
-			continue;
-
-		max = i;
-
-		upd.players[i].pos = st->p[i].pos;
-		upd.players[i].ori = st->p[i].ori;
-	}
-
-	st->f.send_packet_unreliable(pid, &upd, 1+(max+1)*24, st);
-}
-
 static int alloc_more_nades(struct State *st) {
 	struct Grenade *newbuf;
-	size_t i;
 
 	newbuf = calloc(st->globals.grenadeSize<<2, sizeof(struct Grenade));
 	if (newbuf == NULL)
@@ -272,17 +206,6 @@ static void remove_grenade(size_t index, struct State *st) {
 		LOG("realloc doesn't want to shrink the grenades buffer (%lu currently allocated)", st->globals.grenadeSize);
 }
 
-static float sqr_len2(fvec3 vec) {
-	return vec.x*vec.x + vec.y*vec.y;
-}
-
-static float sqr_dist2(fvec3 pos1, fvec3 pos2) {
-	pos1.x -= pos2.x;
-	pos1.y -= pos2.y;
-
-	return sqr_len2(pos1);
-}
-
 static float sqr_len3(fvec3 vec) {
 	return vec.x*vec.x + vec.y*vec.y + vec.z*vec.z;
 }
@@ -306,10 +229,6 @@ static float safe_sqr_dist3(fvec3 pos1, fvec3 pos2) {
 		return 1;
 
 	return val;
-}
-
-static int libspades_voxel_bounds_check_map(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) {
-	return (x < MAP_SIZE_X && y < MAP_SIZE_Y && z < MAP_SIZE_Z);
 }
 
 static int libspades_voxel_bounds_check_player(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) {
@@ -345,28 +264,8 @@ extern int get_solid(ivec3 pos, struct State *st) {
 	return get_solid3(pos.x, pos.y, pos.z, st);
 }
 
-static int neighboring_voxels(ivec3 pos, struct State *st) {
-	int32_t off;
-	int count = 0;
-
-	for (off=-1;off<2;off+=2)
-		count += (uint32_t)(pos.x+off) < 512 && get_solid3(pos.x+off, pos.y, pos.z, st);
-
-	for (off=-1;off<2;off+=2)
-		count += (uint32_t)(pos.y+off) < 512 && get_solid3(pos.x, pos.y+off, pos.z, st);
-
-	for (off=-1;off<2;off+=2)
-		count += (uint32_t)(pos.z+off) < 64 && get_solid3(pos.x, pos.y, pos.z+off, st);
-
-	return count;
-}
-
 static void cull3(int32_t x, int32_t y, int32_t z, struct State *st) {
 	cull_floating_voxels(x, y, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
-}
-
-static void cull(ivec3 pos, struct State *st) {
-	cull3(pos.x, pos.y, pos.z, st);
 }
 
 /* TODO: culling on openspades is much faster if there's a "floor" to connect to near the bottom
@@ -469,15 +368,6 @@ static uint32_t grenade_rmblocks(ivec3 pos, struct State *st) {
 
 	return solids;
 }
-
-#if 0
-static int grenade_destroy(ivec3 pos, struct State *st) {
-	uint32_t solids = grenade_rmblocks(pos, st);
-	grenade_cullblocks(pos, solids, st);
-	finish_cull(stackData, (void *)keepSolid);
-	return !!solids;
-}
-#endif
 
 static void unpristine(struct State *st) {
 	if (st->globals.pristineBuf) {
@@ -585,6 +475,8 @@ static void block_action_cull(ivec3 pos, uint32_t mask, struct State *st) {
 
 /* st->f.finish_cull under a different name because the name finish_cull was already taken */
 static void fin_cull(struct State *st) {
+	/* TODO: move stackData and whatever into st unless you really want to share it across states */
+	(void)st;
 	finish_cull(stackData, (void *)keepSolid);
 }
 
@@ -642,18 +534,6 @@ static void detonate_grenade(size_t index, struct State *st) {
 	st->f.block_action(ipos, BlockActionTypeGrenadeDestroy, nade.pid, st);
 }
 
-static void send_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, struct State *st) {
-	struct PacketGrenade nade;
-
-	nade.packetID = PacketTypeGrenade;
-	nade.playerID = from;
-	nade.fuseLength = fuse;
-	nade.pos = pos;
-	nade.vel = vel;
-
-	SEND(pid, nade);
-}
-
 static size_t register_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
 	if (st->globals.grenadeCount == st->globals.grenadeSize && alloc_more_nades(st) == -1) {
 		LOG("Out of memory for more grenades (%lu currently allocated)", st->globals.grenadeSize);
@@ -675,27 +555,6 @@ static size_t spawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float
 	if (idx != (size_t)-1)
 		st->f.send_grenade(PID_BROADCAST, pos, vel, fuse, 0, st);
 	return idx;
-}
-
-/* TODO: make grenade, send_grenade funcs */
-static void on_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
-	st->f.register_grenade(pid, st->p[pid].team, pos, vel, fuse, st);
-	st->f.send_grenade(PID_BROADCAST_EXCEPT(pid), pos, vel, fuse, 0, st);
-}
-
-static void send_reload(plid pid, unsigned mag, unsigned reserve, plid from, struct State *st) {
-	struct PacketWeaponReload rl;
-
-	rl.packetID = PacketTypeWeaponReload;
-	rl.playerID = from;
-	rl.magazineAmmo = mag > 255 ? 255 : mag;
-	rl.reserveAmmo = reserve > 255 ? 255 : reserve;
-
-	SEND(pid, rl);
-}
-
-static void on_reload(plid pid, unsigned mag, unsigned reserve, struct State *st) {
-	st->f.send_reload(PID_BROADCAST_EXCEPT(pid), 255, 255, pid, st);
 }
 
 #if 1
@@ -747,26 +606,6 @@ static void tick(struct State *st) {
 	st->f.send_player_update(PID_BROADCAST, st);
 }
 
-const char *host_ip(ENetAddress *addr) {
-	static char str[16];
-
-	/* TODO: pass 16 or 15? */
-	enet_address_get_host_ip(addr, str, 16);
-
-	return str;
-}
-#define IP(pid) host_ip(&st->host->peers[pid].address)
-#define PORT(pid) (st->host->peers[pid].address.port)
-
-static void on_any_connect(plid pid, struct State *st) {
-	if (pid >= MAX_PLAYERS) {
-		LOG("%s:%u (#%u) attempted to connect but server was full", IP(pid), PORT(pid), pid);
-		/* TODO: should i disconnect_now or just disconnect? if just disconnect, should i increase the amount of connections? */
-		enet_peer_disconnect_now(st->host->peers+pid, 4);
-	} else
-		st->f.on_successful_connect(pid, st);
-}
-
 #define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
 #define SOFTERR(func) LOG(func": %s", strerror(errno))
 static ssize_t get_fd_size(int fildes, struct State *st) {
@@ -811,678 +650,6 @@ static void *map_file(const char *path, ssize_t *size, struct State *st) {
 
 	while (close(fd) == -1 && errno == EINTR);
 	return mem;
-}
-
-static void on_successful_connect(plid pid, struct State *st) {
-	LOG("%s:%u (#%u) connected", IP(pid), PORT(pid), pid);
-
-	st->f.send_map(pid, st);
-}
-
-static void send_map_start(plid pid, unsigned size, struct State *st) {
-	struct PacketMapStart ms;
-
-	ms.packetID = PacketTypeMapStart;
-	ms.mapSize = size;
-
-	SEND(pid, ms);
-}
-
-#if 0
-static void send_map(plid pid, struct State *st) {
-	uint8_t *chk;
-	ssize_t mapsize;
-	char *map;
-
-	st->f.send_map_start(pid, 0, st);
-
-	map = map_file("maps/map.vxl.zlib", &mapsize);
-
-	chk = malloc(1+mapsize);
-	chk[0] = PacketTypeMapChunk;
-	memcpy(chk+1, map, mapsize);
-	
-	munmap(map, mapsize);
-
-	st->f.send_packet(pid, chk, 1+mapsize, st);
-	free(chk);
-
-	st->f.send_state(pid, st);
-}
-#else
-
-/* buf should be cols*65*4 bytes */
-static size_t get_vxl_chunk(void *buf, size_t coloff, size_t cols, struct State *st) {
-	uint_fast32_t x, y;
-
-	if (cols > 512*512-coloff)
-		cols = 512*512-coloff;
-
-	x = coloff % 512;
-	y = coloff / 512;
-
-	return pvx_dump_vxl(&st->globals.map, x, y, 512, 512, 64, buf, cols);
-}
-
-struct isal_zstream init_deflate(void) {
-	struct isal_zstream stream;
-
-	isal_deflate_init(&stream);
-
-	stream.flush = NO_FLUSH;
-	stream.gzip_flag = IGZIP_ZLIB;
-	stream.end_of_stream = 0;
-	stream.level = 0;
-	stream.level_buf = malloc(ISAL_DEF_LVL0_DEFAULT);
-	stream.level_buf_size = ISAL_DEF_LVL0_DEFAULT;
-
-	return stream;
-}
-
-static void send_compressed_map_unpristine(plid pid, struct State *st) {
-	struct isal_zstream stream;
-	size_t cols;
-	/* TODO: determine isa-l magic numbers */
-	uint8_t outbuf[1+512*8*65*4+330];
-
-	/* TODO NOTE: doesn't pyspades make a whole new copy of the map every time it wants to write something? efficiency. */
-	outbuf[0] = PacketTypeMapChunk;
-
-	stream = init_deflate();
-
-#pragma omp parallel for ordered
-	for (cols=0;cols<512*512;cols += 512*8) {
-		size_t buflen;
-		uint8_t vxlbuf[512*8*65*4];
-		buflen = get_vxl_chunk(vxlbuf, cols, 512*8, st);
-
-#pragma omp ordered
-		{
-			stream.next_in = vxlbuf;
-			stream.avail_in = buflen;
-
-			if (cols == 512*512-512*8)
-				stream.end_of_stream = 1;
-
-			do {
-				stream.next_out = outbuf+1;
-				stream.avail_out = 512*8*65*4+330;
-
-				if (isal_deflate(&stream) != ISAL_DECOMP_OK) {
-					LOG1("Some deflate err!");
-					break;
-				}
-
-				st->f.send_packet(pid, outbuf, stream.next_out-outbuf, st);
-			} while (stream.avail_in != 0);
-		}
-	}
-
-	free(stream.level_buf);
-}
-
-static void send_compressed_map(plid pid, struct State *st) {
-	size_t i;
-	uint8_t outbuf[1+8192];
-	outbuf[0] = PacketTypeMapChunk;
-
-	if (st->globals.pristineBuf) {
-		for (i=0;i<st->globals.pristineLen;i += 8192) {
-			size_t len = 8192;
-			if (i+len > st->globals.pristineLen)
-				len = st->globals.pristineLen - i;
-
-			memcpy(outbuf+1, st->globals.pristineBuf+i, len);
-			st->f.send_packet(pid, outbuf, 1+len, st);
-		}
-
-	} else
-		send_compressed_map_unpristine(pid, st);
-}
-
-static void send_map(plid pid, struct State *st) {
-	size_t buflen;
-	plid i;
-
-	st->f.send_map_start(pid, 0, st);
-	send_compressed_map(pid, st);
-
-	/* TODO: should the iterator be moved to send_state? */
-	for (i=0;i<MAX_PLAYERS;i++)
-		if (pid_matches(pid, i, st))
-			st->f.send_state(i, st);
-}
-#endif
-
-static void fill_in_state(struct PacketStateData *sta, plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, struct State *st) {
-	sta->packetID = PacketTypeStateData;
-	sta->playerID = from;
-	sta->fog[0] = fog[0];
-	sta->fog[1] = fog[1];
-	sta->fog[2] = fog[2];
-	sta->teamcolor[0][0] = teamcolor[0][0];
-	sta->teamcolor[0][1] = teamcolor[0][1];
-	sta->teamcolor[0][2] = teamcolor[0][2];
-	sta->teamcolor[1][0] = teamcolor[1][0];
-	sta->teamcolor[1][1] = teamcolor[1][1];
-	sta->teamcolor[1][2] = teamcolor[1][2];
-	memset(sta->team1Name, 0, 20);
-	strcpy(sta->team1Name, teamname[0]);
-	strcpy(sta->team2Name, teamname[1]);
-}
-
-static void send_state_ctf(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, const unsigned *teamscore, unsigned maxscore, const plid *holders, const fvec3 *intelpos, const fvec3 *tentpos, struct State *st) {
-	struct PacketStateData sta;
-	unsigned i;
-
-	fill_in_state(&sta, pid, from, teamname, teamcolor, fog, st);
-	sta.gamemode = 0;
-	sta.gm.ctf.teamscore[0] = teamscore[0];
-	sta.gm.ctf.teamscore[1] = teamscore[1];
-	sta.gm.ctf.maxscore = maxscore;
-	/* TODO: I like how the ordering is reversed from what you'd expect */
-	/* TODO: why does openspades sometimes decide nobody is holding an intel */
-	sta.gm.ctf.heldIntels = (holders[1] != -1) | ((holders[0] != -1) << 1);
-	/* TODO: what happens if 255 holds an intel */
-	for (i=0;i<2;i++) {
-		if (holders[i] != -1) {
-			memset(&sta.gm.ctf.intelloc[i], 0, sizeof(sta.gm.ctf.intelloc[i]));
-			sta.gm.ctf.intelloc[i].playerID = holders[i];
-		} else
-			sta.gm.ctf.intelloc[i].position = intelpos[i];
-	}
-	sta.gm.ctf.tentpos[0] = tentpos[0];
-	sta.gm.ctf.tentpos[1] = tentpos[1];
-
-	st->f.send_packet(pid, &sta, 84, st);
-}
-
-static void send_state_tc(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, unsigned tentcount, const fvec3 *tentpos, unsigned *tentteam, struct State *st) {
-	struct PacketStateData sta;
-	unsigned i;
-
-	fill_in_state(&sta, pid, from, teamname, teamcolor, fog, st);
-	sta.gamemode = 1;
-	sta.gm.tc.territoryCount = tentcount;
-
-	for (i=0;i<tentcount;i++) {
-		sta.gm.tc.territories[i].pos = tentpos[i];
-		sta.gm.tc.territories[i].team = tentteam[i];
-	}
-
-	/* TODO: we should probably validate tentcount from lua code */
-	st->f.send_packet(pid, &sta, 33+tentcount, st);
-}
-
-static void send_state(plid pid, struct State *st) {
-	/* TODO: does this go before or after? */
-	st->f.send_connected_players(pid, st);
-	st->f.send_state_ctf(pid, pid, st->globals.teamname, st->globals.teamcolor, st->globals.fog, st->globals.teamscore, st->globals.maxscore, st->globals.intelplayers, st->globals.intelpos, st->globals.tentpos, st);
-}
-
-static void send_connected_players(plid pid, struct State *st) {
-	struct PacketExistingPlayer ep;
-	struct PacketInput in;
-	struct PacketWeaponInput wi;
-	struct PacketKill ki;
-	plid i;
-
-	ep.packetID = PacketTypeExistingPlayer;
-	in.packetID = PacketTypeInput;
-	wi.packetID = PacketTypeWeaponInput;
-
-	ki.packetID = PacketTypeKill;
-	ki.killerID = 0;
-	ki.killType = KillTypeFall;
-	ki.respawnTime = 0;
-	
-	for (i=0;i<MAX_PLAYERS;i++) {
-		if (!st->p[i].joined)
-			continue;
-
-		ep.playerID = i;
-		ep.team = st->p[i].team;
-		ep.weapon = st->p[i].weapon;
-		ep.tool = st->p[i].tool;
-		ep.score = st->p[i].score;
-		ep.blue = st->p[i].blockColor[0];
-		ep.green = st->p[i].blockColor[1];
-		ep.red = st->p[i].blockColor[2];
-		strcpy(ep.name, st->p[i].name);
-
-		in.playerID = i;
-		in.keyStates = st->p[i].inputs;
-
-		wi.playerID = i;
-		wi.weaponInput = st->p[i].mouseInputs;
-
-		ki.playerID = i;
-
-		st->f.send_packet(pid, &ep, 13+strlen(ep.name), st);
-
-		if (in.keyStates != 0)
-			SEND(pid, in);
-
-		if (wi.weaponInput != 0)
-			SEND(pid, wi);
-
-		if (st->p[i].team != 255 && !st->p[i].alive)
-			SEND(pid, ki);
-	}
-}
-
-static void on_disconnect(plid pid, struct State *st) {
-	LOG("%s:%u (#%u) disconnected", IP(pid), PORT(pid), pid);
-
-	if (st->p[pid].joined) {
-		struct PacketPlayerLeft pl;
-
-		pl.packetID = PacketTypePlayerLeft;
-		pl.playerID = pid;
-
-		SEND(PID_BROADCAST, pl);
-	}
-
-	st->p[pid].joined = 0;
-	st->p[pid].alive = 0;
-
-	st->f.after_player_destroy(pid, st);
-}
-
-#define CAT2(x,y) x##y
-#define CAT(x,y) CAT2(x,y)
-
-#define STR2(x) #x
-#define STR(x) STR2(x)
-
-#define BADRETURN do {st->crapline = __LINE__; return 1;} while (0)
-#define SBAD(cond) do {if (cond) {st->crapcond = "SBAD("#cond");"; BADRETURN;}} while (0)
-#define SCASEANY case CAT(PacketType, PCKT): st->crappacketname = STR(PCKT);
-#define SCASEJOINED SCASEANY SBAD(!st->p[pid].joined);
-#define SCASEALIVE SCASEANY SBAD(!st->p[pid].alive);
-#define PCASE case CAT(PacketType, PCKT):
-#define PACKET (*(struct CAT(Packet, PCKT) *)packet->data)
-#define PACKETPTR ((struct CAT(Packet, PCKT) *)packet->data)
-#define SRANGE(min, max) SBAD(packet->dataLength < (min) || packet->dataLength > (max))
-#define SEXACT() SBAD(packet->dataLength != sizeof(struct CAT(Packet, PCKT)))
-#define SNUL() SBAD(packet->data[packet->dataLength-1] != '\0')
-#define SPID() SBAD(packet->data[1] != pid)
-
-#define SCLIP(xoff, yoff, zoff, vec) clip_player(vec.x + (xoff), vec.y + (yoff), vec.z + (zoff), st->globals.map.solidData, 0)
-#define SCLIPB(zoff, vec) (SCLIP(-0.44, -0.44, zoff, vec) || SCLIP (-0.44, 0.44, zoff, vec) || SCLIP(0.44, -0.44, zoff, vec) || SCLIP(0.44, 0.44, zoff, vec))
-static int stuck_in_a_block(fvec3 pos, struct State *st) {
-		return SCLIPB(1.34, pos) || SCLIPB(0.45, pos) || SCLIPB(-0.44, pos);
-}
-
-/* TODO: sometimes voxlap and rl trigger this on ori with <0.000001 */
-#define CLOSE_ENOUGH_TO_1(x) (fabsf((x) - 1) < 0.00005)
-
-#define HORIZONTAL_SPEED_LIMIT 10.4
-#define DOWNWARD_SPEED_LIMIT 32.5403 /* Normally just 32, but sometimes OpenSpades likes to send more */
-#define UPWARD_SPEED_LIMIT 11.52 /* TODO: why was this 13.52 before */ /* TODO: needs some tweaking */
-#define COMBINED_SPEED_LIMIT 32.16
-
-/* TODO: does spawning affect openspades' position send time? didn't i already mention this somewhere? */
-/* TODO: horizontal speed limit inexplicably being screwed at 94-ish min with openspades (most seen: 115.501671) */
-#define HORIZONTAL_SPEED_LIMIT_SQR 115.6 /* Nominally 108.16 */
-#define COMBINED_SPEED_LIMIT_SQR 1069.46 /* Usually 1034.2656, except when it's not */
-
-/* TODO: these ones don't account for positiondata timing fuckery -- document that outside of this todo! */
-#define PLAYER_VEL_LIMIT 1.005
-#define PLAYER_VEL_LIMIT_SQR 1.010025
-#define PLAYER_HVEL_LIMIT_SQR 0.1056250
-#define PLAYER_DVEL_LIMIT_SQR 1
-#define PLAYER_UVEL_LIMIT_SQR 0.1296
-
-#define NADE_VEL_LIMIT_SQR 4.020025
-#define NADE_HVEL_LIMIT_SQR 1.755625
-#define NADE_DVEL_LIMIT_SQR 4
-#define NADE_UVEL_LIMIT_SQR 1.8496
-
-#define NOT_THE_SAME_POSITION(p1, p2) (p1.x != p2.x || p1.y != p2.y || p1.z != p2.z)
-
-static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
-	st->crappacketname = "?";
-
-	SBAD(packet->dataLength < 1);
-
-	switch (packet->data[0]) {
-#define PCKT PositionData
-		SCASEALIVE
-		SEXACT();
-
-		/* TODO: remove debugging cruft? or embrace it? */
-		if (PACKET.pos.z > 62.65)
-			LOG("Z: %f", PACKET.pos.z);
-
-		/* TODO: player can't be higher than a certain height without server intervention */
-		/* TODO: where did this magic 62.65 number come from? */
-		SBAD(PACKET.pos.x < 0.45 || PACKET.pos.x > 511.55);
-		SBAD(PACKET.pos.y < 0.45 || PACKET.pos.y > 511.55);
-		SBAD(PACKET.pos.z > 62.65);
-		/* TODO: make it suck less */
-		/* TODO: should it be last agreed or regular flavor? */
-		/* TODO: was_ever_not_in_a_block_since_lastagreedpos heuristic? */
-		SBAD(stuck_in_a_block(st->p[pid].lastagreedpos, st) && stuck_in_a_block(st->p[pid].pos, st) && stuck_in_a_block(PACKET.pos, st) && NOT_THE_SAME_POSITION(PACKET.pos, st->p[pid].pos));
-		if (PACKET.pos.z - st->p[pid].lastagreedpos.z > DOWNWARD_SPEED_LIMIT) LOG("dist1: %f", PACKET.pos.z - st->p[pid].lastagreedpos.z);
-		SBAD(PACKET.pos.z - st->p[pid].lastagreedpos.z > DOWNWARD_SPEED_LIMIT);
-		SBAD(st->p[pid].lastagreedpos.z - PACKET.pos.z > UPWARD_SPEED_LIMIT);
-		if (sqr_dist2(st->p[pid].lastagreedpos, PACKET.pos) > HORIZONTAL_SPEED_LIMIT_SQR) LOG("dist2: %f", sqr_dist2(st->p[pid].lastagreedpos, PACKET.pos));
-		SBAD(sqr_dist2(st->p[pid].lastagreedpos, PACKET.pos) > HORIZONTAL_SPEED_LIMIT_SQR);
-		if (sqr_dist3(st->p[pid].lastagreedpos, PACKET.pos) > COMBINED_SPEED_LIMIT_SQR) LOG("dist3: %f", sqr_dist3(st->p[pid].lastagreedpos, PACKET.pos));
-		SBAD(sqr_dist3(st->p[pid].lastagreedpos, PACKET.pos) > COMBINED_SPEED_LIMIT_SQR);
-
-		return 0;
-#undef PCKT
-#define PCKT OrientationData
-		SCASEALIVE
-		SEXACT();
-
-		SBAD(!CLOSE_ENOUGH_TO_1(PACKET.ori.x*PACKET.ori.x + PACKET.ori.y*PACKET.ori.y + PACKET.ori.z*PACKET.ori.z));
-
-		return 0;
-#undef PCKT
-#define PCKT SetColor
-		SCASEALIVE
-		SEXACT();
-		SPID();
-
-		return 0;
-#undef PCKT
-#define PCKT Input
-		SCASEALIVE
-		SEXACT();
-		SPID();
-
-		/* TODO: keyStates -> keys */
-		return 0;
-#undef PCKT
-#define PCKT WeaponInput
-		SCASEALIVE
-		SEXACT();
-		SPID();
-
-		return 0;
-#undef PCKT
-#define PCKT ChatMessage
-		SCASEJOINED
-		SRANGE(4, 4+255);
-		SPID();
-		SNUL();
-
-		SBAD(PACKET.type > 1);
-
-		return 0;
-#undef PCKT
-#define PCKT ExistingPlayer
-		SCASEANY
-		SRANGE(13, 28);
-		/* OpenSpades doesn't bother with SPID(); */
-		SNUL();
-
-		SBAD(st->p[pid].joined && st->p[pid].team != 255);
-
-		/* TODO: should a spectator be allowed to switch to spectator? this doesn't match shortplayer (RENAME: something better; SpectatorSwitch?) either */
-		SBAD(PACKET.team > 1 && PACKET.team != 255);
-		SBAD(PACKET.weapon > 2);
-		SBAD(PACKET.tool != ToolTypeGun);
-		/* OpenSpades puts its score in PACKET.score (or some other data; I didn't check) for some reason despite being ignored */
-		/* blue, green and red are ignored */
-
-		return 0;
-#undef PCKT
-#define PCKT ShortPlayerData
-		SCASEJOINED
-		SEXACT();
-		SPID();
-
-		SBAD(st->p[pid].team != 255);
-
-		SBAD(PACKET.team > 1);
-		SBAD(PACKET.weapon > 2);
-
-		return 0;
-#undef PCKT
-#define PCKT ChangeTeam
-		SCASEJOINED
-		SEXACT();
-		SPID();
-
-		SBAD(st->p[pid].team == 255);
-
-		SBAD(PACKET.team > 1 && PACKET.team != 255);
-
-		return 0;
-#undef PCKT
-#define PCKT ChangeWeapon
-		SCASEJOINED
-		SEXACT();
-		SPID();
-
-		SBAD(st->p[pid].team == 255);
-
-		SBAD(PACKET.weapon > 2);
-
-		return 0;
-#undef PCKT
-#define PCKT Hit
-		SCASEALIVE
-		SEXACT();
-
-		/* TODO: rename playerID here, it misleads -- playerID is not the player's ID, just the ID of the hit player */
-		SBAD(PACKET.playerID > MAX_PLAYERS);
-		SBAD(PACKET.playerID == pid);
-		/* Remember that spectators are not alive. */
-		SBAD(!st->p[PACKET.playerID].alive);
-
-		/* TODO: didn't betterspades suck at this */
-		SBAD(!(st->p[pid].mouseInputs & 1));
-
-		SBAD(st->p[pid].tool != ToolTypeGun && st->p[pid].tool != ToolTypeSpade);
-
-		SBAD(st->p[pid].tool == ToolTypeGun && PACKET.type > 3);
-		SBAD(st->p[pid].tool == ToolTypeSpade && PACKET.type != 4);
-
-		/* witchcraft-based range validation -- could probably be triggered with enough lag unless the target is stationary */
-		if (sqr_dist2(st->p[pid].lastagreedpos, st->p[PACKET.playerID].pos) > 128*128+HORIZONTAL_SPEED_LIMIT_SQR) LOG("dist2: %f", sqr_dist2(st->p[pid].lastagreedpos, st->p[PACKET.playerID].pos));
-		SBAD(sqr_dist2(st->p[pid].lastagreedpos, st->p[PACKET.playerID].pos) > 128*128+HORIZONTAL_SPEED_LIMIT_SQR);
-
-		/* TODO: validate spade dist */
-		
-		return 0;
-#undef PCKT
-#define PCKT Grenade
-		SCASEJOINED /* Dead men can throw nades (unless you're pyspades). */ /* TODO: only allow 1 deadnade */
-		SEXACT();
-		SPID();
-
-		/* TODO: should this really be here? */
-		SBAD(st->p[pid].grenades == 0);
-		st->p[pid].grenades--;
-
-		SBAD(st->p[pid].team == 255);
-
-		/* TODO: openspades switches back earlier than it should */
-		//SBAD(st->p[pid].tool != ToolTypeGrenade);
-
-		/* TODO: there's some range slightly above 0 and slightly below 3 that is actually used */
-		SBAD(PACKET.fuseLength < 0);
-		SBAD(PACKET.fuseLength > 3);
-
-		/* TODO: witchcraft position validation */
-		SBAD(PACKET.pos.x <= 0 || PACKET.pos.x >= 512);
-		SBAD(PACKET.pos.y <= 0 || PACKET.pos.y >= 512);
-		SBAD(PACKET.pos.z >= 64);
-
-		/* TODO: should i bother with finding the true up/down values? betterspades ignores them. . . */
-		/* TODO: wonder if a fancily-oriented player throws fancily-velocitied nades */
-		SBAD(sqr_len3(PACKET.vel) > NADE_VEL_LIMIT_SQR + 1);
-		SBAD(sqr_len2(PACKET.vel) > NADE_HVEL_LIMIT_SQR + 1);
-		SBAD(PACKET.vel.z > NADE_DVEL_LIMIT_SQR + 1);
-		SBAD(-PACKET.vel.z > NADE_UVEL_LIMIT_SQR + 1);
-
-		/* OpenSpades disagrees here */
-		/* TODO: didn't betterspades also suck at this */
-		//SBAD(!(st->p[pid].mouseInputs & 1));
-
-		return 0;
-#undef PCKT
-#define PCKT BlockAction
-		SCASEALIVE
-		SEXACT();
-		SPID();
-
-		SBAD((uint32_t)PACKET.pos.x >= 512);
-		SBAD((uint32_t)PACKET.pos.y >= 512);
-		SBAD((uint32_t)PACKET.pos.z >= 62);
-
-		/* TODO: voxlap block decrement/increment would go here -- just add a callback? */
-
-		switch(st->p[pid].tool) {
-		case ToolTypeSpade:
-			SBAD(PACKET.type != 1 && PACKET.type != 2);
-			break;
-		case ToolTypeBlock:
-			SBAD(PACKET.type != 0);
-			break;
-		case ToolTypeGun:
-			SBAD(PACKET.type != 1);
-			break;
-		default:
-			st->crapcond = "BlockAction with invalid tool (probably grenade)";
-			BADRETURN;
-		}
-
-		/* TODO: needs hard-crap and soft-crap packets */
-		switch (PACKET.type) {
-		case 0: /* build */
-			SBAD(get_solid(PACKET.pos, st));
-			SBAD(neighboring_voxels(PACKET.pos, st) == 0);
-			SBAD(st->p[pid].blocks == 0);
-			break;
-		case 1: /* destroy, destroy 3x */
-		case 2:
-			SBAD(!get_solid(PACKET.pos, st));
-			//SBAD(neighboring_voxels(PACKET.pos, st) == 6);
-			break;
-		}
-
-		return 0;
-#undef PCKT
-#define PCKT BlockLine
-		SCASEALIVE
-		SEXACT();
-		SPID();
-
-		/* TODO: limit action/line/hit to farthest hypothetical position given last agreed position */
-
-		SBAD((uint32_t)PACKET.start.x >= 512);
-		SBAD((uint32_t)PACKET.start.y >= 512);
-		SBAD((uint32_t)PACKET.start.z >= 62);
-
-		SBAD((uint32_t)PACKET.end.x >= 512);
-		SBAD((uint32_t)PACKET.end.y >= 512);
-		SBAD((uint32_t)PACKET.end.z >= 62);
-
-		/* Length can't be > 50 */
-		SBAD(1+abs(PACKET.end.x-PACKET.start.x)+abs(PACKET.end.y-PACKET.start.y)+abs(PACKET.end.z-PACKET.start.z) > 50);
-
-		SBAD(st->p[pid].tool != ToolTypeBlock);
-
-		/* TODO: block lines still work when the start is solid, right? */
-		SBAD(neighboring_voxels(PACKET.start, st) == 0);
-
-		SBAD(get_solid(PACKET.end, st));
-		SBAD(neighboring_voxels(PACKET.end, st) == 0);
-
-		return 0;
-#undef PCKT
-#define PCKT SetTool
-		SCASEALIVE
-		SEXACT();
-		SPID();
-
-		/* TODO: ammo, etc. */
-		SBAD(PACKET.tool > 3);
-
-		return 0;
-#undef PCKT
-#define PCKT WeaponReload
-		SCASEALIVE
-		SEXACT();
-		SPID();
-
-		/* TODO: validate reserve ammo */
-
-		return 0;
-#undef PCKT
-	}
-
-	st->crapcond = "Unknown packet ID";
-	BADRETURN;
-}
-
-static void send_chat(plid pid, const char *msg, unsigned type, plid from, struct State *st) {
-	size_t msglen = strlen(msg);
-	uint8_t *chat = malloc(3 + msglen + 1);
-
-	if (chat == NULL)
-		ERR("malloc");
-
-	chat[0] = PacketTypeChatMessage;
-	chat[1] = from;
-	chat[2] = type;
-	memcpy(chat+3, msg, msglen+1);
-
-	st->f.send_packet(pid, chat, 3 + msglen + 1, st);
-
-	free(chat);
-}
-
-/* TODO: CP437, etc. . . */
-static void on_chat(plid pid, const char *msg, unsigned type, struct State *st) {
-	plid dest;
-
-	LOG("(%s) %s: %s", type == ChatTypeAll ? "Global" : "Team", st->p[pid].name, msg);
-
-	if (type == ChatTypeAll)
-		dest = PID_BROADCAST;
-	else
-		dest = PID_BROADCAST_TEAM(st->p[pid].team);
-
-	st->f.send_chat(dest, msg, type, pid, st);
-}
-
-static void on_join(plid pid, unsigned team, unsigned weapon, const char *name, struct State *st) {
-	LOG("%s:%u (#%u) joined as \"%s\"", IP(pid), PORT(pid), pid, name);
-
-	/* at this point the player is still not alive */
-	st->p[pid].joined = 1;
-	st->p[pid].score = 0;
-	st->p[pid].newteam = team;
-	st->p[pid].newweapon = weapon;
-	strcpy(st->p[pid].name, name);
-
-	st->f.spawn_player(pid, st);
-}
-
-static void on_switch(plid pid, unsigned team, unsigned weapon, struct State *st) {
-	/* TODO: should its use as :kill be permitted? */
-	//LOG("%s:%u (#%u) tried to switch or something", IP(pid), PORT(pid), pid);
-
-	st->p[pid].newteam = team;
-	st->p[pid].newweapon = weapon;
-
-	/* TODO: should spectators haven't a respawn timer? */
-	/* TODO: how to only switch after spawn? */
-	if (st->p[pid].team == 255) {
-		st->f.spawn_player(pid, st);
-		if (st->p[pid].alive)
-			st->f.kill(pid, KillTypeTeamChange, 0, st);
-	} else if (team != st->p[pid].team && st->p[pid].alive)
-		st->f.kill(pid, KillTypeTeamChange, 0, st);
-	else if (st->p[pid].alive)
-		st->f.kill(pid, KillTypeWeaponChange, 0, st);
 }
 
 static int32_t highest_point(int32_t x, int32_t y, struct State *st) {
@@ -1532,27 +699,6 @@ static fvec3 on_player_spawn(plid pid, struct State *st) {
 	return pos;
 }
 
-static void on_tool_change(plid pid, unsigned tool, struct State *st) {
-	struct PacketSetTool set;
-
-	st->p[pid].tool = tool;
-
-	set.packetID = PacketTypeSetTool;
-	set.playerID = pid;
-	set.tool = tool;
-
-	SEND(PID_BROADCAST_EXCEPT(pid), set);
-}
-
-static void send_restock(plid pid, plid from, struct State *st) {
-	struct PacketRestock rs;
-
-	rs.packetID = PacketTypeRestock;
-	rs.playerID = from;
-
-	SEND(pid, rs);
-}
-
 static void restock(plid pid, struct State *st) {
 	st->p[pid].hp = 100;
 	/* TODO: how to handle voxlap and blockaction blocks? do i have to hook on_any/sane_packet for it? */
@@ -1565,7 +711,6 @@ static void restock(plid pid, struct State *st) {
 
 static void spawn_player(plid pid, struct State *st) {
 	struct PacketCreatePlayer cr;
-	fvec3 pos;
 
 	st->p[pid].spawntime = 0;
 	st->p[pid].team = st->p[pid].newteam;
@@ -1741,8 +886,10 @@ static int load_map(const char *name, struct State *st) {
 
 	do {
 		void *strbuf = malloc(strlen(name)+strlen(".zlib")+1);
-		if (strbuf == NULL)
+		if (strbuf == NULL) {
+			buf = NULL;
 			break;
+		}
 
 		strcpy(strbuf, name);
 		strcat(strbuf, ".zlib");
@@ -1790,59 +937,10 @@ static void boot_players_to_limbo(struct State *st) {
 	}
 }
 
-/* Win or timeout or advance or something else. */
-/* TODO: wonder if it should be given a reason arg */
-/* TODO: do you think lua could add extra args to funcs to pass to other lua scripts? */
-static void on_game_end(struct State *st) {
-	return;
-}
-
-static void on_shutdown(struct State *st) {
-	return;
-}
-
-static void on_position(plid pid, fvec3 pos, struct State *st) {
-	st->p[pid].pos = pos;
-	st->p[pid].lastagreedpos = pos;
-}
-
-static void on_orientation(plid pid, fvec3 ori, struct State *st) {
-	st->p[pid].ori = ori;
-}
-
-static void on_move_input(plid pid, unsigned bitmask, struct State *st) {
-	struct PacketInput in;
-
-	/* TODO: validate uncrouch? handle openspades jump */
-	if ((bitmask & KeyStateTypeCrouch) ^ (st->p[pid].inputs & KeyStateTypeCrouch))
-		change_crouch(bitmask & KeyStateTypeCrouch, st->p+pid, st->globals.map.solidData, 0);
-
-	if (bitmask & KeyStateTypeJump && st->p[pid].airborne)
-		bitmask &= ~KeyStateTypeJump;
-
-	st->p[pid].inputs = bitmask;
-
-	in.packetID = PacketTypeInput;
-	in.playerID = pid;
-	in.keyStates = bitmask;
-
-	SEND(PID_BROADCAST_EXCEPT(pid), in);
-}
-
-static void on_mouse_input(plid pid, unsigned bitmask, struct State *st) {
-	struct PacketWeaponInput in;
-
-	st->p[pid].mouseInputs = bitmask;
-
-	in.packetID = PacketTypeWeaponInput;
-	in.playerID = pid;
-	in.weaponInput = bitmask;
-
-	SEND(PID_BROADCAST_EXCEPT(pid), in);
-}
-
 static clk on_kill(plid pid, struct State *st) {
 	clk now = get_time();
+	(void)pid;
+	(void)st;
 
 	/* TODO: make less unpredictable/annoying -- players should spawn at the time when being killed would give them the most respawn time, not the most - 1 s */
 	/* Each player gets at least 1 s respawn time and at most 8 s */
@@ -1883,6 +981,8 @@ static void func_kill(plid pid, unsigned type, plid killer, struct State *st) {
 }
 
 static void after_player_destroy(plid pid, struct State *st) {
+	(void)pid;
+	(void)st;
 	return;
 }
 
@@ -1935,161 +1035,12 @@ static int get_hit_damage(plid pid, unsigned type, struct State *st) {
 	return dmgmap[st->p[pid].weapon][type];
 }
 
-/* TODO: can dead men shoot in openspades if they haven't received a Kill? */
-static void on_hit(plid pid, unsigned type, plid hitPlayer, struct State *st) {
-	if (st->p[pid].team != st->p[hitPlayer].team)
-		st->f.set_hp_directional(hitPlayer, st->p[hitPlayer].hp - st->f.get_hit_damage(pid, type, st), st->p[pid].pos, st);
-
-	if (st->p[hitPlayer].hp == 0)
-		st->f.kill(hitPlayer, type == HitTypeMelee ? KillTypeMelee : type == HitTypeHead, pid, st);
-}
-
-/* TODO: nuke the useless Data from everything, maybe rename WorldUpdate, un-action Kill, annihilate the british, *weapon* reload, . . . */
-static void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
-	switch (packet->data[0]) {
-#undef PCKT
-#define PCKT PositionData
-		PCASE
-		st->f.on_position(pid, PACKET.pos, st);
-		break;
-#undef PCKT
-#define PCKT OrientationData
-		PCASE
-		st->f.on_orientation(pid, PACKET.ori, st);
-		break;
-#undef PCKT
-#define PCKT SetColor
-		PCASE
-		st->f.on_color_change(pid, PACKET.color, st);
-		break;
-#undef PCKT
-#define PCKT Input
-		PCASE
-		st->f.on_move_input(pid, PACKET.keyStates, st);
-		break;
-#undef PCKT
-#define PCKT WeaponInput
-		PCASE
-		st->f.on_mouse_input(pid, PACKET.weaponInput & 3, st);
-		break;
-#undef PCKT
-#define PCKT ChatMessage
-		PCASE
-		st->f.on_chat(pid, PACKET.message, PACKET.type, st);
-
-		break;
-#undef PCKT
-#define PCKT ExistingPlayer
-		PCASE
-		if (st->p[pid].joined)
-			st->f.on_switch(pid, PACKET.team, PACKET.weapon, st);
-		else
-			/* TODO: CP437/WIN-1252 */
-			st->f.on_join(pid, PACKET.team, PACKET.team == 255 ? 0 : PACKET.weapon, PACKET.name, st);
-
-		break;
-#undef PCKT
-#define PCKT ShortPlayerData
-		PCASE
-		st->f.on_switch(pid, PACKET.team, PACKET.weapon, st);
-		break;
-#undef PCKT
-#define PCKT ChangeTeam
-		PCASE
-		st->f.on_switch(pid, PACKET.team, st->p[pid].newweapon, st);
-		break;
-#undef PCKT
-#define PCKT ChangeWeapon
-		PCASE
-		st->f.on_switch(pid, st->p[pid].newteam, PACKET.weapon, st);
-		break;
-#undef PCKT
-#define PCKT Hit
-		PCASE
-		st->f.on_hit(pid, PACKET.type, PACKET.playerID, st);
-		break;
-#undef PCKT
-#define PCKT Grenade
-		PCASE
-		/* TODO: blocks and grenades validation */
-		st->f.on_grenade(pid, PACKET.pos, PACKET.vel, PACKET.fuseLength, st);
-		break;
-#undef PCKT
-#define PCKT BlockAction
-		PCASE
-		st->f.on_block_action(pid, PACKET.pos, PACKET.type, st);
-		break;
-#undef PCKT
-#define PCKT BlockLine
-		PCASE
-		st->f.on_block_line(pid, PACKET.start, PACKET.end, st);
-		break;
-#undef PCKT
-#define PCKT SetTool
-		PCASE
-		st->f.on_tool_change(pid, PACKET.tool, st);
-		break;
-#undef PCKT
-#define PCKT WeaponReload
-		PCASE
-		st->f.on_reload(pid, PACKET.magazineAmmo, PACKET.reserveAmmo, st);
-		break;
-	}
-}
-
-static void send_block_action(plid pid, ivec3 pos, unsigned type, plid from, struct State *st) {
-	struct PacketBlockAction ba;
-
-	ba.packetID = PacketTypeBlockAction;
-	ba.playerID = from;
-	ba.type = type;
-	ba.pos = pos;
-
-	SEND(pid, ba);
-}
-
-static void send_block_line(plid pid, ivec3 start, ivec3 end, plid from, struct State *st) {
-	struct PacketBlockLine bl;
-
-	bl.packetID = PacketTypeBlockLine;
-	bl.playerID = from;
-	bl.start = start;
-	bl.end = end;
-
-	SEND(pid, bl);
-}
-
-static void send_set_color(plid pid, color color, plid from, struct State *st) {
-	struct PacketSetColor sc;
-
-	sc.packetID = PacketTypeSetColor;
-	sc.playerID = from;
-	sc.color[0] = color[0];
-	sc.color[1] = color[1];
-	sc.color[2] = color[2];
-
-	SEND(pid, sc);
-}
-
-static void set_color(plid pid, color color, struct State *st) {
+static void set_block_color(plid pid, color color, struct State *st) {
 	st->p[pid].blockColor[0] = color[0];
 	st->p[pid].blockColor[1] = color[1];
 	st->p[pid].blockColor[2] = color[2];
 
-	st->f.send_set_color(PID_BROADCAST, color, pid, st);
-}
-
-/* TODO: sync player's own block color by making abuse of pid 32? that would be very cursed though */
-static void on_color_change(plid pid, color color, struct State *st) {
-	st->p[pid].blockColor[0] = color[0];
-	st->p[pid].blockColor[1] = color[1];
-	st->p[pid].blockColor[2] = color[2];
-
-	st->f.send_set_color(PID_BROADCAST_EXCEPT(pid), color, pid, st);
-}
-
-static void on_block_action(plid pid, ivec3 pos, unsigned type, struct State *st) {
-	st->f.block_action(pos, type, pid, st);
+	st->f.send_set_block_color(PID_BROADCAST, color, pid, st);
 }
 
 static void block_line(ivec3 start, ivec3 end, plid from, struct State *st) {
@@ -2100,33 +1051,11 @@ static void block_line(ivec3 start, ivec3 end, plid from, struct State *st) {
 		st->f.send_block_line(PID_BROADCAST, start, end, from, st);
 }
 
-static void on_block_line(plid pid, ivec3 start, ivec3 end, struct State *st) {
-	st->f.block_line(start, end, pid, st);
-}
-
-static void send_position(plid pid, fvec3 pos, struct State *st) {
-	struct PacketPositionData pd;
-
-	pd.packetID = PacketTypePositionData;
-	pd.pos = pos;
-
-	SEND(pid, pd);
-}
-
 static void set_position(plid pid, fvec3 pos, struct State *st) {
 	st->p[pid].pos = pos;
 	st->p[pid].lastagreedpos = pos;
 
 	st->f.send_position(pid, pos, st);
-}
-
-static void send_orientation(plid pid, fvec3 ori, struct State *st) {
-	struct PacketPositionData od;
-
-	od.packetID = PacketTypeOrientationData;
-	od.pos = ori;
-
-	SEND(pid, od);
 }
 
 static void set_orientation(plid pid, fvec3 ori, struct State *st) {
@@ -2144,35 +1073,6 @@ static void set_jump(plid pid, struct State *st) {
 	ip.keyStates = st->p[pid].inputs;
 
 	SEND(PID_BROADCAST, ip);
-}
-
-static void send_intel_capture(plid pid, int winning, plid from, struct State *st) {
-	struct PacketIntelCapture ic;
-
-	ic.packetID = PacketTypeIntelCapture;
-	ic.playerID = from;
-	ic.winning = !!winning;
-
-	SEND(pid, ic);
-}
-
-static void send_intel_pickup(plid pid, plid from, struct State *st) {
-	struct PacketIntelPickup ip;
-
-	ip.packetID = PacketTypeIntelPickup;
-	ip.playerID = from;
-
-	SEND(pid, ip);
-}
-
-static void send_intel_drop(plid pid, fvec3 pos, plid from, struct State *st) {
-	struct PacketIntelDrop id;
-
-	id.packetID = PacketTypeIntelDrop;
-	id.playerID = from;
-	id.pos = pos;
-
-	SEND(pid, id);
 }
 
 /* TODO: or intel_capture? */
@@ -2209,17 +1109,6 @@ static void drop_intel(plid pid, fvec3 pos, struct State *st) {
 	st->f.send_intel_drop(PID_BROADCAST, pos, pid, st);
 }
 
-static void send_move_object(plid pid, fvec3 pos, unsigned id, unsigned team, struct State *st) {
-	struct PacketMoveObject ob;
-
-	ob.packetID = PacketTypeMoveObject;
-	ob.objectID = id;
-	ob.team = team;
-	ob.pos = pos;
-
-	SEND(pid, ob);
-}
-
 static void move_intel(unsigned team, fvec3 pos, struct State *st) {
 	st->globals.intelplayers[team] = -1;
 	st->globals.intelpos[team] = pos;
@@ -2233,30 +1122,17 @@ static void move_tent(unsigned team, fvec3 pos, struct State *st) {
 	st->f.send_move_object(PID_BROADCAST, pos, 2|team, 0, st);
 }
 
-static void on_crap_packet(plid pid, ENetPacket *packet, struct State *st) {
-	//LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
-	/* TODO: remove need for \r with linenoise */
-	LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\r\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
-
-	if (packet->dataLength > 0)
-	switch (packet->data[0]) {
-	case PacketTypePositionData:
-		/* OLD TODO: or should it just be a kick -- set to pos or lastagreedpos? */
-		/* NEW TODO: probably not a kick considering this has a chance of being validly triggered (in blocks) */
-		/* TODO: what if i set_position a dead guy? what if i'd like to spawn where i die? */
-		/* TODO: does sending position screw with client's position timing? */
-		/* TODO: would it be worth just limiting the magnitude? */
-		/* TODO: do i need a function that's just like set_position except used for position resend context? */
-		if (st->p[pid].alive) {
-			st->p[pid].lastagreedpos = st->p[pid].pos;
-			st->f.send_position(pid, st->p[pid].pos, st);
-		}
-		break;
-	}
-}
-
 static void load_initial_map(struct State *st) {
 	st->f.load_map("map", st);
+}
+
+const char *host_ip(ENetAddress *addr) {
+	static char str[16];
+
+	/* TODO: pass 16 or 15? */
+	enet_address_get_host_ip(addr, str, 16);
+
+	return str;
 }
 
 static int intercept(ENetHost *host, ENetEvent *event) {
@@ -2292,24 +1168,17 @@ static int intercept(ENetHost *host, ENetEvent *event) {
 	return 0;
 }
 
+void set_funcs_packetrecv(struct State *st);
+void set_funcs_event(struct State *st);
+void set_funcs_send(struct State *st);
 static void set_funcs(struct State *st) {
-	st->f.before_log = before_log;
-	st->f.after_log = after_log;
 	st->f.tick = tick;
-	st->f.on_any_connect = on_any_connect;
-	st->f.on_successful_connect = on_successful_connect;
-	st->f.on_disconnect = on_disconnect;
-	st->f.on_any_packet = on_any_packet;
-	st->f.on_sane_packet = on_sane_packet;
-	st->f.on_crap_packet = on_crap_packet;
-	st->f.send_map = send_map;
-	st->f.send_state = send_state;
-	st->f.on_join = on_join;
-	st->f.on_switch = on_switch;
-	st->f.spawn_player = spawn_player;
+	set_funcs_packetrecv(st);
+	set_funcs_event(st);
+	set_funcs_send(st);
 	st->f.on_player_spawn = on_player_spawn;
-	st->f.on_chat = on_chat;
-	st->f.send_chat = send_chat;
+	st->f.on_kill = on_kill;
+	st->f.spawn_player = spawn_player;
 	st->f.set_fog = set_fog;
 	st->f.prepare_map_load = prepare_map_load;
 	st->f.finish_map_load = finish_map_load;
@@ -2318,65 +1187,31 @@ static void set_funcs(struct State *st) {
 	st->f.load_vxl_from_file = load_vxl_from_file;
 	st->f.begin_load_vxl_from_file = begin_load_vxl_from_file;
 	st->f.load_map = load_map;
-	st->f.on_tool_change = on_tool_change;
-	st->f.on_block_action = on_block_action;
 	st->f.finish_cull = fin_cull;
 	st->f.block_action_rm = block_action_rm;
 	st->f.block_action_cull = block_action_cull;
 	st->f.block_action = block_action;
-	st->f.send_block_action = send_block_action;
-	st->f.send_connected_players = send_connected_players;
-	st->f.send_player_update = send_player_update;
-	st->f.on_position = on_position;
-	st->f.on_orientation = on_orientation;
-	st->f.on_move_input = on_move_input;
-	st->f.on_mouse_input = on_mouse_input;
-	st->f.on_color_change = on_color_change;
-	st->f.send_position = send_position;
 	st->f.set_position = set_position;
 	st->f.block_line = block_line;
-	st->f.on_block_line = on_block_line;
-	st->f.send_block_line = send_block_line;
-	st->f.on_hit = on_hit;
 	st->f.kill = func_kill;
-	st->f.on_kill = on_kill;
 	st->f.get_hit_damage = get_hit_damage;
 	st->f.set_hp = set_hp;
 	st->f.set_hp_directional = set_hp_directional;
-	st->f.on_grenade = on_grenade;
 	st->f.detonate_grenade = detonate_grenade;
-	st->f.set_color = set_color;
-	st->f.send_set_color = send_set_color;
-	st->f.on_reload = on_reload;
-	st->f.send_reload = send_reload;
+	st->f.set_block_color = set_block_color;
 	st->f.set_jump = set_jump;
 	st->f.tick_player_physics = tick_player_physics;
-	st->f.send_intel_capture = send_intel_capture;
-	st->f.send_intel_pickup = send_intel_pickup;
-	st->f.send_intel_drop = send_intel_drop;
 	st->f.capture_intel = capture_intel;
 	st->f.pickup_intel = pickup_intel;
 	st->f.drop_intel = drop_intel;
-	st->f.send_state_ctf = send_state_ctf;
-	st->f.send_state_tc = send_state_tc;
-	st->f.send_restock = send_restock;
 	st->f.restock = restock;
 	st->f.move_intel = move_intel;
-	st->f.send_move_object = send_move_object;
 	st->f.after_player_destroy = after_player_destroy;
-	st->f.on_game_end = on_game_end;
-	st->f.on_shutdown = on_shutdown;
 	st->f.boot_players_to_limbo = boot_players_to_limbo;
-	st->f.send_map_start = send_map_start;
-	st->f.send_packet = send_packet;
-	st->f.send_packet_unreliable = send_packet_unreliable;
 	st->f.move_tent = move_tent;
-	st->f.send_grenade = send_grenade;
 	st->f.register_grenade = register_grenade;
 	st->f.spawn_grenade = spawn_grenade;
-	st->f.send_fog = send_fog;
 	st->f.load_initial_map = load_initial_map;
-	st->f.send_orientation = send_orientation;
 	st->f.set_orientation = set_orientation;
 }
 
@@ -2498,6 +1333,7 @@ static struct State *st_init(void) {
 
 volatile sig_atomic_t keepRunning = 1;
 static void sig_handler(int sig) {
+	(void)sig;
 	keepRunning = 0;
 }
 

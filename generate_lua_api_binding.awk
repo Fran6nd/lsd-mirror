@@ -7,7 +7,7 @@ BEGIN {
 }
 
 END {
-	printf("\nstatic void register_luaawk(lua_State *l, struct State *st) {%s}\n", lua_reg);
+	printf("\nstatic void register_luaawk(lua_State *l, struct State *st) {(void)l;%s}\n", lua_reg);
 	printf("\n#define LUA_CALLS %s\n#endif\n", lua_calls);
 }
 

@@ -31,18 +31,6 @@ typedef int bint;
 /* Vector of 3 signed ints, to represent position.
  * Why signed? Sending a GrenadeDestroy at -1 is perfectly valid -- it just affects things at 0.
  */
-/*typedef struct {
-	int32_t x;
-	int32_t y;
-	int32_t z;
-} ivec3;
-
-typedef struct {
-	float x;
-	float y;
-	float z;
-} fvec3;*/
-
 typedef ivec3p ivec3;
 typedef fvec3p fvec3;
 
@@ -156,21 +144,26 @@ struct Functions {
 	/*
 	 * Player actions
 	 */
+
+	/*
+	 * Player send functions -- less-hazardous alternatives to manually constructing packets
+	 */
 	int (*send_packet)(plid pid, const void *data, size_t length, struct State *st);
 	int (*send_packet_unreliable)(plid pid, const void *data, size_t length, struct State *st);
+
 	void (*send_map)(plid pid, struct State *st);
 	void (*send_state)(plid pid, struct State *st);
+
 	void (*send_state_ctf)(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, const unsigned *teamscore, unsigned maxscore, const plid *holders, const fvec3 *intelpos, const fvec3 *tentpos, struct State *st);
 	void (*send_state_tc)(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, unsigned tentcount, const fvec3 *tentpos, unsigned *tentteam, struct State *st);
 	void (*send_connected_players)(plid pid, struct State *st);
-	void (*spawn_player)(plid pid, struct State *st);
 	/* TODO: figure out how to log chat properly -- just on send_chat? */
 	/* also, what about logging /login? */
 	void (*send_chat)(plid pid, const char *msg, unsigned type, plid from, struct State *st);
 	void (*send_block_action)(plid pid, ivec3 pos, unsigned type, plid from, struct State *st);
 	/* Try to limit sent block lines to 50 blocks or openspades will eat you. */
 	void (*send_block_line)(plid pid, ivec3 start, ivec3 end, plid from, struct State *st);
-	void (*send_set_color)(plid pid, color color, plid from, struct State *st);
+	void (*send_set_block_color)(plid pid, color color, plid from, struct State *st);
 	void (*send_player_update)(plid pid, struct State *st); /* TODO: hide too-far players, /ups */
 	void (*send_orientation)(plid pid, fvec3 ori, struct State *st);
 	void (*send_position)(plid pid, fvec3 pos, struct State *st);
@@ -183,6 +176,10 @@ struct Functions {
 	void (*send_map_start)(plid pid, unsigned size, struct State *st);
 	void (*send_fog)(plid pid, color color, struct State *st);
 
+	/*
+	 * Player funcs -- these send packets and modify player state
+	 */
+	void (*spawn_player)(plid pid, struct State *st);
 	void (*restock)(plid pid, struct State *st);
 	/* TODO: allow hijacking respawn time */
 	void (*kill)(plid pid, unsigned type, plid killer, struct State *st);
@@ -192,7 +189,7 @@ struct Functions {
 	void (*set_hp_directional)(plid pid, int hp, fvec3 pos, struct State *st);
 	void (*set_tool)(plid pid, unsigned tool, struct State *st);
 	/* TODO: how to handle anonymous? */
-	void (*set_color)(plid pid, color color, struct State *st);
+	void (*set_block_color)(plid pid, color color, struct State *st);
 	void (*set_position)(plid pid, fvec3 pos, struct State *st);
 	void (*set_orientation)(plid pid, fvec3 ori, struct State *st);
 	void (*set_jump)(plid pid, struct State *st);

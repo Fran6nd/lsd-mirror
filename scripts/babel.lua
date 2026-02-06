@@ -98,7 +98,7 @@ end
 -- TODO: don't bother with building over solid stuff (unless it's a different color -- probably block over all on load but not platform destroy)
 -- TODO: handle ridiculous blockaction queueing?
 local function build_platform()
-	set_color(PID_COLOR_ANONYMOUS, {b=255, g=255, r=0});
+	set_block_color(PID_COLOR_ANONYMOUS, {b=255, g=255, r=0});
 
 	-- TODO: block line does not overwrite colors -- you need to hook the map load and properly set colors there. . .
 	for y=plat_start.y,plat_end.y do

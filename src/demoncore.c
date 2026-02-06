@@ -109,7 +109,7 @@ int cast2(const uint8_t *solidData, float startX, float startY, float startZ, fl
 	float deltax, deltay, deltaz;
 	float tmaxx, tmaxy, tmaxz;
 	float distx, disty, distz;
-	float hypot;
+	(void)length;
 
 	/* Position of endX relative to startX */
 	offx = endX - startX;

@@ -4,13 +4,13 @@ local mod = {after={}};
 -- TODO: remove superfluous packet sending from core
 -- TODO: or just send color packet to the player
 function mod.on_color_change(pid, color)
-	set_color(pid, get_team_color(get_team(pid)));
+	set_block_color(pid, get_team_color(get_team(pid)));
 end
 
 -- TODO: should i send a color packet right before block/line to keep things in sync?
 -- if so, that should really be part of core
 function mod.after.spawn_player(pid)
-	-- TODO: should set_color ignore if there's no change in color?
+	-- TODO: should set_block_color ignore if there's no change in color?
 	-- TODO: yes
 	-- TODO: but what about the random dead person who places blocks?
 	-- TODO: he's not dead to the server if he's doing that
@@ -19,7 +19,7 @@ function mod.after.spawn_player(pid)
 	-- ignore spectators
 	if (get_team(pid) ~= SPECTATOR) then
 		-- TODO: should there be a dedicated get_player_color func? don't make it too easy to confuse with block color though
-		set_color(pid, get_team_color(get_team(pid)));
+		set_block_color(pid, get_team_color(get_team(pid)));
 	end
 end
 

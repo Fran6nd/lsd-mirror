@@ -311,6 +311,7 @@ static int lsend_state_ctf(lua_State *l) {
 
 static void csend_state_ctf(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, const unsigned *teamscore, unsigned maxscore, const plid *holders, const fvec3 *intelpos, const fvec3 *tentpos, struct State *st) {
 	size_t i;
+	(void)st;
 
 	lua_getglobal(l, "send_state_ctf");
 
@@ -379,6 +380,7 @@ static int lsend_packet(lua_State *l) {
 
 static int csend_packet(plid pid, const void *data, size_t length, struct State *st) {
 	int ret;
+	(void)st;
 
 	lua_getglobal(l, "send_packet");
 
@@ -409,6 +411,7 @@ static int lsend_packet_unreliable(lua_State *l) {
 
 static int csend_packet_unreliable(plid pid, const void *data, size_t length, struct State *st) {
 	int ret;
+	(void)st;
 
 	lua_getglobal(l, "send_packet_unreliable");
 
@@ -515,7 +518,7 @@ static int raycast(lua_State *l) {
 	int32_t x, y, z;
 	int hit;
 
-	hit = cast2(st->globals.map.solidData, start.x, start.y, start.z, end.x, end.y, end.z, 0, &x, &y, &z, 0);
+	hit = cast2(st->globals.map.solidData, start.x, start.y, start.z, end.x, end.y, end.z, 0, &x, &y, &z, last);
 	if (!hit)
 		return 0;
 
@@ -639,6 +642,7 @@ static int is_solid(lua_State *l) {
 }
 
 static int get_fog(lua_State *l) {
+	(void)l;
 	push_color(st->globals.fog);
 	return 1;
 }

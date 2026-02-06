@@ -195,7 +195,7 @@ function build_strike(pos, forkchance)
 			pos = {x=math.random(0,511), y=math.random(0,511)};
 		end
 		pos.z = 3;
-		set_color(32, white);
+		set_block_color(PID_COLOR_ANONYMOUS, white);
 		forkchance = 8;
 	end
 

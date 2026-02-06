@@ -27,7 +27,7 @@
 #define TICKRATE 60
 //#define TICKRATE 120
 
-ENetHost *bringup_host(ENetAddress *addr) {
+static ENetHost *bringup_host(ENetAddress *addr) {
 	ENetHost *host;
 
 	/* +1 to allow the 33st player connecting (assuming max is 32) to be sent a disconnect with "server full" as reason */
@@ -45,7 +45,7 @@ ENetHost *bringup_host(ENetAddress *addr) {
 }
 
 /* TODO: should i specify an epoch? */
-clk get_time(void) {
+extern clk get_time(void) {
 	struct timespec timeSpec;
 
 	clock_gettime(CLOCK_MONOTONIC, &timeSpec);
@@ -53,7 +53,7 @@ clk get_time(void) {
 	return timeSpec.tv_sec * 1000000000 + timeSpec.tv_nsec;
 }
 
-int time_until(clk ts) {
+static int time_until(clk ts) {
 	clk now = get_time();
 
 	if (ts > now)
@@ -62,27 +62,27 @@ int time_until(clk ts) {
 	return 0;
 }
 
-clk to_ms(clk ts) {
+static clk to_ms(clk ts) {
 	return ts / 1000000;
 }
 
-clk to_s(clk ts) {
+static clk to_s(clk ts) {
 	return ts / 1000000000;
 }
 
-double to_s_double(clk ts) {
+extern double to_s_double(clk ts) {
 	return (double)ts / 1000000000;
 }
 
-clk from_s(clk ts) {
+static clk from_s(clk ts) {
 	return ts * 1000000000;
 }
 
-clk from_s_double(double ts) {
+static clk from_s_double(double ts) {
 	return ts * 1000000000;
 }
 
-void handle_event(ENetEvent *event, struct State *st) {
+static void handle_event(ENetEvent *event, struct State *st) {
 	switch (event->type) {
 	case ENET_EVENT_TYPE_CONNECT:
 		st->f.on_any_connect(event->peer->incomingPeerID, st);
@@ -104,7 +104,7 @@ void handle_event(ENetEvent *event, struct State *st) {
 	}
 }
 
-void do_loop(struct State *st) {
+static void do_loop(struct State *st) {
 	ENetEvent event;
 
 	/* TODO: service main host and masterlist host simultaniously? */
@@ -119,7 +119,7 @@ void do_loop(struct State *st) {
 }
 
 /* Use this for iterating over BROADCAST_* pids */
-int pid_matches(plid broadcast, plid pid, struct State *st) {
+extern int pid_matches(plid broadcast, plid pid, struct State *st) {
 	uint32_t flags = (uint32_t)broadcast >> 29;
 	uint32_t data = (uint32_t)broadcast & (uint32_t)0x1fffffff;
 
@@ -141,7 +141,7 @@ int pid_matches(plid broadcast, plid pid, struct State *st) {
 	}
 }
 
-int send_packet_flags(plid pid, const void *data, size_t length, unsigned flags, struct State *st) {
+static int send_packet_flags(plid pid, const void *data, size_t length, unsigned flags, struct State *st) {
 	ENetPacket *packet;
 
 	packet = enet_packet_create(data, length, flags);
@@ -163,11 +163,11 @@ int send_packet_flags(plid pid, const void *data, size_t length, unsigned flags,
 	return 0;
 }
 
-int send_packet(plid pid, const void *data, size_t length, struct State *st) {
+static int send_packet(plid pid, const void *data, size_t length, struct State *st) {
 	return send_packet_flags(pid, data, length, ENET_PACKET_FLAG_RELIABLE, st);
 }
 
-int send_packet_unreliable(plid pid, const void *data, size_t length, struct State *st) {
+static int send_packet_unreliable(plid pid, const void *data, size_t length, struct State *st) {
 	return send_packet_flags(pid, data, length, 0, st);
 }
 
@@ -179,7 +179,7 @@ void after_log(struct State *st) {}
 #define LOG(x, ...) do {st->f.before_log(st); fprintf(stderr, x"\n", __VA_ARGS__); st->f.after_log(st);} while (0)
 #define LOG1(x) do {st->f.before_log(st); fputs(x"\n", stderr); st->f.after_log(st);} while (0)
 
-void send_fog(plid pid, color color, struct State *st) {
+static void send_fog(plid pid, color color, struct State *st) {
 	struct PacketFogColor cf;
 
 	cf.packetID = PacketTypeFogColor;
@@ -191,7 +191,7 @@ void send_fog(plid pid, color color, struct State *st) {
 	SEND(pid, cf);
 }
 
-void set_fog(color color, struct State *st) {
+static void set_fog(color color, struct State *st) {
 	st->globals.fog[0] = color[0];
 	st->globals.fog[1] = color[1];
 	st->globals.fog[2] = color[2];
@@ -200,7 +200,7 @@ void set_fog(color color, struct State *st) {
 }
 
 /* TODO: what if i'm the last player ID? i don't need my own position */
-void send_player_update(plid pid, struct State *st) {
+static void send_player_update(plid pid, struct State *st) {
 	struct PacketWorldUpdate upd;
 	plid i, max = -1;
 
@@ -222,7 +222,7 @@ void send_player_update(plid pid, struct State *st) {
 	st->f.send_packet_unreliable(pid, &upd, 1+(max+1)*24, st);
 }
 
-int alloc_more_nades(struct State *st) {
+static int alloc_more_nades(struct State *st) {
 	struct Grenade *newbuf;
 	size_t i;
 
@@ -238,7 +238,7 @@ int alloc_more_nades(struct State *st) {
 }
 
 /* TODO: it might be a little major bit more efficient to fill in nades starting at the start, not the end */
-int alloc_less_nades(struct State *st) {
+static int alloc_less_nades(struct State *st) {
 	struct Grenade *newbuf;
 	size_t smallSize = st->globals.grenadeSize;
 
@@ -262,7 +262,7 @@ int alloc_less_nades(struct State *st) {
 	return 0;
 }
 
-void remove_grenade(size_t index, struct State *st) {
+static void remove_grenade(size_t index, struct State *st) {
 	st->globals.grenades[index].exists = 0;
 
 	while (st->globals.grenadeCount > 0 && !st->globals.grenades[st->globals.grenadeCount - 1].exists)
@@ -272,22 +272,22 @@ void remove_grenade(size_t index, struct State *st) {
 		LOG("realloc doesn't want to shrink the grenades buffer (%lu currently allocated)", st->globals.grenadeSize);
 }
 
-float sqr_len2(fvec3 vec) {
+static float sqr_len2(fvec3 vec) {
 	return vec.x*vec.x + vec.y*vec.y;
 }
 
-float sqr_dist2(fvec3 pos1, fvec3 pos2) {
+static float sqr_dist2(fvec3 pos1, fvec3 pos2) {
 	pos1.x -= pos2.x;
 	pos1.y -= pos2.y;
 
 	return sqr_len2(pos1);
 }
 
-float sqr_len3(fvec3 vec) {
+static float sqr_len3(fvec3 vec) {
 	return vec.x*vec.x + vec.y*vec.y + vec.z*vec.z;
 }
 
-float sqr_dist3(fvec3 pos1, fvec3 pos2) {
+static float sqr_dist3(fvec3 pos1, fvec3 pos2) {
 	pos1.x -= pos2.x;
 	pos1.y -= pos2.y;
 	pos1.z -= pos2.z;
@@ -295,11 +295,11 @@ float sqr_dist3(fvec3 pos1, fvec3 pos2) {
 	return sqr_len3(pos1);
 }
 
-float dist1(float p1, float p2) {
+static float dist1(float p1, float p2) {
 	return fabsf(p1 - p2);
 }
 
-float safe_sqr_dist3(fvec3 pos1, fvec3 pos2) {
+static float safe_sqr_dist3(fvec3 pos1, fvec3 pos2) {
 	float val = sqr_dist3(pos1, pos2);
 
 	if (val == 0)
@@ -308,11 +308,11 @@ float safe_sqr_dist3(fvec3 pos1, fvec3 pos2) {
 	return val;
 }
 
-int libspades_voxel_bounds_check_map(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) {
+static int libspades_voxel_bounds_check_map(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) {
 	return (x < MAP_SIZE_X && y < MAP_SIZE_Y && z < MAP_SIZE_Z);
 }
 
-int libspades_voxel_bounds_check_player(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) {
+static int libspades_voxel_bounds_check_player(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) {
 	return (x < MAP_SIZE_X && y < MAP_SIZE_Y && z < (MAP_SIZE_Z - 2));
 }
 
@@ -321,31 +321,31 @@ struct ColumnStack *stackData = &stack;
 uint64_t *rememberedSolidity;
 uint64_t *keepSolid;
 
-void set_solid(ivec3 pos, struct State *st) {
+static void set_solid(ivec3 pos, struct State *st) {
 	pvx_voxel_create4(st->globals.map.solidData, CALC_I(pos.x, pos.y), pos.z);
 }
 
-void set_vox_color(ivec3 pos, color clr, struct State *st) {
+static void set_vox_color(ivec3 pos, color clr, struct State *st) {
 	pvx_voxel_color5(st->globals.map.colorData, clr, CALC_I(pos.x, pos.y), pos.z);
 }
 
-void set_empty3(int32_t x, int32_t y, int32_t z, struct State *st) {
+static void set_empty3(int32_t x, int32_t y, int32_t z, struct State *st) {
 	pvx_voxel_destroy4(st->globals.map.solidData, CALC_I(x, y), z);
 }
 
-void set_empty(ivec3 pos, struct State *st) {
+static void set_empty(ivec3 pos, struct State *st) {
 	set_empty3(pos.x, pos.y, pos.z, st);
 }
 
-int get_solid3(int32_t x, int32_t y, int32_t z, struct State *st) {
+static int get_solid3(int32_t x, int32_t y, int32_t z, struct State *st) {
 	return pvx_voxel_get_solidity4(st->globals.map.solidData, CALC_I(x, y), z);
 }
 
-int get_solid(ivec3 pos, struct State *st) {
+extern int get_solid(ivec3 pos, struct State *st) {
 	return get_solid3(pos.x, pos.y, pos.z, st);
 }
 
-int neighboring_voxels(ivec3 pos, struct State *st) {
+static int neighboring_voxels(ivec3 pos, struct State *st) {
 	int32_t off;
 	int count = 0;
 
@@ -361,11 +361,11 @@ int neighboring_voxels(ivec3 pos, struct State *st) {
 	return count;
 }
 
-void cull3(int32_t x, int32_t y, int32_t z, struct State *st) {
+static void cull3(int32_t x, int32_t y, int32_t z, struct State *st) {
 	cull_floating_voxels(x, y, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
 }
 
-void cull(ivec3 pos, struct State *st) {
+static void cull(ivec3 pos, struct State *st) {
 	cull3(pos.x, pos.y, pos.z, st);
 }
 
@@ -437,7 +437,7 @@ static void destroyGrenadeVoxel(uint_fast32_t x,
 	*solids |= ctr;
 }
 
-void grenade_cullblocks(ivec3 pos, uint32_t solids, struct State *st) {
+static void grenade_cullblocks(ivec3 pos, uint32_t solids, struct State *st) {
 	ivec3 off;
 	uint_fast32_t ctr = 1;
 
@@ -452,7 +452,7 @@ void grenade_cullblocks(ivec3 pos, uint32_t solids, struct State *st) {
 	}
 }
 
-uint32_t grenade_rmblocks(ivec3 pos, struct State *st) {
+static uint32_t grenade_rmblocks(ivec3 pos, struct State *st) {
 	ivec3 off;
 	uint_fast32_t solids = 0;
 	uint_fast32_t ctr = 1;
@@ -471,7 +471,7 @@ uint32_t grenade_rmblocks(ivec3 pos, struct State *st) {
 }
 
 #if 0
-int grenade_destroy(ivec3 pos, struct State *st) {
+static int grenade_destroy(ivec3 pos, struct State *st) {
 	uint32_t solids = grenade_rmblocks(pos, st);
 	grenade_cullblocks(pos, solids, st);
 	finish_cull(stackData, (void *)keepSolid);
@@ -487,7 +487,7 @@ static void unpristine(struct State *st) {
 }
 
 /* Don't try to build with this! */
-uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) {
+static uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) {
 	uint32_t mask = 0;
 
 	unpristine(st);
@@ -537,7 +537,7 @@ uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) 
 	return mask | (type << 30);
 }
 
-void block_action_cull(ivec3 pos, uint32_t mask, struct State *st) {
+static void block_action_cull(ivec3 pos, uint32_t mask, struct State *st) {
 	uint32_t type = mask >> 30;
 
 	unpristine(st);
@@ -588,7 +588,7 @@ static void fin_cull(struct State *st) {
 	finish_cull(stackData, (void *)keepSolid);
 }
 
-void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
+static void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
 	switch (type) {
 	case 0: /* Build */
 		unpristine(st);
@@ -605,7 +605,7 @@ void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
 }
 
 /* Fun fact: since distance is limited to 16 along each axis, the minimum grenade damage is 5. */
-void detonate_grenade(size_t index, struct State *st) {
+static void detonate_grenade(size_t index, struct State *st) {
 	plid i;
 	ivec3 ipos;
 	struct Grenade nade = st->globals.grenades[index];
@@ -642,7 +642,7 @@ void detonate_grenade(size_t index, struct State *st) {
 	st->f.block_action(ipos, BlockActionTypeGrenadeDestroy, nade.pid, st);
 }
 
-void send_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, struct State *st) {
+static void send_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, struct State *st) {
 	struct PacketGrenade nade;
 
 	nade.packetID = PacketTypeGrenade;
@@ -654,7 +654,7 @@ void send_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, struct 
 	SEND(pid, nade);
 }
 
-size_t register_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+static size_t register_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
 	if (st->globals.grenadeCount == st->globals.grenadeSize && alloc_more_nades(st) == -1) {
 		LOG("Out of memory for more grenades (%lu currently allocated)", st->globals.grenadeSize);
 		return (size_t)-1;
@@ -670,7 +670,7 @@ size_t register_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fus
 	return st->globals.grenadeCount-1;
 }
 
-size_t spawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+static size_t spawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
 	size_t idx = st->f.register_grenade(pid, team, pos, vel, fuse, st);
 	if (idx != (size_t)-1)
 		st->f.send_grenade(PID_BROADCAST, pos, vel, fuse, 0, st);
@@ -678,12 +678,12 @@ size_t spawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, 
 }
 
 /* TODO: make grenade, send_grenade funcs */
-void on_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+static void on_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
 	st->f.register_grenade(pid, st->p[pid].team, pos, vel, fuse, st);
 	st->f.send_grenade(PID_BROADCAST_EXCEPT(pid), pos, vel, fuse, 0, st);
 }
 
-void send_reload(plid pid, unsigned mag, unsigned reserve, plid from, struct State *st) {
+static void send_reload(plid pid, unsigned mag, unsigned reserve, plid from, struct State *st) {
 	struct PacketWeaponReload rl;
 
 	rl.packetID = PacketTypeWeaponReload;
@@ -694,17 +694,17 @@ void send_reload(plid pid, unsigned mag, unsigned reserve, plid from, struct Sta
 	SEND(pid, rl);
 }
 
-void on_reload(plid pid, unsigned mag, unsigned reserve, struct State *st) {
+static void on_reload(plid pid, unsigned mag, unsigned reserve, struct State *st) {
 	st->f.send_reload(PID_BROADCAST_EXCEPT(pid), 255, 255, pid, st);
 }
 
 #if 1
-void tick_player_physics(plid pid, float timeDelta, struct State *st) {
+static void tick_player_physics(plid pid, float timeDelta, struct State *st) {
 	move_player(st->p+pid, timeDelta, st->globals.map.solidData, 0); /* TODO: LOOP_PHYSICS (as a script?) */
 }
 #else
 /* Experiment with physics looping */
-void tick_player_physics(plid pid, float timeDelta, struct State *st) {
+static void tick_player_physics(plid pid, float timeDelta, struct State *st) {
 	/* TODO: better method of wrap detection? */
 	/* TODO: just handle wrapping here, silly goose. . . */
 	fvec3 oldpos = st->p[pid].pos;
@@ -717,7 +717,7 @@ void tick_player_physics(plid pid, float timeDelta, struct State *st) {
 }
 #endif
 
-void tick(struct State *st) {
+static void tick(struct State *st) {
 	size_t i;
 	clk now = get_time();
 
@@ -758,7 +758,7 @@ const char *host_ip(ENetAddress *addr) {
 #define IP(pid) host_ip(&st->host->peers[pid].address)
 #define PORT(pid) (st->host->peers[pid].address.port)
 
-void on_any_connect(plid pid, struct State *st) {
+static void on_any_connect(plid pid, struct State *st) {
 	if (pid >= MAX_PLAYERS) {
 		LOG("%s:%u (#%u) attempted to connect but server was full", IP(pid), PORT(pid), pid);
 		/* TODO: should i disconnect_now or just disconnect? if just disconnect, should i increase the amount of connections? */
@@ -769,7 +769,7 @@ void on_any_connect(plid pid, struct State *st) {
 
 #define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
 #define SOFTERR(func) LOG(func": %s", strerror(errno))
-ssize_t get_fd_size(int fildes, struct State *st) {
+static ssize_t get_fd_size(int fildes, struct State *st) {
 	struct stat sb;
 
 	if (fstat(fildes, &sb) != 0) {
@@ -783,7 +783,7 @@ ssize_t get_fd_size(int fildes, struct State *st) {
 /* MAP_FAILED is a hack that gives us a 2nd return value for nonexistant files */
 #define MAP_FILE_ENOENT MAP_FAILED
 /* TODO: static literally all the functions */
-void *map_file(const char *path, ssize_t *size, struct State *st) {
+static void *map_file(const char *path, ssize_t *size, struct State *st) {
 	int fd;
 	void *mem;
 
@@ -813,13 +813,13 @@ void *map_file(const char *path, ssize_t *size, struct State *st) {
 	return mem;
 }
 
-void on_successful_connect(plid pid, struct State *st) {
+static void on_successful_connect(plid pid, struct State *st) {
 	LOG("%s:%u (#%u) connected", IP(pid), PORT(pid), pid);
 
 	st->f.send_map(pid, st);
 }
 
-void send_map_start(plid pid, unsigned size, struct State *st) {
+static void send_map_start(plid pid, unsigned size, struct State *st) {
 	struct PacketMapStart ms;
 
 	ms.packetID = PacketTypeMapStart;
@@ -829,7 +829,7 @@ void send_map_start(plid pid, unsigned size, struct State *st) {
 }
 
 #if 0
-void send_map(plid pid, struct State *st) {
+static void send_map(plid pid, struct State *st) {
 	uint8_t *chk;
 	ssize_t mapsize;
 	char *map;
@@ -852,7 +852,7 @@ void send_map(plid pid, struct State *st) {
 #else
 
 /* buf should be cols*65*4 bytes */
-size_t get_vxl_chunk(void *buf, size_t coloff, size_t cols, struct State *st) {
+static size_t get_vxl_chunk(void *buf, size_t coloff, size_t cols, struct State *st) {
 	uint_fast32_t x, y;
 
 	if (cols > 512*512-coloff)
@@ -921,7 +921,7 @@ static void send_compressed_map_unpristine(plid pid, struct State *st) {
 	free(stream.level_buf);
 }
 
-void send_compressed_map(plid pid, struct State *st) {
+static void send_compressed_map(plid pid, struct State *st) {
 	size_t i;
 	uint8_t outbuf[1+8192];
 	outbuf[0] = PacketTypeMapChunk;
@@ -940,7 +940,7 @@ void send_compressed_map(plid pid, struct State *st) {
 		send_compressed_map_unpristine(pid, st);
 }
 
-void send_map(plid pid, struct State *st) {
+static void send_map(plid pid, struct State *st) {
 	size_t buflen;
 	plid i;
 
@@ -971,7 +971,7 @@ static void fill_in_state(struct PacketStateData *sta, plid pid, plid from, cons
 	strcpy(sta->team2Name, teamname[1]);
 }
 
-void send_state_ctf(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, const unsigned *teamscore, unsigned maxscore, const plid *holders, const fvec3 *intelpos, const fvec3 *tentpos, struct State *st) {
+static void send_state_ctf(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, const unsigned *teamscore, unsigned maxscore, const plid *holders, const fvec3 *intelpos, const fvec3 *tentpos, struct State *st) {
 	struct PacketStateData sta;
 	unsigned i;
 
@@ -997,7 +997,7 @@ void send_state_ctf(plid pid, plid from, const char teamname[][10], const color 
 	st->f.send_packet(pid, &sta, 84, st);
 }
 
-void send_state_tc(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, unsigned tentcount, const fvec3 *tentpos, unsigned *tentteam, struct State *st) {
+static void send_state_tc(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, unsigned tentcount, const fvec3 *tentpos, unsigned *tentteam, struct State *st) {
 	struct PacketStateData sta;
 	unsigned i;
 
@@ -1014,13 +1014,13 @@ void send_state_tc(plid pid, plid from, const char teamname[][10], const color *
 	st->f.send_packet(pid, &sta, 33+tentcount, st);
 }
 
-void send_state(plid pid, struct State *st) {
+static void send_state(plid pid, struct State *st) {
 	/* TODO: does this go before or after? */
 	st->f.send_connected_players(pid, st);
 	st->f.send_state_ctf(pid, pid, st->globals.teamname, st->globals.teamcolor, st->globals.fog, st->globals.teamscore, st->globals.maxscore, st->globals.intelplayers, st->globals.intelpos, st->globals.tentpos, st);
 }
 
-void send_connected_players(plid pid, struct State *st) {
+static void send_connected_players(plid pid, struct State *st) {
 	struct PacketExistingPlayer ep;
 	struct PacketInput in;
 	struct PacketWeaponInput wi;
@@ -1071,7 +1071,7 @@ void send_connected_players(plid pid, struct State *st) {
 	}
 }
 
-void on_disconnect(plid pid, struct State *st) {
+static void on_disconnect(plid pid, struct State *st) {
 	LOG("%s:%u (#%u) disconnected", IP(pid), PORT(pid), pid);
 
 	if (st->p[pid].joined) {
@@ -1110,7 +1110,7 @@ void on_disconnect(plid pid, struct State *st) {
 
 #define SCLIP(xoff, yoff, zoff, vec) clip_player(vec.x + (xoff), vec.y + (yoff), vec.z + (zoff), st->globals.map.solidData, 0)
 #define SCLIPB(zoff, vec) (SCLIP(-0.44, -0.44, zoff, vec) || SCLIP (-0.44, 0.44, zoff, vec) || SCLIP(0.44, -0.44, zoff, vec) || SCLIP(0.44, 0.44, zoff, vec))
-int stuck_in_a_block(fvec3 pos, struct State *st) {
+static int stuck_in_a_block(fvec3 pos, struct State *st) {
 		return SCLIPB(1.34, pos) || SCLIPB(0.45, pos) || SCLIPB(-0.44, pos);
 }
 
@@ -1141,7 +1141,7 @@ int stuck_in_a_block(fvec3 pos, struct State *st) {
 
 #define NOT_THE_SAME_POSITION(p1, p2) (p1.x != p2.x || p1.y != p2.y || p1.z != p2.z)
 
-int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
+static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 	st->crappacketname = "?";
 
 	SBAD(packet->dataLength < 1);
@@ -1422,7 +1422,7 @@ int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 	BADRETURN;
 }
 
-void send_chat(plid pid, const char *msg, unsigned type, plid from, struct State *st) {
+static void send_chat(plid pid, const char *msg, unsigned type, plid from, struct State *st) {
 	size_t msglen = strlen(msg);
 	uint8_t *chat = malloc(3 + msglen + 1);
 
@@ -1440,7 +1440,7 @@ void send_chat(plid pid, const char *msg, unsigned type, plid from, struct State
 }
 
 /* TODO: CP437, etc. . . */
-void on_chat(plid pid, const char *msg, unsigned type, struct State *st) {
+static void on_chat(plid pid, const char *msg, unsigned type, struct State *st) {
 	plid dest;
 
 	LOG("(%s) %s: %s", type == ChatTypeAll ? "Global" : "Team", st->p[pid].name, msg);
@@ -1453,7 +1453,7 @@ void on_chat(plid pid, const char *msg, unsigned type, struct State *st) {
 	st->f.send_chat(dest, msg, type, pid, st);
 }
 
-void on_join(plid pid, unsigned team, unsigned weapon, const char *name, struct State *st) {
+static void on_join(plid pid, unsigned team, unsigned weapon, const char *name, struct State *st) {
 	LOG("%s:%u (#%u) joined as \"%s\"", IP(pid), PORT(pid), pid, name);
 
 	/* at this point the player is still not alive */
@@ -1466,7 +1466,7 @@ void on_join(plid pid, unsigned team, unsigned weapon, const char *name, struct 
 	st->f.spawn_player(pid, st);
 }
 
-void on_switch(plid pid, unsigned team, unsigned weapon, struct State *st) {
+static void on_switch(plid pid, unsigned team, unsigned weapon, struct State *st) {
 	/* TODO: should its use as :kill be permitted? */
 	//LOG("%s:%u (#%u) tried to switch or something", IP(pid), PORT(pid), pid);
 
@@ -1485,7 +1485,7 @@ void on_switch(plid pid, unsigned team, unsigned weapon, struct State *st) {
 		st->f.kill(pid, KillTypeWeaponChange, 0, st);
 }
 
-int32_t highest_point(int32_t x, int32_t y, struct State *st) {
+static int32_t highest_point(int32_t x, int32_t y, struct State *st) {
 	int32_t z;
 
 	for (z=0;z<64;z++) {
@@ -1496,7 +1496,7 @@ int32_t highest_point(int32_t x, int32_t y, struct State *st) {
 	return 64;
 }
 
-float highest_point_spawn(int32_t x, int32_t y, struct State *st) {
+static float highest_point_spawn(int32_t x, int32_t y, struct State *st) {
 	float z;
 
 	z = highest_point(x, y, st);
@@ -1508,7 +1508,7 @@ float highest_point_spawn(int32_t x, int32_t y, struct State *st) {
 	return z;
 }
 
-fvec3 on_player_spawn(plid pid, struct State *st) {
+static fvec3 on_player_spawn(plid pid, struct State *st) {
 	fvec3 pos;
 
 	switch (st->p[pid].team) {
@@ -1532,7 +1532,7 @@ fvec3 on_player_spawn(plid pid, struct State *st) {
 	return pos;
 }
 
-void on_tool_change(plid pid, unsigned tool, struct State *st) {
+static void on_tool_change(plid pid, unsigned tool, struct State *st) {
 	struct PacketSetTool set;
 
 	st->p[pid].tool = tool;
@@ -1544,7 +1544,7 @@ void on_tool_change(plid pid, unsigned tool, struct State *st) {
 	SEND(PID_BROADCAST_EXCEPT(pid), set);
 }
 
-void send_restock(plid pid, plid from, struct State *st) {
+static void send_restock(plid pid, plid from, struct State *st) {
 	struct PacketRestock rs;
 
 	rs.packetID = PacketTypeRestock;
@@ -1553,7 +1553,7 @@ void send_restock(plid pid, plid from, struct State *st) {
 	SEND(pid, rs);
 }
 
-void restock(plid pid, struct State *st) {
+static void restock(plid pid, struct State *st) {
 	st->p[pid].hp = 100;
 	/* TODO: how to handle voxlap and blockaction blocks? do i have to hook on_any/sane_packet for it? */
 	st->p[pid].blocks = 50;
@@ -1563,7 +1563,7 @@ void restock(plid pid, struct State *st) {
 	st->f.send_restock(pid, pid, st);
 }
 
-void spawn_player(plid pid, struct State *st) {
+static void spawn_player(plid pid, struct State *st) {
 	struct PacketCreatePlayer cr;
 	fvec3 pos;
 
@@ -1637,23 +1637,24 @@ static int pvx_dump_bitmask_all(uint_fast32_t x, uint_fast32_t y, uint_fast32_t 
 }
 
 /* TODO: should it send packets? */
-void clear_map(struct State *st) {
+static void clear_map(struct State *st) {
 	memset(st->globals.map.solidData, 0, (512*512*64+7)/8);
+	unpristine(st);
 }
 
-void prepare_map_load(struct State *st) {
+static void prepare_map_load(struct State *st) {
 	st->globals.loadingMap = 1;
 	clear_map(st);
 }
 
-void finish_map_load(struct State *st) {
+static void finish_map_load(struct State *st) {
 	st->globals.loadingMap = 0;
 
 	/* TODO: don't bother sending map if no players are connected, don't bother reencoding the vxl if we can reuse the loaded one, if the input vxl is zlib-compressed send it along the wire as-is */
 	st->f.send_map(PID_BROADCAST, st);
 }
 
-int load_vxl_from_mem(const void *data, size_t len, struct State *st) {
+static int load_vxl_from_mem(const void *data, size_t len, struct State *st) {
 	struct PVX_VXLStreamConfig config;
 	char err[PVX_ERRBUF_SIZE];
 
@@ -1674,7 +1675,7 @@ int load_vxl_from_mem(const void *data, size_t len, struct State *st) {
 }
 
 /* Isn't this one similar to begin_load_vxl_from_file. . . Only difference is no prepare. (could be useful for mapscripts writing map then loading vxl after?) Should i kill it? */
-int load_vxl_from_file(const char *path, struct State *st) {
+static int load_vxl_from_file(const char *path, struct State *st) {
 	void *buf;
 	ssize_t size;
 
@@ -1691,7 +1692,7 @@ int load_vxl_from_file(const char *path, struct State *st) {
 	return 0;
 }
 
-int begin_load_vxl_from_file(const char *path, struct State *st) {
+static int begin_load_vxl_from_file(const char *path, struct State *st) {
 	void *buf;
 	ssize_t size;
 
@@ -1710,7 +1711,7 @@ int begin_load_vxl_from_file(const char *path, struct State *st) {
 }
 
 /* TODO: decompress zlib instead of using its associated .vxl friend */
-int load_map(const char *name, struct State *st) {
+static int load_map(const char *name, struct State *st) {
 	void *buf;
 	ssize_t size;
 
@@ -1763,7 +1764,6 @@ int load_map(const char *name, struct State *st) {
 		}
 	} while (0);
 
-	unpristine(st);
 	if (buf != NULL && buf != MAP_FILE_ENOENT) {
 		st->globals.pristineBuf = buf;
 		st->globals.pristineLen = size;
@@ -1777,7 +1777,7 @@ int load_map(const char *name, struct State *st) {
 
 /* You probably want to call this after game end and before map load. TODO: you can figure it out */
 /* TODO: rename since it clears score too */
-void boot_players_to_limbo(struct State *st) {
+static void boot_players_to_limbo(struct State *st) {
 	plid i;
 
 	st->globals.teamscore[0] = 0;
@@ -1793,24 +1793,24 @@ void boot_players_to_limbo(struct State *st) {
 /* Win or timeout or advance or something else. */
 /* TODO: wonder if it should be given a reason arg */
 /* TODO: do you think lua could add extra args to funcs to pass to other lua scripts? */
-void on_game_end(struct State *st) {
+static void on_game_end(struct State *st) {
 	return;
 }
 
-void on_shutdown(struct State *st) {
+static void on_shutdown(struct State *st) {
 	return;
 }
 
-void on_position(plid pid, fvec3 pos, struct State *st) {
+static void on_position(plid pid, fvec3 pos, struct State *st) {
 	st->p[pid].pos = pos;
 	st->p[pid].lastagreedpos = pos;
 }
 
-void on_orientation(plid pid, fvec3 ori, struct State *st) {
+static void on_orientation(plid pid, fvec3 ori, struct State *st) {
 	st->p[pid].ori = ori;
 }
 
-void on_move_input(plid pid, unsigned bitmask, struct State *st) {
+static void on_move_input(plid pid, unsigned bitmask, struct State *st) {
 	struct PacketInput in;
 
 	/* TODO: validate uncrouch? handle openspades jump */
@@ -1829,7 +1829,7 @@ void on_move_input(plid pid, unsigned bitmask, struct State *st) {
 	SEND(PID_BROADCAST_EXCEPT(pid), in);
 }
 
-void on_mouse_input(plid pid, unsigned bitmask, struct State *st) {
+static void on_mouse_input(plid pid, unsigned bitmask, struct State *st) {
 	struct PacketWeaponInput in;
 
 	st->p[pid].mouseInputs = bitmask;
@@ -1841,7 +1841,7 @@ void on_mouse_input(plid pid, unsigned bitmask, struct State *st) {
 	SEND(PID_BROADCAST_EXCEPT(pid), in);
 }
 
-clk on_kill(plid pid, struct State *st) {
+static clk on_kill(plid pid, struct State *st) {
 	clk now = get_time();
 
 	/* TODO: make less unpredictable/annoying -- players should spawn at the time when being killed would give them the most respawn time, not the most - 1 s */
@@ -1854,7 +1854,7 @@ clk on_kill(plid pid, struct State *st) {
 /* TODO: move spawn time into lua */
 /* TODO: kill packet only gets sent if pid 0 is joined */
 /* This one is named func_kill instead of kill because POSIX took that name. */
-void func_kill(plid pid, unsigned type, plid killer, struct State *st) {
+static void func_kill(plid pid, unsigned type, plid killer, struct State *st) {
 	struct PacketKill kl;
 
 	st->p[pid].spawntime = st->f.on_kill(pid, st);
@@ -1882,11 +1882,11 @@ void func_kill(plid pid, unsigned type, plid killer, struct State *st) {
 	st->f.after_player_destroy(pid, st);
 }
 
-void after_player_destroy(plid pid, struct State *st) {
+static void after_player_destroy(plid pid, struct State *st) {
 	return;
 }
 
-void set_hp(plid pid, int hp, struct State *st) {
+static void set_hp(plid pid, int hp, struct State *st) {
 	struct PacketSetHP sh;
 
 	if (hp < 0)
@@ -1901,7 +1901,7 @@ void set_hp(plid pid, int hp, struct State *st) {
 	SEND(pid, sh);
 }
 
-void set_hp_directional(plid pid, int hp, fvec3 pos, struct State *st) {
+static void set_hp_directional(plid pid, int hp, fvec3 pos, struct State *st) {
 	struct PacketSetHP sh;
 
 	if (hp < 0)
@@ -1919,7 +1919,7 @@ void set_hp_directional(plid pid, int hp, fvec3 pos, struct State *st) {
 /* TODO about grenades: mr. piquespades subtracts player velocity from grenades velocity to get roughly player orientation (len == 1). it then checks if length(that value) is > 2 (why not 1?). if it is, it sets length(that value) to 2 and adds the player velocity back. . . */
 /* TODO fun fact: openspades can send SetColor when it's in spectator. . . wonder if dead too? */
 /* TODO: what if i don't have a pid to give? */
-int get_hit_damage(plid pid, unsigned type, struct State *st) {
+static int get_hit_damage(plid pid, unsigned type, struct State *st) {
 	uint8_t dmgmap[3][3] = {
 		{49, 100, 33},
 		{29, 75, 18},
@@ -1936,7 +1936,7 @@ int get_hit_damage(plid pid, unsigned type, struct State *st) {
 }
 
 /* TODO: can dead men shoot in openspades if they haven't received a Kill? */
-void on_hit(plid pid, unsigned type, plid hitPlayer, struct State *st) {
+static void on_hit(plid pid, unsigned type, plid hitPlayer, struct State *st) {
 	if (st->p[pid].team != st->p[hitPlayer].team)
 		st->f.set_hp_directional(hitPlayer, st->p[hitPlayer].hp - st->f.get_hit_damage(pid, type, st), st->p[pid].pos, st);
 
@@ -1945,7 +1945,7 @@ void on_hit(plid pid, unsigned type, plid hitPlayer, struct State *st) {
 }
 
 /* TODO: nuke the useless Data from everything, maybe rename WorldUpdate, un-action Kill, annihilate the british, *weapon* reload, . . . */
-void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
+static void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
 	switch (packet->data[0]) {
 #undef PCKT
 #define PCKT PositionData
@@ -2037,7 +2037,7 @@ void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
 	}
 }
 
-void send_block_action(plid pid, ivec3 pos, unsigned type, plid from, struct State *st) {
+static void send_block_action(plid pid, ivec3 pos, unsigned type, plid from, struct State *st) {
 	struct PacketBlockAction ba;
 
 	ba.packetID = PacketTypeBlockAction;
@@ -2048,7 +2048,7 @@ void send_block_action(plid pid, ivec3 pos, unsigned type, plid from, struct Sta
 	SEND(pid, ba);
 }
 
-void send_block_line(plid pid, ivec3 start, ivec3 end, plid from, struct State *st) {
+static void send_block_line(plid pid, ivec3 start, ivec3 end, plid from, struct State *st) {
 	struct PacketBlockLine bl;
 
 	bl.packetID = PacketTypeBlockLine;
@@ -2059,7 +2059,7 @@ void send_block_line(plid pid, ivec3 start, ivec3 end, plid from, struct State *
 	SEND(pid, bl);
 }
 
-void send_set_color(plid pid, color color, plid from, struct State *st) {
+static void send_set_color(plid pid, color color, plid from, struct State *st) {
 	struct PacketSetColor sc;
 
 	sc.packetID = PacketTypeSetColor;
@@ -2071,7 +2071,7 @@ void send_set_color(plid pid, color color, plid from, struct State *st) {
 	SEND(pid, sc);
 }
 
-void set_color(plid pid, color color, struct State *st) {
+static void set_color(plid pid, color color, struct State *st) {
 	st->p[pid].blockColor[0] = color[0];
 	st->p[pid].blockColor[1] = color[1];
 	st->p[pid].blockColor[2] = color[2];
@@ -2080,7 +2080,7 @@ void set_color(plid pid, color color, struct State *st) {
 }
 
 /* TODO: sync player's own block color by making abuse of pid 32? that would be very cursed though */
-void on_color_change(plid pid, color color, struct State *st) {
+static void on_color_change(plid pid, color color, struct State *st) {
 	st->p[pid].blockColor[0] = color[0];
 	st->p[pid].blockColor[1] = color[1];
 	st->p[pid].blockColor[2] = color[2];
@@ -2088,11 +2088,11 @@ void on_color_change(plid pid, color color, struct State *st) {
 	st->f.send_set_color(PID_BROADCAST_EXCEPT(pid), color, pid, st);
 }
 
-void on_block_action(plid pid, ivec3 pos, unsigned type, struct State *st) {
+static void on_block_action(plid pid, ivec3 pos, unsigned type, struct State *st) {
 	st->f.block_action(pos, type, pid, st);
 }
 
-void block_line(ivec3 start, ivec3 end, plid from, struct State *st) {
+static void block_line(ivec3 start, ivec3 end, plid from, struct State *st) {
 	unpristine(st);
 
 	dcore_block_line(start.x, start.y, start.z, end.x, end.y, end.z, &st->globals.map, st->p[from].blockColor);
@@ -2100,11 +2100,11 @@ void block_line(ivec3 start, ivec3 end, plid from, struct State *st) {
 		st->f.send_block_line(PID_BROADCAST, start, end, from, st);
 }
 
-void on_block_line(plid pid, ivec3 start, ivec3 end, struct State *st) {
+static void on_block_line(plid pid, ivec3 start, ivec3 end, struct State *st) {
 	st->f.block_line(start, end, pid, st);
 }
 
-void send_position(plid pid, fvec3 pos, struct State *st) {
+static void send_position(plid pid, fvec3 pos, struct State *st) {
 	struct PacketPositionData pd;
 
 	pd.packetID = PacketTypePositionData;
@@ -2113,14 +2113,14 @@ void send_position(plid pid, fvec3 pos, struct State *st) {
 	SEND(pid, pd);
 }
 
-void set_position(plid pid, fvec3 pos, struct State *st) {
+static void set_position(plid pid, fvec3 pos, struct State *st) {
 	st->p[pid].pos = pos;
 	st->p[pid].lastagreedpos = pos;
 
 	st->f.send_position(pid, pos, st);
 }
 
-void send_orientation(plid pid, fvec3 ori, struct State *st) {
+static void send_orientation(plid pid, fvec3 ori, struct State *st) {
 	struct PacketPositionData od;
 
 	od.packetID = PacketTypeOrientationData;
@@ -2129,12 +2129,12 @@ void send_orientation(plid pid, fvec3 ori, struct State *st) {
 	SEND(pid, od);
 }
 
-void set_orientation(plid pid, fvec3 ori, struct State *st) {
+static void set_orientation(plid pid, fvec3 ori, struct State *st) {
 	st->p[pid].ori = ori;
 	st->f.send_orientation(pid, ori, st);
 }
 
-void set_jump(plid pid, struct State *st) {
+static void set_jump(plid pid, struct State *st) {
 	struct PacketInput ip;
 
 	st->p[pid].inputs |= KeyStateTypeJump;
@@ -2146,7 +2146,7 @@ void set_jump(plid pid, struct State *st) {
 	SEND(PID_BROADCAST, ip);
 }
 
-void send_intel_capture(plid pid, int winning, plid from, struct State *st) {
+static void send_intel_capture(plid pid, int winning, plid from, struct State *st) {
 	struct PacketIntelCapture ic;
 
 	ic.packetID = PacketTypeIntelCapture;
@@ -2156,7 +2156,7 @@ void send_intel_capture(plid pid, int winning, plid from, struct State *st) {
 	SEND(pid, ic);
 }
 
-void send_intel_pickup(plid pid, plid from, struct State *st) {
+static void send_intel_pickup(plid pid, plid from, struct State *st) {
 	struct PacketIntelPickup ip;
 
 	ip.packetID = PacketTypeIntelPickup;
@@ -2165,7 +2165,7 @@ void send_intel_pickup(plid pid, plid from, struct State *st) {
 	SEND(pid, ip);
 }
 
-void send_intel_drop(plid pid, fvec3 pos, plid from, struct State *st) {
+static void send_intel_drop(plid pid, fvec3 pos, plid from, struct State *st) {
 	struct PacketIntelDrop id;
 
 	id.packetID = PacketTypeIntelDrop;
@@ -2176,7 +2176,7 @@ void send_intel_drop(plid pid, fvec3 pos, plid from, struct State *st) {
 }
 
 /* TODO: or intel_capture? */
-void capture_intel(plid pid, int winning, struct State *st) {
+static void capture_intel(plid pid, int winning, struct State *st) {
 	/* Hope nobody tries this on a spectator. */
 	st->globals.teamscore[st->p[pid].team]++;
 	st->p[pid].score += 10;
@@ -2195,7 +2195,7 @@ void capture_intel(plid pid, int winning, struct State *st) {
 		st->f.on_game_end(st);
 }
 
-void pickup_intel(plid pid, struct State *st) {
+static void pickup_intel(plid pid, struct State *st) {
 	st->globals.intelplayers[!st->p[pid].team] = pid;
 	st->f.send_intel_pickup(PID_BROADCAST, pid, st);
 }
@@ -2203,13 +2203,13 @@ void pickup_intel(plid pid, struct State *st) {
 /* TODO: or accept team? */
 /* TODO: why doesn't capture set a position, just drop? */
 /* TODO: shove a position on capture */
-void drop_intel(plid pid, fvec3 pos, struct State *st) {
+static void drop_intel(plid pid, fvec3 pos, struct State *st) {
 	st->globals.intelplayers[!st->p[pid].team] = -1;
 	st->globals.intelpos[!st->p[pid].team] = pos;
 	st->f.send_intel_drop(PID_BROADCAST, pos, pid, st);
 }
 
-void send_move_object(plid pid, fvec3 pos, unsigned id, unsigned team, struct State *st) {
+static void send_move_object(plid pid, fvec3 pos, unsigned id, unsigned team, struct State *st) {
 	struct PacketMoveObject ob;
 
 	ob.packetID = PacketTypeMoveObject;
@@ -2220,20 +2220,20 @@ void send_move_object(plid pid, fvec3 pos, unsigned id, unsigned team, struct St
 	SEND(pid, ob);
 }
 
-void move_intel(unsigned team, fvec3 pos, struct State *st) {
+static void move_intel(unsigned team, fvec3 pos, struct State *st) {
 	st->globals.intelplayers[team] = -1;
 	st->globals.intelpos[team] = pos;
 	/* "object" */
 	st->f.send_move_object(PID_BROADCAST, pos, team, 0, st);
 }
 
-void move_tent(unsigned team, fvec3 pos, struct State *st) {
+static void move_tent(unsigned team, fvec3 pos, struct State *st) {
 	st->globals.tentpos[team] = pos;
 	/* "object" */
 	st->f.send_move_object(PID_BROADCAST, pos, 2|team, 0, st);
 }
 
-void on_crap_packet(plid pid, ENetPacket *packet, struct State *st) {
+static void on_crap_packet(plid pid, ENetPacket *packet, struct State *st) {
 	//LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
 	/* TODO: remove need for \r with linenoise */
 	LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\r\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
@@ -2255,11 +2255,11 @@ void on_crap_packet(plid pid, ENetPacket *packet, struct State *st) {
 	}
 }
 
-void load_initial_map(struct State *st) {
+static void load_initial_map(struct State *st) {
 	st->f.load_map("map", st);
 }
 
-int intercept(ENetHost *host, ENetEvent *event) {
+static int intercept(ENetHost *host, ENetEvent *event) {
 	ENetBuffer buf;
 
 	(void)event;
@@ -2292,7 +2292,7 @@ int intercept(ENetHost *host, ENetEvent *event) {
 	return 0;
 }
 
-void set_funcs(struct State *st) {
+static void set_funcs(struct State *st) {
 	st->f.before_log = before_log;
 	st->f.after_log = after_log;
 	st->f.tick = tick;
@@ -2380,7 +2380,7 @@ void set_funcs(struct State *st) {
 	st->f.set_orientation = set_orientation;
 }
 
-void set_defaults(struct State *st) {
+static void set_defaults(struct State *st) {
 	fvec3 hidden = {HUGE_VAL, HUGE_VAL, HUGE_VAL};
 
 	st->globals.fog[0] = 255;
@@ -2406,7 +2406,7 @@ const char *cfg = "config.lua";
 /* config_path is relative to root_path, root_path defaults to . */
 /* TODO: assert(config_path[0] != '/') */
 #define USAGE "usage: %s [-c config_path] [-d root_path]\n"
-void parse_args(int argc, char **argv) {
+static void parse_args(int argc, char **argv) {
 	int ch;
 
 	while ((ch = getopt(argc, argv, "c:d:")) != -1) {switch (ch){

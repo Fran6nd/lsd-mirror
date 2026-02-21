@@ -38,6 +38,10 @@ function mod.on_game_end()
 	load_map(get_next_map());
 end
 
+function mod.load_initial_map()
+	load_map(get_next_map());
+end
+
 -- TODO: should it be legal to put a space or 30 before the command name? because we have that right now
 -- TODO: how to specify a command takes no args?
 -- TODO: should /showrotation be able to set rotation? (a la /mapqueue)

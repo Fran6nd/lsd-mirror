@@ -75,8 +75,9 @@ end
 server.on_fakepid_connect = on_fakepid_connect;
 
 function new_fakepid()
-	table.insert(takenfakepid, true);
-	return #takenfakepid;
+	local pid = #takenfakepid+1;
+	takenfakepid[pid] = true;
+	return pid;
 end
 
 function free_fakepid(pid)

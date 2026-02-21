@@ -8,7 +8,7 @@ local not_holding_msg = {
 };
 
 local function lower_intel(team, loc)
-	while (not is_solid{x=loc.x, y=loc.y, z=loc.z}) do
+	while (loc.z < 63 and not is_solid{x=loc.x, y=loc.y, z=loc.z}) do
 		-- TODO: dedup packets in core
 		loc.z = loc.z + 1;
 		move_intel(team-1, loc);
@@ -23,7 +23,7 @@ local function raise_intel(team, loc)
 end
 
 local function lower_tent(team, loc)
-	while (not is_solid{x=loc.x, y=loc.y, z=loc.z}) do
+	while (loc.z < 63 and not is_solid{x=loc.x, y=loc.y, z=loc.z}) do
 		loc.z = loc.z + 1;
 		move_tent(team-1, loc);
 	end

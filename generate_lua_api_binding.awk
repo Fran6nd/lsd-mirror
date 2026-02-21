@@ -40,11 +40,15 @@ function largs(argv) {
 	for (i=1;i<argc;i++) {
 		# It's pretty, I know.
 		if (match(argv[i], /^plid /))
-			pullfunc = "%s = luaL_checknumber(l, %i);";
+			pullfunc = "%s = check_plid(l, %i);";
+		else if (match(argv[i], /^bplid /))
+			pullfunc = "%s = check_bplid(l, %i);";
+		else if (match(argv[i], /^nplid /))
+			pullfunc = "%s = check_nplid(l, %i);";
 		else if (match(argv[i], /^fvec3 /))
 			pullfunc = "%s = get_fvec3(l, %i);";
 		else if (match(argv[i], /^ivec3 /))
-			pullfunc = "%s = get_ivec3(l, %i);";
+			pullfunc = "%s = get_ivec3(l, %i, 1);";
 		else if (match(argv[i], /^color /)) {
 			# This one's annoying. TODO: color -> struct already. . .
 			printf("\t%s;\n", argv[i]);
@@ -107,6 +111,10 @@ function do_func(ret, type) {
 
 	for (i=1;i<argc;i++) {
 		if (match(argv[i], /^plid /))
+			pushfunc = "lua_pushnumber(l, %s);";
+		else if (match(argv[i], /^bplid /))
+			pushfunc = "lua_pushnumber(l, %s);";
+		else if (match(argv[i], /^nplid /))
 			pushfunc = "lua_pushnumber(l, %s);";
 		else if (match(argv[i], /^fvec3 /))
 			pushfunc = "push_fvec3(%s);";

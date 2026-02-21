@@ -95,6 +95,7 @@ local function legal_pos(pos, type)
 	return true;
 end
 
+PID_COLOR_ANONYMOUS = 31
 -- TODO: don't bother with building over solid stuff (unless it's a different color -- probably block over all on load but not platform destroy)
 -- TODO: handle ridiculous blockaction queueing?
 local function build_platform()
@@ -164,6 +165,7 @@ local function within_cylinder(pos, cylinderpos, radius, bottom, top)
 end
 
 -- TODO: probably take a team as arg instead? though, the score. . .
+-- TODO: end game, also redo babel
 function mod.after.capture_intel(pid)
 	move_intel(0, {x=256, y=256, z=plat_z});
 	local team = get_team(pid);

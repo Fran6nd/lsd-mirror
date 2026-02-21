@@ -21,6 +21,10 @@ typedef uint64_t clk;
 
 /* Type used for internally storing player IDs -- not sent over the network, that's a uint8_t */
 typedef int32_t plid;
+/* Also accepts broadcast pids */
+typedef plid bplid;
+/* Gets sent over the wire, use whatever value you want as long as the client understands it and it fits in a uint8_t */
+typedef plid nplid;
 
 /* [0] is B, [1] is G, [2] is R */
 typedef uint8_t color[3];
@@ -128,18 +132,18 @@ struct Functions {
 	int (*begin_load_vxl_from_file)(const char *path, struct State *st);
 	int (*load_map)(const char *name, struct State *st);
 	void (*finish_cull)(struct State *st);
-	uint32_t (*block_action_rm)(ivec3 pos, unsigned type, plid from, struct State *st);
+	uint32_t (*block_action_rm)(ivec3 pos, unsigned type, nplid from, struct State *st);
 	void (*block_action_cull)(ivec3 pos, uint32_t mask, struct State *st);
-	void (*block_action)(ivec3 pos, unsigned type, plid from, struct State *st);
+	void (*block_action)(ivec3 pos, unsigned type, nplid from, struct State *st);
 	/* Try to limit sent block lines to 50 blocks or openspades will eat you. */
-	void (*block_line)(ivec3 start, ivec3 end, plid from, struct State *st);
+	void (*block_line)(ivec3 start, ivec3 end, nplid from, struct State *st);
 	void (*set_fog)(color color, struct State *st);
-	void (*tick_player_physics)(plid pid, float timeDelta, struct State *st);
+	void (*tick_player_physics)(bplid pid, float timeDelta, struct State *st);
 	void (*detonate_grenade)(size_t index, struct State *st);
 	void (*boot_players_to_limbo)(struct State *st);
-	void (*send_grenade)(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, struct State *st);
-	size_t (*register_grenade)(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
-	size_t (*spawn_grenade)(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
+	void (*send_grenade)(bplid pid, fvec3 pos, fvec3 vel, float fuse, nplid from, struct State *st);
+	size_t (*register_grenade)(bplid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
+	size_t (*spawn_grenade)(bplid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
 
 	/*
 	 * Player actions
@@ -148,33 +152,33 @@ struct Functions {
 	/*
 	 * Player send functions -- less-hazardous alternatives to manually constructing packets
 	 */
-	int (*send_packet)(plid pid, const void *data, size_t length, struct State *st);
-	int (*send_packet_unreliable)(plid pid, const void *data, size_t length, struct State *st);
+	int (*send_packet)(bplid pid, const void *data, size_t length, struct State *st);
+	int (*send_packet_unreliable)(bplid pid, const void *data, size_t length, struct State *st);
 
-	void (*send_map)(plid pid, struct State *st);
-	void (*send_state)(plid pid, struct State *st);
+	void (*send_map)(bplid pid, struct State *st);
+	void (*send_state)(bplid pid, struct State *st);
 
-	void (*send_state_ctf)(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, const unsigned *teamscore, unsigned maxscore, const plid *holders, const fvec3 *intelpos, const fvec3 *tentpos, struct State *st);
-	void (*send_state_tc)(plid pid, plid from, const char teamname[][10], const color *teamcolor, color fog, unsigned tentcount, const fvec3 *tentpos, unsigned *tentteam, struct State *st);
-	void (*send_connected_players)(plid pid, struct State *st);
+	void (*send_state_ctf)(bplid pid, nplid from, const char teamname[][10], const color *teamcolor, color fog, const unsigned *teamscore, unsigned maxscore, const plid *holders, const fvec3 *intelpos, const fvec3 *tentpos, struct State *st);
+	void (*send_state_tc)(bplid pid, nplid from, const char teamname[][10], const color *teamcolor, color fog, unsigned tentcount, const fvec3 *tentpos, unsigned *tentteam, struct State *st);
+	void (*send_connected_players)(bplid pid, struct State *st);
 	/* TODO: figure out how to log chat properly -- just on send_chat? */
 	/* also, what about logging /login? */
-	void (*send_chat)(plid pid, const char *msg, unsigned type, plid from, struct State *st);
-	void (*send_block_action)(plid pid, ivec3 pos, unsigned type, plid from, struct State *st);
+	void (*send_chat)(bplid pid, const char *msg, unsigned type, nplid from, struct State *st);
+	void (*send_block_action)(bplid pid, ivec3 pos, unsigned type, nplid from, struct State *st);
 	/* Try to limit sent block lines to 50 blocks or openspades will eat you. */
-	void (*send_block_line)(plid pid, ivec3 start, ivec3 end, plid from, struct State *st);
-	void (*send_set_block_color)(plid pid, color color, plid from, struct State *st);
-	void (*send_player_update)(plid pid, struct State *st); /* TODO: hide too-far players, /ups */
-	void (*send_orientation)(plid pid, fvec3 ori, struct State *st);
-	void (*send_position)(plid pid, fvec3 pos, struct State *st);
-	void (*send_reload)(plid pid, unsigned mag, unsigned reserve, plid from, struct State *st);
-	void (*send_intel_capture)(plid pid, bint winning, plid from, struct State *st);
-	void (*send_intel_pickup)(plid pid, plid from, struct State *st);
-	void (*send_intel_drop)(plid pid, fvec3 pos, plid from, struct State *st);
-	void (*send_restock)(plid pid, plid from, struct State *st);
-	void (*send_move_object)(plid pid, fvec3 pos, unsigned id, unsigned team, struct State *st);
-	void (*send_map_start)(plid pid, unsigned size, struct State *st);
-	void (*send_fog)(plid pid, color color, struct State *st);
+	void (*send_block_line)(bplid pid, ivec3 start, ivec3 end, nplid from, struct State *st);
+	void (*send_set_block_color)(bplid pid, color color, nplid from, struct State *st);
+	void (*send_player_update)(bplid pid, struct State *st); /* TODO: hide too-far players, /ups */
+	void (*send_orientation)(bplid pid, fvec3 ori, struct State *st);
+	void (*send_position)(bplid pid, fvec3 pos, struct State *st);
+	void (*send_reload)(bplid pid, unsigned mag, unsigned reserve, nplid from, struct State *st);
+	void (*send_intel_capture)(bplid pid, bint winning, nplid from, struct State *st);
+	void (*send_intel_pickup)(bplid pid, nplid from, struct State *st);
+	void (*send_intel_drop)(bplid pid, fvec3 pos, nplid from, struct State *st);
+	void (*send_restock)(bplid pid, nplid from, struct State *st);
+	void (*send_move_object)(bplid pid, fvec3 pos, unsigned id, unsigned team, struct State *st);
+	void (*send_map_start)(bplid pid, unsigned size, struct State *st);
+	void (*send_fog)(bplid pid, color color, struct State *st);
 
 	/*
 	 * Player funcs -- these send packets and modify player state

@@ -1173,6 +1173,8 @@ void set_funcs_event(struct State *st);
 void set_funcs_send(struct State *st);
 static void set_funcs(struct State *st) {
 	st->f.tick = tick;
+	st->f.before_log = before_log;
+	st->f.after_log = after_log;
 	set_funcs_packetrecv(st);
 	set_funcs_event(st);
 	set_funcs_send(st);

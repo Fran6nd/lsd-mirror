@@ -29,10 +29,10 @@ static void cpy_from_be_arr32(const uint8_t *in, uint32_t *array, size_t items) 
 	size_t i;
 
 	for (i=0;i<items;i++) {
-		array[i]  = in[i*4]   << 24;
-		array[i] |= in[i*4+1] << 16;
-		array[i] |= in[i*4+2] << 8;
-		array[i] |= in[i*4+3];
+		array[i]  = (uint32_t)in[i*4]   << 24;
+		array[i] |= (uint32_t)in[i*4+1] << 16;
+		array[i] |= (uint32_t)in[i*4+2] << 8;
+		array[i] |= (uint32_t)in[i*4+3];
 	}
 }
 

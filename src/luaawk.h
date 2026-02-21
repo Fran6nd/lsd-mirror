@@ -2,7 +2,7 @@
 #define LS2_SERVER_LUAAWK_H
 
 static int lon_any_connect(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	f.on_any_connect(pid, st);
 	return 0;
@@ -20,7 +20,7 @@ static void con_any_connect(plid pid, struct State *st) {
 
 
 static int lon_successful_connect(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	f.on_successful_connect(pid, st);
 	return 0;
@@ -38,7 +38,7 @@ static void con_successful_connect(plid pid, struct State *st) {
 
 
 static int lon_disconnect(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	f.on_disconnect(pid, st);
 	return 0;
@@ -56,7 +56,7 @@ static void con_disconnect(plid pid, struct State *st) {
 
 
 static int lon_join(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned team = luaL_checknumber(l, 2);
 	unsigned weapon = luaL_checknumber(l, 3);
 	const char *name = luaL_checkstring(l, 4);
@@ -80,7 +80,7 @@ static void con_join(plid pid, unsigned team, unsigned weapon, const char *name,
 
 
 static int lon_switch(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned team = luaL_checknumber(l, 2);
 	unsigned weapon = luaL_checknumber(l, 3);
 
@@ -102,7 +102,7 @@ static void con_switch(plid pid, unsigned team, unsigned weapon, struct State *s
 
 
 static int lon_position(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	fvec3 pos = get_fvec3(l, 2);
 
 	f.on_position(pid, pos, st);
@@ -122,7 +122,7 @@ static void con_position(plid pid, fvec3 pos, struct State *st) {
 
 
 static int lon_orientation(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	fvec3 ori = get_fvec3(l, 2);
 
 	f.on_orientation(pid, ori, st);
@@ -142,7 +142,7 @@ static void con_orientation(plid pid, fvec3 ori, struct State *st) {
 
 
 static int lon_move_input(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned bitmask = luaL_checknumber(l, 2);
 
 	f.on_move_input(pid, bitmask, st);
@@ -162,7 +162,7 @@ static void con_move_input(plid pid, unsigned bitmask, struct State *st) {
 
 
 static int lon_mouse_input(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned bitmask = luaL_checknumber(l, 2);
 
 	f.on_mouse_input(pid, bitmask, st);
@@ -182,7 +182,7 @@ static void con_mouse_input(plid pid, unsigned bitmask, struct State *st) {
 
 
 static int lon_color_change(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	color color;
 
 	get_color2(l, 2, color);
@@ -204,8 +204,8 @@ static void con_color_change(plid pid, color color, struct State *st) {
 
 
 static int lon_block_action(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
-	ivec3 pos = get_ivec3(l, 2);
+	plid pid = check_plid(l, 1);
+	ivec3 pos = get_ivec3(l, 2, 1);
 	unsigned type = luaL_checknumber(l, 3);
 
 	f.on_block_action(pid, pos, type, st);
@@ -226,9 +226,9 @@ static void con_block_action(plid pid, ivec3 pos, unsigned type, struct State *s
 
 
 static int lon_block_line(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
-	ivec3 start = get_ivec3(l, 2);
-	ivec3 end = get_ivec3(l, 3);
+	plid pid = check_plid(l, 1);
+	ivec3 start = get_ivec3(l, 2, 1);
+	ivec3 end = get_ivec3(l, 3, 1);
 
 	f.on_block_line(pid, start, end, st);
 	return 0;
@@ -248,7 +248,7 @@ static void con_block_line(plid pid, ivec3 start, ivec3 end, struct State *st) {
 
 
 static int lon_chat(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	const char *msg = luaL_checkstring(l, 2);
 	unsigned type = luaL_checknumber(l, 3);
 
@@ -270,7 +270,7 @@ static void con_chat(plid pid, const char *msg, unsigned type, struct State *st)
 
 
 static int lon_tool_change(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned tool = luaL_checknumber(l, 2);
 
 	f.on_tool_change(pid, tool, st);
@@ -290,9 +290,9 @@ static void con_tool_change(plid pid, unsigned tool, struct State *st) {
 
 
 static int lon_hit(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned type = luaL_checknumber(l, 2);
-	plid hitPlayer = luaL_checknumber(l, 3);
+	plid hitPlayer = check_plid(l, 3);
 
 	f.on_hit(pid, type, hitPlayer, st);
 	return 0;
@@ -312,7 +312,7 @@ static void con_hit(plid pid, unsigned type, plid hitPlayer, struct State *st) {
 
 
 static int lon_grenade(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	fvec3 pos = get_fvec3(l, 2);
 	fvec3 vel = get_fvec3(l, 3);
 	float fuse = luaL_checknumber(l, 4);
@@ -336,7 +336,7 @@ static void con_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State
 
 
 static int lon_reload(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned mag = luaL_checknumber(l, 2);
 	unsigned reserve = luaL_checknumber(l, 3);
 
@@ -358,7 +358,7 @@ static void con_reload(plid pid, unsigned mag, unsigned reserve, struct State *s
 
 
 static int lon_kill(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	lua_pushnumber(l, f.on_kill(pid, st));
 	return 1;
@@ -385,7 +385,7 @@ static clk con_kill(plid pid, struct State *st) {
 
 
 static int lget_hit_damage(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned type = luaL_checknumber(l, 2);
 
 	lua_pushnumber(l, f.get_hit_damage(pid, type, st));
@@ -414,7 +414,7 @@ static int cget_hit_damage(plid pid, unsigned type, struct State *st) {
 
 
 static int lafter_player_destroy(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	f.after_player_destroy(pid, st);
 	return 0;
@@ -683,15 +683,15 @@ static void cfinish_cull(struct State *st) {
 
 
 static int lblock_action_rm(lua_State *l) {
-	ivec3 pos = get_ivec3(l, 1);
+	ivec3 pos = get_ivec3(l, 1, 1);
 	unsigned type = luaL_checknumber(l, 2);
-	plid from = luaL_checknumber(l, 3);
+	nplid from = check_nplid(l, 3);
 
 	lua_pushnumber(l, f.block_action_rm(pos, type, from, st));
 	return 1;
 }
 
-static uint32_t cblock_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) {
+static uint32_t cblock_action_rm(ivec3 pos, unsigned type, nplid from, struct State *st) {
 	uint32_t ret;
 
 	(void)st;
@@ -714,7 +714,7 @@ static uint32_t cblock_action_rm(ivec3 pos, unsigned type, plid from, struct Sta
 
 
 static int lblock_action_cull(lua_State *l) {
-	ivec3 pos = get_ivec3(l, 1);
+	ivec3 pos = get_ivec3(l, 1, 1);
 	uint32_t mask = luaL_checknumber(l, 2);
 
 	f.block_action_cull(pos, mask, st);
@@ -734,15 +734,15 @@ static void cblock_action_cull(ivec3 pos, uint32_t mask, struct State *st) {
 
 
 static int lblock_action(lua_State *l) {
-	ivec3 pos = get_ivec3(l, 1);
+	ivec3 pos = get_ivec3(l, 1, 1);
 	unsigned type = luaL_checknumber(l, 2);
-	plid from = luaL_checknumber(l, 3);
+	nplid from = check_nplid(l, 3);
 
 	f.block_action(pos, type, from, st);
 	return 0;
 }
 
-static void cblock_action(ivec3 pos, unsigned type, plid from, struct State *st) {
+static void cblock_action(ivec3 pos, unsigned type, nplid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "block_action");
 
@@ -756,15 +756,15 @@ static void cblock_action(ivec3 pos, unsigned type, plid from, struct State *st)
 
 
 static int lblock_line(lua_State *l) {
-	ivec3 start = get_ivec3(l, 1);
-	ivec3 end = get_ivec3(l, 2);
-	plid from = luaL_checknumber(l, 3);
+	ivec3 start = get_ivec3(l, 1, 1);
+	ivec3 end = get_ivec3(l, 2, 1);
+	nplid from = check_nplid(l, 3);
 
 	f.block_line(start, end, from, st);
 	return 0;
 }
 
-static void cblock_line(ivec3 start, ivec3 end, plid from, struct State *st) {
+static void cblock_line(ivec3 start, ivec3 end, nplid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "block_line");
 
@@ -798,14 +798,14 @@ static void cset_fog(color color, struct State *st) {
 
 
 static int ltick_player_physics(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	float timeDelta = luaL_checknumber(l, 2);
 
 	f.tick_player_physics(pid, timeDelta, st);
 	return 0;
 }
 
-static void ctick_player_physics(plid pid, float timeDelta, struct State *st) {
+static void ctick_player_physics(bplid pid, float timeDelta, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "tick_player_physics");
 
@@ -853,17 +853,17 @@ static void cboot_players_to_limbo(struct State *st) {
 
 
 static int lsend_grenade(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	fvec3 pos = get_fvec3(l, 2);
 	fvec3 vel = get_fvec3(l, 3);
 	float fuse = luaL_checknumber(l, 4);
-	plid from = luaL_checknumber(l, 5);
+	nplid from = check_nplid(l, 5);
 
 	f.send_grenade(pid, pos, vel, fuse, from, st);
 	return 0;
 }
 
-static void csend_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, struct State *st) {
+static void csend_grenade(bplid pid, fvec3 pos, fvec3 vel, float fuse, nplid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_grenade");
 
@@ -879,7 +879,7 @@ static void csend_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from,
 
 
 static int lregister_grenade(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	unsigned team = luaL_checknumber(l, 2);
 	fvec3 pos = get_fvec3(l, 3);
 	fvec3 vel = get_fvec3(l, 4);
@@ -889,7 +889,7 @@ static int lregister_grenade(lua_State *l) {
 	return 1;
 }
 
-static size_t cregister_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+static size_t cregister_grenade(bplid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
 	size_t ret;
 
 	(void)st;
@@ -914,7 +914,7 @@ static size_t cregister_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, f
 
 
 static int lspawn_grenade(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	unsigned team = luaL_checknumber(l, 2);
 	fvec3 pos = get_fvec3(l, 3);
 	fvec3 vel = get_fvec3(l, 4);
@@ -924,7 +924,7 @@ static int lspawn_grenade(lua_State *l) {
 	return 1;
 }
 
-static size_t cspawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+static size_t cspawn_grenade(bplid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
 	size_t ret;
 
 	(void)st;
@@ -949,13 +949,13 @@ static size_t cspawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, floa
 
 
 static int lsend_map(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 
 	f.send_map(pid, st);
 	return 0;
 }
 
-static void csend_map(plid pid, struct State *st) {
+static void csend_map(bplid pid, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_map");
 
@@ -967,13 +967,13 @@ static void csend_map(plid pid, struct State *st) {
 
 
 static int lsend_state(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 
 	f.send_state(pid, st);
 	return 0;
 }
 
-static void csend_state(plid pid, struct State *st) {
+static void csend_state(bplid pid, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_state");
 
@@ -985,13 +985,13 @@ static void csend_state(plid pid, struct State *st) {
 
 
 static int lsend_connected_players(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 
 	f.send_connected_players(pid, st);
 	return 0;
 }
 
-static void csend_connected_players(plid pid, struct State *st) {
+static void csend_connected_players(bplid pid, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_connected_players");
 
@@ -1003,16 +1003,16 @@ static void csend_connected_players(plid pid, struct State *st) {
 
 
 static int lsend_chat(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	const char *msg = luaL_checkstring(l, 2);
 	unsigned type = luaL_checknumber(l, 3);
-	plid from = luaL_checknumber(l, 4);
+	nplid from = check_nplid(l, 4);
 
 	f.send_chat(pid, msg, type, from, st);
 	return 0;
 }
 
-static void csend_chat(plid pid, const char *msg, unsigned type, plid from, struct State *st) {
+static void csend_chat(bplid pid, const char *msg, unsigned type, nplid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_chat");
 
@@ -1027,16 +1027,16 @@ static void csend_chat(plid pid, const char *msg, unsigned type, plid from, stru
 
 
 static int lsend_block_action(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
-	ivec3 pos = get_ivec3(l, 2);
+	bplid pid = check_bplid(l, 1);
+	ivec3 pos = get_ivec3(l, 2, 1);
 	unsigned type = luaL_checknumber(l, 3);
-	plid from = luaL_checknumber(l, 4);
+	nplid from = check_nplid(l, 4);
 
 	f.send_block_action(pid, pos, type, from, st);
 	return 0;
 }
 
-static void csend_block_action(plid pid, ivec3 pos, unsigned type, plid from, struct State *st) {
+static void csend_block_action(bplid pid, ivec3 pos, unsigned type, nplid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_block_action");
 
@@ -1051,16 +1051,16 @@ static void csend_block_action(plid pid, ivec3 pos, unsigned type, plid from, st
 
 
 static int lsend_block_line(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
-	ivec3 start = get_ivec3(l, 2);
-	ivec3 end = get_ivec3(l, 3);
-	plid from = luaL_checknumber(l, 4);
+	bplid pid = check_bplid(l, 1);
+	ivec3 start = get_ivec3(l, 2, 1);
+	ivec3 end = get_ivec3(l, 3, 1);
+	nplid from = check_nplid(l, 4);
 
 	f.send_block_line(pid, start, end, from, st);
 	return 0;
 }
 
-static void csend_block_line(plid pid, ivec3 start, ivec3 end, plid from, struct State *st) {
+static void csend_block_line(bplid pid, ivec3 start, ivec3 end, nplid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_block_line");
 
@@ -1075,9 +1075,9 @@ static void csend_block_line(plid pid, ivec3 start, ivec3 end, plid from, struct
 
 
 static int lsend_set_block_color(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	color color;
-	plid from = luaL_checknumber(l, 3);
+	nplid from = check_nplid(l, 3);
 
 	get_color2(l, 2, color);
 
@@ -1085,7 +1085,7 @@ static int lsend_set_block_color(lua_State *l) {
 	return 0;
 }
 
-static void csend_set_block_color(plid pid, color color, plid from, struct State *st) {
+static void csend_set_block_color(bplid pid, color color, nplid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_set_block_color");
 
@@ -1099,13 +1099,13 @@ static void csend_set_block_color(plid pid, color color, plid from, struct State
 
 
 static int lsend_player_update(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 
 	f.send_player_update(pid, st);
 	return 0;
 }
 
-static void csend_player_update(plid pid, struct State *st) {
+static void csend_player_update(bplid pid, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_player_update");
 
@@ -1117,14 +1117,14 @@ static void csend_player_update(plid pid, struct State *st) {
 
 
 static int lsend_orientation(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	fvec3 ori = get_fvec3(l, 2);
 
 	f.send_orientation(pid, ori, st);
 	return 0;
 }
 
-static void csend_orientation(plid pid, fvec3 ori, struct State *st) {
+static void csend_orientation(bplid pid, fvec3 ori, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_orientation");
 
@@ -1137,14 +1137,14 @@ static void csend_orientation(plid pid, fvec3 ori, struct State *st) {
 
 
 static int lsend_position(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	fvec3 pos = get_fvec3(l, 2);
 
 	f.send_position(pid, pos, st);
 	return 0;
 }
 
-static void csend_position(plid pid, fvec3 pos, struct State *st) {
+static void csend_position(bplid pid, fvec3 pos, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_position");
 
@@ -1157,16 +1157,16 @@ static void csend_position(plid pid, fvec3 pos, struct State *st) {
 
 
 static int lsend_reload(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	unsigned mag = luaL_checknumber(l, 2);
 	unsigned reserve = luaL_checknumber(l, 3);
-	plid from = luaL_checknumber(l, 4);
+	nplid from = check_nplid(l, 4);
 
 	f.send_reload(pid, mag, reserve, from, st);
 	return 0;
 }
 
-static void csend_reload(plid pid, unsigned mag, unsigned reserve, plid from, struct State *st) {
+static void csend_reload(bplid pid, unsigned mag, unsigned reserve, nplid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_reload");
 
@@ -1181,15 +1181,15 @@ static void csend_reload(plid pid, unsigned mag, unsigned reserve, plid from, st
 
 
 static int lsend_intel_capture(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	bint winning = lua_toboolean(l, 2);
-	plid from = luaL_checknumber(l, 3);
+	nplid from = check_nplid(l, 3);
 
 	f.send_intel_capture(pid, winning, from, st);
 	return 0;
 }
 
-static void csend_intel_capture(plid pid, bint winning, plid from, struct State *st) {
+static void csend_intel_capture(bplid pid, bint winning, nplid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_intel_capture");
 
@@ -1203,14 +1203,14 @@ static void csend_intel_capture(plid pid, bint winning, plid from, struct State 
 
 
 static int lsend_intel_pickup(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
-	plid from = luaL_checknumber(l, 2);
+	bplid pid = check_bplid(l, 1);
+	nplid from = check_nplid(l, 2);
 
 	f.send_intel_pickup(pid, from, st);
 	return 0;
 }
 
-static void csend_intel_pickup(plid pid, plid from, struct State *st) {
+static void csend_intel_pickup(bplid pid, nplid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_intel_pickup");
 
@@ -1223,15 +1223,15 @@ static void csend_intel_pickup(plid pid, plid from, struct State *st) {
 
 
 static int lsend_intel_drop(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	fvec3 pos = get_fvec3(l, 2);
-	plid from = luaL_checknumber(l, 3);
+	nplid from = check_nplid(l, 3);
 
 	f.send_intel_drop(pid, pos, from, st);
 	return 0;
 }
 
-static void csend_intel_drop(plid pid, fvec3 pos, plid from, struct State *st) {
+static void csend_intel_drop(bplid pid, fvec3 pos, nplid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_intel_drop");
 
@@ -1245,14 +1245,14 @@ static void csend_intel_drop(plid pid, fvec3 pos, plid from, struct State *st) {
 
 
 static int lsend_restock(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
-	plid from = luaL_checknumber(l, 2);
+	bplid pid = check_bplid(l, 1);
+	nplid from = check_nplid(l, 2);
 
 	f.send_restock(pid, from, st);
 	return 0;
 }
 
-static void csend_restock(plid pid, plid from, struct State *st) {
+static void csend_restock(bplid pid, nplid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_restock");
 
@@ -1265,7 +1265,7 @@ static void csend_restock(plid pid, plid from, struct State *st) {
 
 
 static int lsend_move_object(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	fvec3 pos = get_fvec3(l, 2);
 	unsigned id = luaL_checknumber(l, 3);
 	unsigned team = luaL_checknumber(l, 4);
@@ -1274,7 +1274,7 @@ static int lsend_move_object(lua_State *l) {
 	return 0;
 }
 
-static void csend_move_object(plid pid, fvec3 pos, unsigned id, unsigned team, struct State *st) {
+static void csend_move_object(bplid pid, fvec3 pos, unsigned id, unsigned team, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_move_object");
 
@@ -1289,14 +1289,14 @@ static void csend_move_object(plid pid, fvec3 pos, unsigned id, unsigned team, s
 
 
 static int lsend_map_start(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	unsigned size = luaL_checknumber(l, 2);
 
 	f.send_map_start(pid, size, st);
 	return 0;
 }
 
-static void csend_map_start(plid pid, unsigned size, struct State *st) {
+static void csend_map_start(bplid pid, unsigned size, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_map_start");
 
@@ -1309,7 +1309,7 @@ static void csend_map_start(plid pid, unsigned size, struct State *st) {
 
 
 static int lsend_fog(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	color color;
 
 	get_color2(l, 2, color);
@@ -1318,7 +1318,7 @@ static int lsend_fog(lua_State *l) {
 	return 0;
 }
 
-static void csend_fog(plid pid, color color, struct State *st) {
+static void csend_fog(bplid pid, color color, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_fog");
 
@@ -1331,7 +1331,7 @@ static void csend_fog(plid pid, color color, struct State *st) {
 
 
 static int lspawn_player(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	f.spawn_player(pid, st);
 	return 0;
@@ -1349,7 +1349,7 @@ static void cspawn_player(plid pid, struct State *st) {
 
 
 static int lrestock(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	f.restock(pid, st);
 	return 0;
@@ -1367,9 +1367,9 @@ static void crestock(plid pid, struct State *st) {
 
 
 static int lkill(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned type = luaL_checknumber(l, 2);
-	plid killer = luaL_checknumber(l, 3);
+	plid killer = check_plid(l, 3);
 
 	f.kill(pid, type, killer, st);
 	return 0;
@@ -1389,7 +1389,7 @@ static void ckill(plid pid, unsigned type, plid killer, struct State *st) {
 
 
 static int lset_ammo(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned mag = luaL_checknumber(l, 2);
 	unsigned reserve = luaL_checknumber(l, 3);
 
@@ -1411,7 +1411,7 @@ static void cset_ammo(plid pid, unsigned mag, unsigned reserve, struct State *st
 
 
 static int lset_hp(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	int hp = luaL_checknumber(l, 2);
 
 	f.set_hp(pid, hp, st);
@@ -1431,7 +1431,7 @@ static void cset_hp(plid pid, int hp, struct State *st) {
 
 
 static int lset_hp_directional(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	int hp = luaL_checknumber(l, 2);
 	fvec3 pos = get_fvec3(l, 3);
 
@@ -1453,7 +1453,7 @@ static void cset_hp_directional(plid pid, int hp, fvec3 pos, struct State *st) {
 
 
 static int lset_tool(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned tool = luaL_checknumber(l, 2);
 
 	f.set_tool(pid, tool, st);
@@ -1473,7 +1473,7 @@ static void cset_tool(plid pid, unsigned tool, struct State *st) {
 
 
 static int lset_block_color(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	color color;
 
 	get_color2(l, 2, color);
@@ -1495,7 +1495,7 @@ static void cset_block_color(plid pid, color color, struct State *st) {
 
 
 static int lset_position(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	fvec3 pos = get_fvec3(l, 2);
 
 	f.set_position(pid, pos, st);
@@ -1515,7 +1515,7 @@ static void cset_position(plid pid, fvec3 pos, struct State *st) {
 
 
 static int lset_orientation(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	fvec3 ori = get_fvec3(l, 2);
 
 	f.set_orientation(pid, ori, st);
@@ -1535,7 +1535,7 @@ static void cset_orientation(plid pid, fvec3 ori, struct State *st) {
 
 
 static int lset_jump(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	f.set_jump(pid, st);
 	return 0;
@@ -1553,7 +1553,7 @@ static void cset_jump(plid pid, struct State *st) {
 
 
 static int lcapture_intel(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	bint winning = lua_toboolean(l, 2);
 
 	f.capture_intel(pid, winning, st);
@@ -1573,7 +1573,7 @@ static void ccapture_intel(plid pid, bint winning, struct State *st) {
 
 
 static int lpickup_intel(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	f.pickup_intel(pid, st);
 	return 0;
@@ -1591,7 +1591,7 @@ static void cpickup_intel(plid pid, struct State *st) {
 
 
 static int ldrop_intel(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	fvec3 pos = get_fvec3(l, 2);
 
 	f.drop_intel(pid, pos, st);

@@ -47,34 +47,64 @@ void get_color2(lua_State *l, int table, color color) {
 	lua_pop(l, 1);
 }
 
-ivec3 get_ivec3(lua_State *l, int table) {
+/* TODO: replace set_color, block_action and PID_COLOR_ANONYMOUS with dedicated bulk build/destroy api */
+plid check_plid(lua_State *l, int numArg) {
+	double val = luaL_checknumber(l, numArg);
+	if (val < 0 || val >= MAX_PLAYERS)
+		LERR(l, "plid is invalid (%.0f)", val);
+	return val;
+}
+
+bplid check_bplid(lua_State *l, int numArg) {
+	return luaL_checknumber(l, numArg);
+}
+
+bplid check_nplid(lua_State *l, int numArg) {
+	double val = luaL_checknumber(l, numArg);
+	if (val < 0 || val >= 256)
+		LERR(l, "nplid is invalid (%.0f)", val);
+	return val;
+}
+
+/* TODO: handle legitimate use cases for negative pos (i.e. -1), ***don't overflow the int -- set to -1 if you have to*** */
+ivec3 get_ivec3(lua_State *l, int table, int positiveZ) {
 	ivec3 val;
+	double num;
 
 	lua_pushliteral(l, "x");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
-		LERR(l, "ivec3 should have 3 numbers in it");
+		LERR(l, "ivec3.x should be a number");
 
-	val.x = lua_tonumber(l, -1);
+	num = floor(lua_tonumber(l, -1));
 	lua_pop(l, 1);
+	if (num < 0 || num >= 512)
+		LERR(l, "ivec3 is out of bounds (x=%.0f)", num);
+	val.x = num;
 
 
 	lua_pushliteral(l, "y");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
-		LERR(l, "ivec3 should have 3 numbers in it");
+		LERR(l, "ivec3.y should be a number");
 
-	val.y = lua_tonumber(l, -1);
+	num = floor(lua_tonumber(l, -1));
 	lua_pop(l, 1);
+	if (num < 0 || num >= 512)
+		LERR(l, "ivec3 is out of bounds (y=%.0f)", num);
+	val.y = num;
 
 
 	lua_pushliteral(l, "z");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
-		LERR(l, "ivec3 should have 3 numbers in it");
+		LERR(l, "ivec3.z should be a number");
 
-	val.z = lua_tonumber(l, -1);
+	num = floor(lua_tonumber(l, -1));
 	lua_pop(l, 1);
+	if ((positiveZ && num < 0) || num >= 64)
+		LERR(l, "ivec3 is out of bounds (z=%.0f)", num);
+	val.z = num;
 
 	return val;
 }
@@ -85,7 +115,7 @@ fvec3 get_fvec3(lua_State *l, int table) {
 	lua_pushliteral(l, "x");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
-		LERR(l, "fvec3 should have 3 numbers in it");
+		LERR(l, "fvec3.x should be a number");
 
 	val.x = lua_tonumber(l, -1);
 	lua_pop(l, 1);
@@ -94,7 +124,7 @@ fvec3 get_fvec3(lua_State *l, int table) {
 	lua_pushliteral(l, "y");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
-		LERR(l, "fvec3 should have 3 numbers in it");
+		LERR(l, "fvec3.y should be a number");
 
 	val.y = lua_tonumber(l, -1);
 	lua_pop(l, 1);
@@ -103,7 +133,7 @@ fvec3 get_fvec3(lua_State *l, int table) {
 	lua_pushliteral(l, "z");
 	lua_gettable(l, table);
 	if (!lua_isnumber(l, -1))
-		LERR(l, "fvec3 should have 3 numbers in it");
+		LERR(l, "fvec3.z should be a number");
 
 	val.z = lua_tonumber(l, -1);
 	lua_pop(l, 1);
@@ -228,8 +258,8 @@ static struct Functions f;
 
 static int lsend_state_ctf(lua_State *l) {
 	size_t i;
-	plid pid = luaL_checknumber(l, 1);
-	plid from = luaL_checknumber(l, 2);
+	bplid pid = check_bplid(l, 1);
+	nplid from = check_nplid(l, 2);
 	char teamname[2][10];
 	color teamcolor[2];
 	color fog;
@@ -370,7 +400,7 @@ static void csend_state_ctf(plid pid, plid from, const char teamname[][10], cons
 }
 
 static int lsend_packet(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	size_t length;
 	const char *data = luaL_checklstring(l, 2, &length);
 
@@ -401,7 +431,7 @@ static int csend_packet(plid pid, const void *data, size_t length, struct State 
 }
 
 static int lsend_packet_unreliable(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	bplid pid = check_bplid(l, 1);
 	size_t length;
 	const char *data = luaL_checklstring(l, 2, &length);
 
@@ -431,7 +461,7 @@ static int csend_packet_unreliable(plid pid, const void *data, size_t length, st
 }
 
 static int lon_player_spawn(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	push_fvec3(f.on_player_spawn(pid, st));
 	return 1;
 }
@@ -459,8 +489,8 @@ static fvec3 con_player_spawn(plid pid, struct State *st) {
 /* NOTE: Try not to touch pid_matches' conditions too much while iterating */
 int pid_matches(plid broadcast, plid pid, struct State *st);
 static int do_piditer(lua_State *l) {
-	plid broadcast = lua_tonumber(l, lua_upvalueindex(1));
-	plid pid = lua_tonumber(l, lua_upvalueindex(2));
+	bplid broadcast = lua_tonumber(l, lua_upvalueindex(1));
+	bplid pid = lua_tonumber(l, lua_upvalueindex(2));
 
 	for (;pid<MAX_PLAYERS;pid++) {
 		if (pid_matches(broadcast, pid, st)) {
@@ -531,14 +561,14 @@ static int raycast(lua_State *l) {
 }
 
 static int disconnect(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned reason = luaL_checknumber(l, 2);
 	enet_peer_disconnect(st->host->peers+pid, reason);
 	return 0;
 }
 
 static int disconnect_now(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	unsigned reason = luaL_checknumber(l, 2);
 	enet_peer_disconnect_now(st->host->peers+pid, reason);
 	return 0;
@@ -636,8 +666,11 @@ static int lmasterlist_connect(lua_State *l) {
 
 int get_solid(ivec3 pos, struct State *st);
 static int is_solid(lua_State *l) {
-	ivec3 pos = get_ivec3(l, 1);
-	lua_pushboolean(l, get_solid(pos, st));
+	ivec3 pos = get_ivec3(l, 1, 0);
+	if (pos.z < 0)
+		lua_pushboolean(l, 0);
+	else
+		lua_pushboolean(l, get_solid(pos, st));
 	return 1;
 }
 
@@ -660,7 +693,7 @@ static int get_team_name(lua_State *l) {
 /* TODO: ammunition estimation */
 #if 0
 static int get_ammo(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	lua_pushnumber(l, st->p[pid].magAmmo);
 	lua_pushnumber(l, st->p[pid].reserveAmmo);
 	return 1;
@@ -668,21 +701,21 @@ static int get_ammo(lua_State *l) {
 #endif
 
 static int get_hp(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	lua_pushnumber(l, st->p[pid].hp);
 	return 1;
 }
 
 /* In host byte order */
 static int get_ipaddr(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	lua_pushnumber(l, ntohl(st->host->peers[pid].address.host));
 	return 1;
 }
 
 /* More popularly referred to as "ping" */
 static int get_round_trip_time(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	lua_pushnumber(l, st->host->peers[pid].roundTripTime);
 	return 1;
 }
@@ -724,19 +757,19 @@ static int get_intelloc(lua_State *l) {
 }
 
 static int get_position(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	push_fvec3(st->p[pid].pos);
 	return 1;
 }
 
 static int get_orientation(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 	push_fvec3(st->p[pid].ori);
 	return 1;
 }
 
 static int get_mouse_inputs(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	lua_pushnumber(l, st->p[pid].mouseInputs);
 	return 1;
@@ -744,7 +777,7 @@ static int get_mouse_inputs(lua_State *l) {
 
 /* TODO: weapon -> gun? */
 static int get_weapon(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	lua_pushnumber(l, st->p[pid].weapon);
 	return 1;
@@ -752,63 +785,63 @@ static int get_weapon(lua_State *l) {
 
 /* Weapon that the player will have on next respawn; switching weapon sets this, for example. */
 static int get_next_weapon(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	lua_pushnumber(l, st->p[pid].newweapon);
 	return 1;
 }
 
 static int get_tool(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	lua_pushnumber(l, st->p[pid].tool);
 	return 1;
 }
 
 static int get_inputs(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	lua_pushnumber(l, st->p[pid].inputs);
 	return 1;
 }
 
 static int is_airborne(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	lua_pushboolean(l, st->p[pid].airborne);
 	return 1;
 }
 
 static int is_alive(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	lua_pushboolean(l, st->p[pid].alive);
 	return 1;
 }
 
 static int is_joined(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	lua_pushboolean(l, st->p[pid].joined);
 	return 1;
 }
 
 static int is_connected(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	lua_pushboolean(l, st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED);
 	return 1;
 }
 
 static int get_name(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	lua_pushstring(l, st->p[pid].name);
 	return 1;
 }
 
 static int get_team(lua_State *l) {
-	plid pid = luaL_checknumber(l, 1);
+	plid pid = check_plid(l, 1);
 
 	lua_pushnumber(l, st->p[pid].team);
 	return 1;

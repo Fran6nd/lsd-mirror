@@ -48,16 +48,16 @@ static size_t major_buf(char *buf, struct MasterState *ms) {
 	return off;
 }
 
-static void minor(struct MasterState *ms) {
+static void send_minor(struct MasterState *ms) {
 	broadcast_packet(&ms->players, 1, ms);
 }
 
-static void major(struct MasterState *ms) {
+static void send_major(struct MasterState *ms) {
 	char buf[1+2+32+8+21];
 	broadcast_packet(buf, major_buf(buf, ms), ms);
 
 	if (ms->players != 0)
-		minor(ms);
+		send_minor(ms);
 }
 
 static void on_connect(ENetPeer *peer, struct MasterState *ms) {
@@ -126,9 +126,9 @@ static void update(struct MasterState *ms) {
 	    (strcmp(ms->gamemode, ms->oldgamemode) && (strcpy(ms->oldgamemode, ms->gamemode),1)) ||
 	    (strcmp(ms->map, ms->oldmap)           && (strcpy(ms->oldmap, ms->map),1))           ||
 	    (ms->maxplayers != ms->oldmaxplayers   && (ms->oldmaxplayers = ms->maxplayers,1)))
-		major(ms);
+		send_major(ms);
 	else if (ms->players != ms->oldplayers && (ms->oldplayers = ms->players,1))
-		minor(ms);
+		send_minor(ms);
 }
 
 void masterlist_service(struct MasterState *ms) {

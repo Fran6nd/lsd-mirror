@@ -76,8 +76,17 @@ int websockets_read_handshake_hdrs(const char *in, size_t size, struct WS_Header
 		else
 			cpy = end-in;
 
-		if (cpy > sizeof(hdr->hdrBuf)-1)
-			cpy = sizeof(hdr->hdrBuf)-1;
+		if (cpy > sizeof(hdr->hdrBuf)-hdr->hdrBufLen-1) {
+			cpy = sizeof(hdr->hdrBuf)-hdr->hdrBufLen-1;
+			in += cpy;
+			size -= cpy;
+
+			/* Prevent headers longer than we care to parse from screwing things over */
+			hdr->hdrBuf[0] = '\0';
+			hdr->hdrBufLen = 1;
+
+			continue;
+		}
 
 		memcpy(hdr->hdrBuf+hdr->hdrBufLen, in, cpy);
 		hdr->hdrBufLen += cpy;
@@ -88,12 +97,6 @@ int websockets_read_handshake_hdrs(const char *in, size_t size, struct WS_Header
 		in += cpy;
 		size -= cpy;
 
-		/* Prevent headers longer than we care to parse from screwing things over */
-		if (hdr->hdrBufLen == sizeof(hdr->hdrBuf)-1 && !end) {
-			hdr->hdrBuf[0] = '\0';
-			hdr->hdrBufLen = 1;
-		}
-
 		if (end) {
 			if (hdr->hdrBuf[hdr->hdrBufLen-1] == '\r')
 				hdr->hdrBufLen--;
@@ -102,7 +105,7 @@ int websockets_read_handshake_hdrs(const char *in, size_t size, struct WS_Header
 #if 0
 			/* Attempt to debug parsed headers -- you'll have to #include <unistd.h> */
 			write(2, "hdr: <", 6);
-			write(2, hdr->hdrBuf, hdr->hdrBufLen+1);
+			write(2, hdr->hdrBuf, hdr->hdrBufLen);
 			write(2, ">\n", 2);
 #endif
 

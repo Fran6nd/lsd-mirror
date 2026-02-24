@@ -66,6 +66,20 @@ bplid check_nplid(lua_State *l, int numArg) {
 	return val;
 }
 
+unsigned check_teamid(lua_State *l, int numArg) {
+	double val = luaL_checknumber(l, numArg);
+	if (val != 0 && val != 1 && val != 255)
+		LERR(l, "teamid is invalid (%.0f)", val);
+	return val;
+}
+
+unsigned check_gteamid(lua_State *l, int numArg) {
+	double val = luaL_checknumber(l, numArg);
+	if (val != 0 && val != 1)
+		LERR(l, "gteamid is invalid (%.0f)", val);
+	return val;
+}
+
 /* TODO: handle legitimate use cases for negative pos (i.e. -1), ***don't overflow the int -- set to -1 if you have to*** */
 ivec3 get_ivec3(lua_State *l, int table, int positiveZ) {
 	ivec3 val;
@@ -203,6 +217,7 @@ const char *get_team_name_cfg(lua_State *l, unsigned team) {
 }
 
 void read_config_values(lua_State *l, struct State *st) {
+	return;
 	lua_getglobal(l, "fog");
 	if (!lua_istable(l, -1))
 		LERR(l, "fog should be a table");
@@ -530,6 +545,32 @@ static int simulate_grenade_physics(lua_State *l) {
 	return 3;
 }
 
+static int set_max_score(lua_State *l) {
+	unsigned maxscore = luaL_checknumber(l, 1);
+	st->globals.maxscore = maxscore;
+	return 0;
+}
+
+static int set_team_color(lua_State *l) {
+	unsigned team = check_gteamid(l, 1);
+	color clr;
+
+	get_color2(l, 2, clr);
+	st->globals.teamcolor[team][0] = clr[0];
+	st->globals.teamcolor[team][1] = clr[1];
+	st->globals.teamcolor[team][2] = clr[2];
+	return 0;
+}
+
+static int set_team_name(lua_State *l) {
+	unsigned team = check_gteamid(l, 1);
+	const char *name = luaL_checkstring(l, 2);
+
+	memset(st->globals.teamname[team], 0, 10);
+	strncpy(st->globals.teamname[team], name, 9);
+	return 0;
+}
+
 static int input_on_stdin(lua_State *l) {
 	struct pollfd fd[1];
 	fd->fd = 0;
@@ -681,7 +722,7 @@ static int get_fog(lua_State *l) {
 }
 
 static int get_team_name(lua_State *l) {
-	unsigned team = luaL_checknumber(l, 1);
+	unsigned team = check_teamid(l, 1);
 	/* TODO: support -1 too? */
 	if (team == 255)
 		lua_pushliteral(l, "Spectator");
@@ -848,7 +889,7 @@ static int get_team(lua_State *l) {
 }
 
 static int get_team_color(lua_State *l) {
-	unsigned team = luaL_checknumber(l, 1);
+	unsigned team = check_teamid(l, 1);
 	color color = {255, 255, 255};
 
 	switch (team) {
@@ -869,7 +910,7 @@ static int get_team_color(lua_State *l) {
 }
 
 static int get_team_score(lua_State *l) {
-	unsigned team = luaL_checknumber(l, 1);
+	unsigned team = check_gteamid(l, 1);
 	lua_pushnumber(l, st->globals.teamscore[team]);
 	return 1;
 }
@@ -932,6 +973,13 @@ static const struct luaL_Reg funcs[] = {
 
 	{"piditer", piditer},
 
+	/* Nonportable state-altering funcs -- try to use these when a map
+	 * is in the middle of loading if you want defined behavior
+	 */
+	{"set_max_score", set_max_score},
+	{"set_team_name", set_team_name},
+	{"set_team_color", set_team_color},
+
 	{"input_on_stdin", input_on_stdin},
 	{"raycast", raycast},
 	{"simulate_grenade_physics", simulate_grenade_physics},
@@ -986,7 +1034,6 @@ void register_functions(lua_State *l, struct State *st) {
 	register_luaawk(l, st);
 }
 
-/* TODO: lua config file. . ? */
 void hook_lua(const char *cfg, struct State *st2) {
 	l = lua_open();
 
@@ -1012,7 +1059,7 @@ void hook_lua(const char *cfg, struct State *st2) {
 		LERR(l, "Can't load scripts/core.lua: %s", lua_tostring(l, -1));
 
 	if (luaL_loadfile(l, cfg) || lua_pcall(l, 0, 0, 0))
-		LERR(l, "Can't load config.lua: %s", lua_tostring(l, -1));
+		LERR(l, "Can't load %s: %s", cfg, lua_tostring(l, -1));
 
 	read_config_values(l, st);
 }

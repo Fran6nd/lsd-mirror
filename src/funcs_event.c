@@ -2,6 +2,8 @@
 #include "demoncore.h"
 #include <stdio.h>
 
+clk get_time(void);
+
 #define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
 #define SEND(pid, data) st->f.send_packet(pid, &(data), sizeof(data), st)
 #define LOG(x, ...) do {st->f.before_log(st); fprintf(stderr, x"\n", __VA_ARGS__); st->f.after_log(st);} while (0)
@@ -15,9 +17,27 @@ static void on_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State 
 	st->f.send_grenade(PID_BROADCAST_EXCEPT(pid), pos, vel, fuse, 0, st);
 }
 
-static void on_reload(plid pid, unsigned mag, unsigned reserve, struct State *st) {
-	/* TODO: use mag, reserve for something */
+/* TODO: can this be altered? */
+/* TODO: should canceled reload send a reload packet with current estimation in it? */
+static const clk reloadTime[3] = {
+	/* The first two are 2.5 s, the last is 0.5 s */
+	2500000000,
+	2500000000,
+	 500000000 /* This last one is annoying and repeats the reload a lot */
+};
+
+extern const clk fireTime[3];
+
+static void on_reload(plid pid, struct State *st) {
 	st->f.send_reload(PID_BROADCAST_EXCEPT(pid), 255, 255, pid, st);
+	st->p[pid].reloadtime = get_time() + reloadTime[st->p[pid].weapon];
+
+	/* Would've been nice if the packet reported what the
+	 * client thinks its ammo is. . .
+	 *
+	 * Guess I should put that on my TODO list -- I could
+	 * just set estMagAmmo rather easily after validating.
+	 */
 }
 
 static void on_any_connect(plid pid, struct State *st) {
@@ -99,16 +119,25 @@ static void on_switch(plid pid, unsigned team, unsigned weapon, struct State *st
 		st->f.kill(pid, KillTypeWeaponChange, 0, st);
 }
 
+/* TODO: st->f.set_tool */
 static void on_tool_change(plid pid, unsigned tool, struct State *st) {
 	struct PacketSetTool set;
 
 	st->p[pid].tool = tool;
+	st->p[pid].reloadtime = 0;
 
 	set.packetID = PacketTypeSetTool;
 	set.playerID = pid;
 	set.tool = tool;
 
 	SEND(PID_BROADCAST_EXCEPT(pid), set);
+
+	if (st->p[pid].estfiretime == 0 && st->p[pid].tool == ToolTypeGun && st->p[pid].mouseInputs & 1) {
+		st->p[pid].estfiretime = get_time() + fireTime[st->p[pid].weapon];
+
+		if (st->p[pid].estMagAmmo != 0)
+			st->p[pid].estMagAmmo--;
+	}
 }
 
 /* Win or timeout or advance or something else. */
@@ -157,11 +186,19 @@ static void on_mouse_input(plid pid, unsigned bitmask, struct State *st) {
 
 	st->p[pid].mouseInputs = bitmask;
 
+	/* TODO: sidestep buggerspades */
 	in.packetID = PacketTypeWeaponInput;
 	in.playerID = pid;
 	in.weaponInput = bitmask;
 
 	SEND(PID_BROADCAST_EXCEPT(pid), in);
+
+	if (st->p[pid].estfiretime == 0 && st->p[pid].tool == ToolTypeGun && st->p[pid].mouseInputs & 1) {
+		st->p[pid].estfiretime = get_time() + fireTime[st->p[pid].weapon];
+
+		if (st->p[pid].estMagAmmo != 0)
+			st->p[pid].estMagAmmo--;
+	}
 }
 
 /* TODO: can dead men shoot in openspades if they haven't received a Kill? */

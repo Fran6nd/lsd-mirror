@@ -2,6 +2,8 @@
 package.path = "./scripts/?.lua"
 package.cpath = "./exec/?.so"
 
+math.randomseed();
+
 -- TODO: make next_call work like pcall -- give it varargs
 -- TODO: also maybe require the module to call a function to get its dedicated version of next_call, which already knows the module to look for
 function log(fmt, ...)

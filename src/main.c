@@ -6,7 +6,6 @@
 #include <isa-l.h>
 #include "state.h"
 #include "pvx/src/vxl.h"
-#include "budgetvxl.h"
 #include "cull.h"
 #include "demoncore.h"
 #include "sandbox.h"
@@ -40,6 +39,8 @@ static ENetHost *bringup_host(ENetAddress *addr) {
 		enet_host_destroy(host);
 		return NULL;
 	}
+
+	host->compressor.compress = NULL;
 
 	return host;
 }
@@ -576,6 +577,26 @@ static void tick_player_physics(plid pid, float timeDelta, struct State *st) {
 }
 #endif
 
+/* These two are hardcoded into the protocol and set with the CreatePlayer (both) and Restock (just reserve) packets */
+/* TODO: it may be worth abstracting around this some more */
+const uint8_t initialMagAmmo[3] = {
+	10,
+	30,
+	6
+};
+
+const uint8_t initialReserveAmmo[3] = {
+	50,
+	120,
+	48
+};
+
+const clk fireTime[3] = {
+	 500000000,
+	 100000000,
+	1000000000
+};
+
 static void tick(struct State *st) {
 	size_t i;
 	clk now = get_time();
@@ -587,8 +608,21 @@ static void tick(struct State *st) {
 		if (st->p[i].alive)
 			st->f.tick_player_physics(i, (double)st->tickrate/1000000000, st);
 
-		if (st->p[i].spawntime && get_time() > st->p[i].spawntime)
+		if (st->p[i].spawntime && now >= st->p[i].spawntime)
 			st->f.spawn_player(i, st);
+
+		if (st->p[i].reloadtime && now >= st->p[i].reloadtime)
+			st->f.reload_player(i, st);
+
+		if (st->p[i].estfiretime && now >= st->p[i].estfiretime) {
+			if (st->p[i].tool == ToolTypeGun && st->p[i].mouseInputs & 1) {
+				st->p[i].estfiretime += fireTime[st->p[i].weapon];
+
+				if (st->p[i].estMagAmmo != 0)
+					st->p[i].estMagAmmo--;
+			} else
+				st->p[i].estfiretime = 0;
+		}
 	}
 
 	for (i=0;i<st->globals.grenadeCount;i++) {
@@ -704,6 +738,7 @@ static void restock(plid pid, struct State *st) {
 	/* TODO: how to handle voxlap and blockaction blocks? do i have to hook on_any/sane_packet for it? */
 	st->p[pid].blocks = 50;
 	st->p[pid].grenades = 3;
+	st->p[pid].reserveAmmo = initialReserveAmmo[st->p[pid].weapon];
 
 	/* TODO: should i bother broadcasting this? */
 	st->f.send_restock(pid, pid, st);
@@ -713,6 +748,8 @@ static void spawn_player(plid pid, struct State *st) {
 	struct PacketCreatePlayer cr;
 
 	st->p[pid].spawntime = 0;
+	st->p[pid].reloadtime = 0;
+	st->p[pid].estfiretime = 0;
 	st->p[pid].team = st->p[pid].newteam;
 	/* TODO: do i even need newweapon or just newteam? */
 	st->p[pid].weapon = st->p[pid].newweapon;
@@ -738,6 +775,10 @@ static void spawn_player(plid pid, struct State *st) {
 	st->p[pid].hp = 100;
 	st->p[pid].blocks = 50;
 	st->p[pid].grenades = 3;
+	st->p[pid].estMagAmmo = initialMagAmmo[st->p[pid].weapon];
+	/* If using shotgun (2), multiply maxMagAmmo by 8 to deal with its multiple pellets until i bother validating bullet timing too */
+	st->p[pid].maxMagAmmo = initialMagAmmo[st->p[pid].weapon] * (1 + (st->p[pid].weapon == 2)*7);
+	st->p[pid].reserveAmmo = initialReserveAmmo[st->p[pid].weapon];
 	st->p[pid].lastagreedpos.x = st->p[pid].pos.x;
 	st->p[pid].lastagreedpos.y = st->p[pid].pos.y;
 	st->p[pid].lastagreedpos.z = st->p[pid].pos.z;
@@ -756,6 +797,30 @@ static void spawn_player(plid pid, struct State *st) {
 	strcpy(cr.name, st->p[pid].name);
 
 	SEND(PID_BROADCAST, cr);
+}
+
+static void set_ammo(plid pid, unsigned mag, unsigned reserve, struct State *st) {
+	st->p[pid].estMagAmmo = mag;
+	st->p[pid].maxMagAmmo = mag * (1 + (st->p[pid].weapon == 2)*7);
+	st->p[pid].reserveAmmo = reserve;
+
+	st->f.send_reload(pid, mag, reserve, pid, st);
+}
+
+static void reload_player(plid pid, struct State *st) {
+	unsigned transfer = initialMagAmmo[st->p[pid].weapon] - st->p[pid].estMagAmmo;
+
+	/* TODO: no reloading *and* firing, except maybe with the shotgun */
+	st->p[pid].reloadtime = 0;
+
+	if (st->p[pid].estMagAmmo >= initialMagAmmo[st->p[pid].weapon])
+		return;
+
+	/* TODO: make sure you handle 0 mag/reserve ammo properly everywhere */
+	if (transfer > st->p[pid].reserveAmmo)
+		transfer = st->p[pid].reserveAmmo;
+
+	st->f.set_ammo(pid, st->p[pid].estMagAmmo+transfer, st->p[pid].reserveAmmo-transfer, st);
 }
 
 const uint8_t ColorFilled[3] = {40, 64, 103};
@@ -956,6 +1021,8 @@ static void func_kill(plid pid, unsigned type, plid killer, struct State *st) {
 	struct PacketKill kl;
 
 	st->p[pid].spawntime = st->f.on_kill(pid, st);
+	st->p[pid].reloadtime = 0;
+	st->p[pid].estfiretime = 0;
 
 	st->p[pid].alive = 0;
 
@@ -1181,6 +1248,8 @@ static void set_funcs(struct State *st) {
 	st->f.on_player_spawn = on_player_spawn;
 	st->f.on_kill = on_kill;
 	st->f.spawn_player = spawn_player;
+	st->f.set_ammo = set_ammo;
+	st->f.reload_player = reload_player;
 	st->f.set_fog = set_fog;
 	st->f.prepare_map_load = prepare_map_load;
 	st->f.finish_map_load = finish_map_load;

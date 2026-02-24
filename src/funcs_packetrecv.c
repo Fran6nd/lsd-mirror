@@ -60,6 +60,9 @@ static int stuck_in_a_block(fvec3 pos, struct State *st) {
 
 #define NOT_THE_SAME_POSITION(p1, p2) (p1.x != p2.x || p1.y != p2.y || p1.z != p2.z)
 
+extern const uint8_t initialMagAmmo[3];
+extern const uint8_t initialReserveAmmo[3];
+
 static float sqr_len2(fvec3 vec) {
 	return vec.x*vec.x + vec.y*vec.y;
 }
@@ -190,7 +193,7 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		SBAD(PACKET.team > 1 && PACKET.team != 255);
 		SBAD(PACKET.weapon > 2);
 		SBAD(PACKET.tool != ToolTypeGun);
-		/* OpenSpades puts its score in PACKET.score (or some other data; I didn't check) for some reason despite being ignored */
+		/* OpenSpades puts its score (or some other data; I didn't check) in PACKET.score for some reason despite being ignored */
 		/* blue, green and red are ignored */
 
 		return 0;
@@ -232,6 +235,9 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 #define PCKT Hit
 		SCASEALIVE
 		SEXACT();
+
+		SBAD(st->p[pid].maxMagAmmo == 0);
+		st->p[pid].maxMagAmmo--;
 
 		/* TODO: rename playerID here, it misleads -- playerID is not the player's ID, just the ID of the hit player */
 		SBAD(PACKET.playerID > MAX_PLAYERS);
@@ -311,6 +317,8 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 			break;
 		case ToolTypeGun:
 			SBAD(PACKET.type != 1);
+			SBAD(st->p[pid].maxMagAmmo == 0);
+			st->p[pid].maxMagAmmo--;
 			break;
 		default:
 			st->crapcond = "BlockAction with invalid tool (probably grenade)";
@@ -376,7 +384,9 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		SEXACT();
 		SPID();
 
-		/* TODO: validate reserve ammo */
+		/* Sometimes voxlap likes to send 255,255 for ammo and other
+		 * times it likes to send 0,0 -- don't depend on it, anyway. . .
+		 */
 
 		return 0;
 #undef PCKT
@@ -474,7 +484,7 @@ static void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
 #undef PCKT
 #define PCKT WeaponReload
 		PCASE
-		st->f.on_reload(pid, PACKET.magazineAmmo, PACKET.reserveAmmo, st);
+		st->f.on_reload(pid, st);
 		break;
 	}
 }

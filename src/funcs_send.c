@@ -267,7 +267,6 @@ static void send_state_tc(plid pid, plid from, const char teamname[][10], const 
 }
 
 static void send_state(plid pid, struct State *st) {
-	/* TODO: does this go before or after? */
 	st->f.send_connected_players(pid, st);
 	st->f.send_state_ctf(pid, pid, st->globals.teamname, st->globals.teamcolor, st->globals.fog, st->globals.teamscore, st->globals.maxscore, st->globals.intelplayers, st->globals.intelpos, st->globals.tentpos, st);
 }

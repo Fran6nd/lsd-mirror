@@ -26,6 +26,12 @@ typedef plid bplid;
 /* Gets sent over the wire, use whatever value you want as long as the client understands it and it fits in a uint8_t */
 typedef plid nplid;
 
+/* Holds a team value -- what else did you expect? */
+typedef unsigned teamid;
+
+/* Holds an inGame team value -- i.e., not spectators */
+typedef unsigned gteamid;
+
 /* [0] is B, [1] is G, [2] is R */
 typedef uint8_t color[3];
 
@@ -63,6 +69,12 @@ struct Player {
 	clk spawntime;
 	uint8_t blocks;
 	uint8_t grenades;
+	uint8_t estMagAmmo; /* Estimated magazine ammo -- what we *think* this player has */
+	uint8_t maxMagAmmo; /* Max magazine ammo -- the most this player can physically have */
+	/* TODO: validate pellets -- or leave that to dd? */
+	unsigned reserveAmmo;
+	clk estfiretime; /* Used to decrease estMagAmmo and not much else. . . TODO: buggerspades */
+	clk reloadtime;
 };
 
 struct State;
@@ -83,8 +95,8 @@ struct Functions {
 	/* Handles received packets that are unknown or invalid */
 	void (*on_crap_packet)(plid pid, ENetPacket *packet, struct State *st);
 
-	void (*on_join)(plid pid, unsigned team, unsigned weapon, const char *name, struct State *st);
-	void (*on_switch)(plid pid, unsigned team, unsigned weapon, struct State *st);
+	void (*on_join)(plid pid, teamid team, unsigned weapon, const char *name, struct State *st);
+	void (*on_switch)(plid pid, teamid team, unsigned weapon, struct State *st);
 
 	void (*on_position)(plid pid, fvec3 pos, struct State *st);
 	void (*on_orientation)(plid pid, fvec3 ori, struct State *st);
@@ -97,7 +109,7 @@ struct Functions {
 	void (*on_tool_change)(plid pid, unsigned tool, struct State *st);
 	void (*on_hit)(plid pid, unsigned type, plid hitPlayer, struct State *st);
 	void (*on_grenade)(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st);
-	void (*on_reload)(plid pid, unsigned mag, unsigned reserve, struct State *st);
+	void (*on_reload)(plid pid, struct State *st);
 
 	/* TODO: player spawn? why not just spawn */
 	fvec3 (*on_player_spawn)(plid pid, struct State *st);
@@ -142,8 +154,8 @@ struct Functions {
 	void (*detonate_grenade)(size_t index, struct State *st);
 	void (*boot_players_to_limbo)(struct State *st);
 	void (*send_grenade)(bplid pid, fvec3 pos, fvec3 vel, float fuse, nplid from, struct State *st);
-	size_t (*register_grenade)(bplid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
-	size_t (*spawn_grenade)(bplid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
+	size_t (*register_grenade)(bplid pid, teamid team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
+	size_t (*spawn_grenade)(bplid pid, teamid team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
 
 	/*
 	 * Player actions
@@ -176,7 +188,8 @@ struct Functions {
 	void (*send_intel_pickup)(bplid pid, nplid from, struct State *st);
 	void (*send_intel_drop)(bplid pid, fvec3 pos, nplid from, struct State *st);
 	void (*send_restock)(bplid pid, nplid from, struct State *st);
-	void (*send_move_object)(bplid pid, fvec3 pos, unsigned id, unsigned team, struct State *st);
+	/* TODO: should this be gteamid or something else entirely? */
+	void (*send_move_object)(bplid pid, fvec3 pos, unsigned id, gteamid team, struct State *st);
 	void (*send_map_start)(bplid pid, unsigned size, struct State *st);
 	void (*send_fog)(bplid pid, color color, struct State *st);
 
@@ -184,6 +197,7 @@ struct Functions {
 	 * Player funcs -- these send packets and modify player state
 	 */
 	void (*spawn_player)(plid pid, struct State *st);
+	void (*reload_player)(plid pid, struct State *st);
 	void (*restock)(plid pid, struct State *st);
 	/* TODO: allow hijacking respawn time */
 	void (*kill)(plid pid, unsigned type, plid killer, struct State *st);
@@ -200,8 +214,8 @@ struct Functions {
 	void (*capture_intel)(plid pid, bint winning, struct State *st);
 	void (*pickup_intel)(plid pid, struct State *st);
 	void (*drop_intel)(plid pid, fvec3 pos, struct State *st);
-	void (*move_intel)(unsigned team, fvec3 pos, struct State *st);
-	void (*move_tent)(unsigned team, fvec3 pos, struct State *st);
+	void (*move_intel)(gteamid team, fvec3 pos, struct State *st);
+	void (*move_tent)(gteamid team, fvec3 pos, struct State *st);
 };
 
 struct Globals {

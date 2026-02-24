@@ -69,6 +69,14 @@ function mod.on_load()
 	end
 end
 
+function mod.on_unload()
+	for i, _ in pairs(takenfakepid) do
+		if (i >= MAX_PLAYERS) then
+			free_fakepid(i);
+		end
+	end
+end
+
 -- TODO: just use on_successful_connect?
 function on_fakepid_connect(pid)
 end

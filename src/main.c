@@ -808,19 +808,20 @@ static void set_ammo(plid pid, unsigned mag, unsigned reserve, struct State *st)
 }
 
 static void reload_player(plid pid, struct State *st) {
-	unsigned transfer = initialMagAmmo[st->p[pid].weapon] - st->p[pid].estMagAmmo;
+	unsigned ammo = st->p[pid].estMagAmmo < st->p[pid].maxMagAmmo ? st->p[pid].estMagAmmo : st->p[pid].maxMagAmmo;
+	unsigned transfer = initialMagAmmo[st->p[pid].weapon] - ammo;
 
 	/* TODO: no reloading *and* firing, except maybe with the shotgun */
 	st->p[pid].reloadtime = 0;
 
-	if (st->p[pid].estMagAmmo >= initialMagAmmo[st->p[pid].weapon])
+	if (ammo >= initialMagAmmo[st->p[pid].weapon])
 		return;
 
 	/* TODO: make sure you handle 0 mag/reserve ammo properly everywhere */
 	if (transfer > st->p[pid].reserveAmmo)
 		transfer = st->p[pid].reserveAmmo;
 
-	st->f.set_ammo(pid, st->p[pid].estMagAmmo+transfer, st->p[pid].reserveAmmo-transfer, st);
+	st->f.set_ammo(pid, ammo+transfer, st->p[pid].reserveAmmo-transfer, st);
 }
 
 const uint8_t ColorFilled[3] = {40, 64, 103};

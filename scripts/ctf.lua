@@ -36,33 +36,15 @@ local function raise_tent(team, loc)
 	end
 end
 
--- TODO: team += 1
--- Intel/tent gravity
-function mod.after.finish_cull()
+local function try_raise()
 	local intelloc = get_intelloc();
 	local tentloc = get_tentloc();
 
 	for team, loc in pairs(intelloc) do
-		lower_intel(team, loc);
-	end
-
-	for team, loc in pairs(tentloc) do
-		lower_tent(team, loc);
-	end
-end
-
--- Intel/tent raise on block place
--- TODO: definitely test!!(?)
-function mod.after.block_action(pos, type)
-	if (type ~= 0) then
-		return;
-	end
-
-	local intelloc = get_intelloc();
-	local tentloc = get_tentloc();
-
-	for team, loc in pairs(intelloc) do
-		raise_intel(team, loc);
+		-- TODO: too much of a pain in the ass to use num/tbl/nil loc, just use tbl/nil and num/nil *separately*
+		if (type(loc) == "table") then
+			raise_intel(team, loc);
+		end
 	end
 
 	for team, loc in pairs(tentloc) do
@@ -70,22 +52,37 @@ function mod.after.block_action(pos, type)
 	end
 end
 
--- TODO: raise/lower_tent()
-function mod.after.block_line()
+local function try_lower()
 	local intelloc = get_intelloc();
 	local tentloc = get_tentloc();
 
 	for team, loc in pairs(intelloc) do
-		raise_intel(team, loc);
+		if (type(loc) == "table") then
+			lower_intel(team, loc);
+		end
 	end
 
 	for team, loc in pairs(tentloc) do
-		while (is_solid{x=loc.x, y=loc.y, z=loc.z}) do
-			-- TODO: dedup packets in core
-			move_tent(team-1, loc);
-			loc.z = loc.z - 1;
-		end
+		lower_tent(team, loc);
 	end
+end
+
+-- TODO: team += 1
+function mod.after.finish_cull()
+	try_lower();
+end
+
+-- Intel/tent raise on block place
+-- TODO: definitely test!!(?)
+function mod.after.block_action(pos, type)
+	if (type == 0) then
+		try_raise();
+	end
+end
+
+-- TODO: raise/lower_tent()
+function mod.after.block_line()
+	try_raise();
 end
 
 local function length2(vec)

@@ -50,7 +50,8 @@ local page = [[
 <title>LSd websocket console</title>
 <textarea readonly id=stderr></textarea>
 <form id=input>
-<input id=stdin>
+<label for=stdin>Enter a command:</label>
+<input placeholder="cmds 0" id=stdin>
 </form>
 <script>
 "use strict";
@@ -62,6 +63,9 @@ if (!(sock = (new URL(window.location.href).searchParams).get("url")) || !(sock 
 var stderr = document.getElementById("stderr");
 var stdin = document.getElementById("stdin");
 var input = document.getElementById("input");
+
+var hist = [""];
+var histidx = 0;
 
 function close(event) {
 	stderr.value += "Disconnected\n";
@@ -82,8 +86,36 @@ function open(event) {
 
 function submit(event) {
 	event.preventDefault();
-	sock.send(stdin.value);
+	if (stdin.value != "")
+		sock.send(stdin.value);
+
+	hist[histidx] = stdin.value;
+	if (hist[hist.length-1] != "")
+		hist.push("");
+
+	histidx = hist.length-1;
+
 	stdin.value = "";
+}
+
+function keydown(event) {
+	switch (event.key) {
+	case "ArrowUp":
+		hist[histidx] = stdin.value;
+		if (--histidx < 0)
+			histidx = 0;
+		break;
+	case "ArrowDown":
+		hist[histidx] = stdin.value;
+		if (++histidx >= hist.length)
+			histidx = hist.length-1;
+		break;
+	default:
+		return;
+	}
+
+	stdin.value = hist[histidx];
+	event.preventDefault();
 }
 
 sock.addEventListener("close", close, {passive: true});
@@ -92,6 +124,7 @@ sock.addEventListener("message", message, {passive: true});
 sock.addEventListener("open", open, {passive: true});
 
 input.addEventListener("submit", submit);
+input.addEventListener("keydown", keydown);
 </script>
 <style>
 :root {
@@ -110,16 +143,27 @@ body {
 }
 
 #stderr {
-	border-bottom: none !important;
 	resize: none;
 	flex-grow: 1;
+	word-break: break-all;
+}
+
+#input {
+	display: grid;
+	border-top: none !important;
+}
+
+#stdin {
+	border: none;
+	/* #stdin ignores :root's font-family */
+	font-family: monospace;
+}
+
+#stderr, #input {
+	border: 2px solid #057;
 }
 
 #stdin, #stderr {
-	/* #stdin decided to ignore :root's font-family */
-	font-family: monospace;
-	border: 2px solid #057;
-	width: 100%;
 	margin: 0;
 }
 </style>
@@ -173,12 +217,24 @@ function mod.log(fmt, ...)
 end
 
 -- TODO: *really* need to be able to specify early/late callchain positioning
+-- TODO: if something decides to piditer over PID_BROADCAST before this, what happens?
 function mod.send_chat(pid, msg, type, from)
 	-- TODO: one conpid per connection? OPTIONAL?
 	if (sock.cons[pid]) then
 		websock_send_con(sock.cons[pid], msg.."\n");
 		return;
 	end
+
+	if (pid == PID_BROADCAST) then
+		for pid, con in pairs(sock.cons) do
+			if (from < MAX_PLAYERS and type ~= 2) then
+				websock_send_con(con, string.format("%s: %s\n", get_name(from), msg));
+			else
+				websock_send_con(con, msg.."\n");
+			end
+		end
+	end
+
 	next_call("send_chat", mod.send_chat)(pid, msg, type, from);
 end
 

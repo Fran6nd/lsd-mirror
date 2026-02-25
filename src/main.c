@@ -415,15 +415,8 @@ static uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct Stat
 
 	if (mask == 0)
 		type = 0;
-	else if (!st->globals.loadingMap) {
-		/* TODO: is there even a reason to not send pid to others? */
-		if (type == 3)
-			st->f.send_block_action(PID_BROADCAST, pos, type, 0, st);
-		else {
-			st->f.send_block_action(from, pos, type, from, st);
-			st->f.send_block_action(PID_BROADCAST_EXCEPT(from), pos, type, 0, st);
-		}
-	}
+	else if (!st->globals.loadingMap)
+		st->f.send_block_action(PID_BROADCAST, pos, type, from, st);
 
 	return mask | (type << 30);
 }

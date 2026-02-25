@@ -51,6 +51,7 @@ typedef fvec3p fvec3;
 /* TODO: BS_BUG_BORKEDRELOAD */
 /* TODO: BS_BUG_MOUSEINPUTISFUCKED */
 /* TODO: BS_BUG_INCOMPATIBLE_CHAT_STANDARD */
+/* TODO: BS_BUG_PIQUESHIT_DISCONNECT_DATA -- I think this one spread to IV spades too */
 /* TODO: wonder how to handle sprintcrouching */
 
 /* TODO: consider the version stuff an ext too? */

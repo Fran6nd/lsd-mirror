@@ -17,12 +17,12 @@ struct MasterState {
 	/* Don't touch these or the devil will order you a gigaton of pizza
 	 * to be dropped onto your house.
 	 */
+	char     oldmap[21];
 	uint16_t oldport;
 	uint8_t  oldplayers;
 	uint8_t  oldmaxplayers;
 	char     oldname[32];
 	char     oldgamemode[8];
-	char     oldmap[21];
 };
 
 int masterlist_init(struct MasterState *ms);

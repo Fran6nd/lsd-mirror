@@ -215,7 +215,7 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		SEXACT();
 		SPID();
 
-		SBAD(st->p[pid].team == 255);
+		SBAD(!(st->p[pid].bugMask & BS_BUG_NOSHORTPLAYER) && st->p[pid].team == 255);
 
 		SBAD(PACKET.team > 1 && PACKET.team != 255);
 
@@ -226,7 +226,7 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		SEXACT();
 		SPID();
 
-		SBAD(st->p[pid].team == 255);
+		SBAD(!(st->p[pid].bugMask & BS_BUG_NOSHORTPLAYER) && st->p[pid].team == 255);
 
 		SBAD(PACKET.weapon > 2);
 
@@ -384,9 +384,36 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		SEXACT();
 		SPID();
 
+		SBAD(st->p[pid].tool != ToolTypeGun);
+		SBAD(st->p[pid].mouseInputs);
+
 		/* Sometimes voxlap likes to send 255,255 for ammo and other
 		 * times it likes to send 0,0 -- don't depend on it, anyway. . .
 		 */
+
+		return 0;
+#undef PCKT
+#define PCKT HandshakeReturn
+		SCASEANY
+		SEXACT();
+
+		SBAD(!st->p[pid].wantFingerprint);
+		SBAD(st->p[pid].handshaked);
+		SBAD(PACKET.challenge != 0xdeadbeef);
+
+		return 0;
+#undef PCKT
+#define PCKT VersionResponse
+		SCASEANY
+		SRANGE(5, 5+256);
+		/* Not NUL terminated for some reason (I think anyway) --
+		 * That's why I decided to use +256 instead of +255 for the size
+		 */
+
+		/* TODO: dig into the datagrams if you feel like denying fingerprint sooner than join */
+		SBAD(!st->p[pid].wantFingerprint);
+		SBAD(PACKET.client == 0);
+		SBAD(packet->data[packet->dataLength-1] == '\0');
 
 		return 0;
 #undef PCKT
@@ -485,6 +512,17 @@ static void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
 #define PCKT WeaponReload
 		PCASE
 		st->f.on_reload(pid, st);
+		break;
+#undef PCKT
+#define PCKT HandshakeReturn
+		PCASE
+		st->f.on_handshake(pid, st);
+		break;
+#undef PCKT
+#define PCKT VersionResponse
+		PCASE
+		/* TODO: string */
+		st->f.on_version(pid, PACKET.client, PACKET.versionMajor, PACKET.versionMinor, PACKET.versionRevision, st);
 		break;
 	}
 }

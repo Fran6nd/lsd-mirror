@@ -28,6 +28,10 @@
 
 #define MAX(x,y) ((x)>(y) ? (x) : (y))
 
+struct Vector {float x, y, z;};
+struct Vector32 {int32_t x, y, z;};
+struct Vector32u {uint32_t x, y, z;};
+
 typedef struct Vector Vector;
 typedef struct Vector32 Vector32;
 typedef struct Vector32u Vector32u;
@@ -117,7 +121,7 @@ int cast2(const uint8_t *solidData, float startX, float startY, float startZ, fl
 	offz = endZ - startZ;
 
 #if 0
-	/* Normalize that relative position. This is only needed if hypot ends up as a really small value
+	/* Normalize that relative pos. This is only needed if hypot ends up as a really small value
 	 * -- multiplying offx,y,z by a really large number would have a similar effect.
 	 * The need for this could probably be mitigated with double precision, too.
 	 */
@@ -317,7 +321,7 @@ void dcore_block_line(int32_t startX, int32_t startY, int32_t startZ, int32_t en
 	Vector32 cursor, step;
 	uint32_t maxoff;
 
-	/* End position's offset relative to the start position. */
+	/* End pos's offset relative to the start pos. */
 	off.x = abs(endX - startX);
 	off.y = abs(endY - startY);
 	off.z = abs(endZ - startZ);
@@ -375,27 +379,27 @@ void dcore_block_line(int32_t startX, int32_t startY, int32_t startZ, int32_t en
 }
 
 void try_uncrouch(PlayerType *p, const uint8_t *solidData, int wrap) {
-	float x1 = p->position.x + 0.45f;
-	float x2 = p->position.x - 0.45f;
-	float y1 = p->position.y + 0.45f;
-	float y2 = p->position.y - 0.45f;
-	float z1 = p->position.z + 2.25f;
+	float x1 = p->pos.x + 0.45f;
+	float x2 = p->pos.x - 0.45f;
+	float y1 = p->pos.y + 0.45f;
+	float y2 = p->pos.y - 0.45f;
+	float z1 = p->pos.z + 2.25f;
 
 	/* First check if player can lower feet if in midair. */
 	if (p->airborne && !(clip_player(x1, y1, z1, solidData, wrap) || clip_player(x1, y2, z1, solidData, wrap) || clip_player(x2, y1, z1, solidData, wrap) || clip_player(x2, y2, z1, solidData, wrap)))
 		return;
 
 	/* By the time this has been reached, the player cannot lower feet, so the best option is to raise the head instead. */
-	p->position.z -= 0.9f;
+	p->pos.z -= 0.9f;
 }
 
 int try_uncrouch_me(PlayerType *p, const uint8_t *solidData, int wrap) {
-	float x1 = p->position.x + 0.45f;
-	float x2 = p->position.x - 0.45f;
-	float y1 = p->position.y + 0.45f;
-	float y2 = p->position.y - 0.45f;
-	float z1 = p->position.z + 2.25f;
-	float z2 = p->position.z - 1.35f;
+	float x1 = p->pos.x + 0.45f;
+	float x2 = p->pos.x - 0.45f;
+	float y1 = p->pos.y + 0.45f;
+	float y2 = p->pos.y - 0.45f;
+	float z1 = p->pos.z + 2.25f;
+	float z2 = p->pos.z - 1.35f;
 
 	/* First check if player can lower feet if in midair. */
 	if (p->airborne && !(clip_player(x1, y1, z1, solidData, wrap) || clip_player(x1, y2, z1, solidData, wrap) || clip_player(x2, y1, z1, solidData, wrap) || clip_player(x2, y2, z1, solidData, wrap)))
@@ -403,7 +407,7 @@ int try_uncrouch_me(PlayerType *p, const uint8_t *solidData, int wrap) {
 
 	/* By the time this has been reached, the player cannot lower feet, so raise the head instead if possible. */
 	if (!(clip_player(x1, y1, z2, solidData, wrap) || clip_player(x1, y2, z2, solidData, wrap) || clip_player(x2, y1, z2, solidData, wrap) || clip_player(x2, y2, z2, solidData, wrap))) {
-		p->position.z -= 0.9f;
+		p->pos.z -= 0.9f;
 		return 1;
 	}
 
@@ -414,14 +418,14 @@ int try_uncrouch_me(PlayerType *p, const uint8_t *solidData, int wrap) {
 /* Don't call this unless crouch state is actually changing. */
 void change_crouch(int crouching, PlayerType *p, const uint8_t *solidData, int wrap) {
 	if (crouching && !p->airborne)
-		p->position.z += 0.9;
+		p->pos.z += 0.9;
 	else
 		try_uncrouch(p, solidData, wrap);
 }
 
 int change_crouch_me(int crouching, PlayerType *p, const uint8_t *solidData, int wrap) {
 	if (crouching && !p->airborne) {
-		p->position.z += 0.9;
+		p->pos.z += 0.9;
 		return 1;
 	}
 	return try_uncrouch_me(p, solidData, wrap);
@@ -438,7 +442,7 @@ static void boxclipmove(PlayerType *p, float secondsSinceLastUpdate, const uint8
 	float f = secondsSinceLastUpdate * 32;
 	float nextp, testp;
 	float nz;
-	int canclimb = !(p->inputs & (KeyStateTypeCrouch | KeyStateTypeSprint)) && p->orientation.z < 0.5;
+	int canclimb = !(p->inputs & (KeyStateTypeCrouch | KeyStateTypeSprint)) && p->ori.z < 0.5;
 	int climb = 0;
 
 	float offset, m;
@@ -450,55 +454,55 @@ static void boxclipmove(PlayerType *p, float secondsSinceLastUpdate, const uint8
 		m = 1.35;
 	}
 
-	nz = p->position.z + offset;
+	nz = p->pos.z + offset;
 
-	nextp = f * p->velocity.x + p->position.x;
-	testp = nextp + (p->velocity.x < 0 ? -0.45 : 0.45);
-	if (SATANIC_LOOP(m, -1.36, testp, p->position.y - 0.45, testp, p->position.y + 0.45))
-		p->position.x = nextp;
-	else if (canclimb && SATANIC_LOOP(0.35, -2.36, testp, p->position.y - 0.45, testp, p->position.y + 0.45)) {
-		p->position.x = nextp;
+	nextp = f * p->vel.x + p->pos.x;
+	testp = nextp + (p->vel.x < 0 ? -0.45 : 0.45);
+	if (SATANIC_LOOP(m, -1.36, testp, p->pos.y - 0.45, testp, p->pos.y + 0.45))
+		p->pos.x = nextp;
+	else if (canclimb && SATANIC_LOOP(0.35, -2.36, testp, p->pos.y - 0.45, testp, p->pos.y + 0.45)) {
+		p->pos.x = nextp;
 		climb = 1;
 	} else
-		p->velocity.x = 0;
+		p->vel.x = 0;
 
-	nextp = f * p->velocity.y + p->position.y;
-	testp = nextp + (p->velocity.y < 0 ? -0.45 : 0.45);
-	if (SATANIC_LOOP(m, -1.36, p->position.x - 0.45, testp, p->position.x + 0.45, testp))
-		p->position.y = nextp;
+	nextp = f * p->vel.y + p->pos.y;
+	testp = nextp + (p->vel.y < 0 ? -0.45 : 0.45);
+	if (SATANIC_LOOP(m, -1.36, p->pos.x - 0.45, testp, p->pos.x + 0.45, testp))
+		p->pos.y = nextp;
 	else if (!climb) {
-		if (canclimb && SATANIC_LOOP(0.35, -2.36, p->position.x - 0.45, testp, p->position.x + 0.45, testp)) {
-			p->position.y = nextp;
+		if (canclimb && SATANIC_LOOP(0.35, -2.36, p->pos.x - 0.45, testp, p->pos.x + 0.45, testp)) {
+			p->pos.y = nextp;
 			climb = 1;
 		} else
-			p->velocity.y = 0;
+			p->vel.y = 0;
 	}
 
 	if (climb) {
-		p->velocity.x *= 0.5;
-		p->velocity.y *= 0.5;
+		p->vel.x *= 0.5;
+		p->vel.y *= 0.5;
 		nz--;
 		m = -1.35;
 	} else {
-		if (p->velocity.z < 0)
+		if (p->vel.z < 0)
 			m = -m;
 
-		/* Since multiplication is evaluated left-to-right, I'm not sure if replacing this with f * p->velocity.z would be safe. */
-		nz += p->velocity.z * secondsSinceLastUpdate * 32;
+		/* Since multiplication is evaluated left-to-right, I'm not sure if replacing this with f * p->vel.z would be safe. */
+		nz += p->vel.z * secondsSinceLastUpdate * 32;
 	}
 
-#define SCLIP(xoff, yoff) clip_player(p->position.x + (xoff), p->position.y + (yoff), nz + m, solidData, wrap)
+#define SCLIP(xoff, yoff) clip_player(p->pos.x + (xoff), p->pos.y + (yoff), nz + m, solidData, wrap)
 	/* secondsSinceLastUpdate not being 1/60 can screw with some calculations here (see nz). Makes players nice and jittery. Wonder if I can (should) force it, somehow, to 1/60 for just the Z axis? */
 	p->airborne = 1;
 	if (SCLIP(-0.45, -0.45) || SCLIP (-0.45, 0.45) || SCLIP(0.45, -0.45) || SCLIP(0.45, 0.45)) {
-		if (p->velocity.z >= 0) {
-			p->wade = p->position.z > 61;
+		if (p->vel.z >= 0) {
+			p->wade = p->pos.z > 61;
 			p->airborne = 0;
 		}
 
-		p->velocity.z = 0;
+		p->vel.z = 0;
 	} else
-		p->position.z = nz - offset;
+		p->pos.z = nz - offset;
 }
 
 static float calc_acceleration(PlayerType *p, float secondsSinceLastUpdate, int diagonal) {
@@ -509,7 +513,7 @@ static float calc_acceleration(PlayerType *p, float secondsSinceLastUpdate, int 
 		acceleration *= 0.1;
 	else if (p->inputs & KeyStateTypeCrouch)
 		acceleration *= 0.3;
-	else if ((p->mouseInputs & WeaponInputTypeSecondary && p->item == ToolTypeGun) || p->inputs & KeyStateTypeSneak)
+	else if ((p->mouseInputs & WeaponInputTypeSecondary && p->tool == ToolTypeGun) || p->inputs & KeyStateTypeSneak)
 		acceleration *= 0.5;
 	else if (p->inputs & KeyStateTypeSprint)
 		acceleration *= 1.3;
@@ -533,11 +537,11 @@ int32_t move_player(PlayerType *p, float secondsSinceLastUpdate, const uint8_t *
 	/* Get the player's right side, but in 2D instead of 3D.
 	 * Trivia time: notice how this is 2D, not 3D.
 	 * This is why looking down and moving left/right is full speed, but moving forward/backward is not.*/
-	horizontalHypotenuse = sqrtf(p->orientation.x * p->orientation.x + p->orientation.y * p->orientation.y);
+	horizontalHypotenuse = sqrtf(p->ori.x * p->ori.x + p->ori.y * p->ori.y);
 	if (horizontalHypotenuse == 0)
 		horizontalHypotenuse = 1;
-	rightSide.x = -p->orientation.y / horizontalHypotenuse;
-	rightSide.y = p->orientation.x / horizontalHypotenuse;
+	rightSide.x = -p->ori.y / horizontalHypotenuse;
+	rightSide.y = p->ori.x / horizontalHypotenuse;
 
 	/* Vertical/horizontal in a 2D sense. Most other instances of vertical refer to the axis
 	 * which gravity operates along, whereas horizontal refers to the other two axes. */
@@ -547,40 +551,40 @@ int32_t move_player(PlayerType *p, float secondsSinceLastUpdate, const uint8_t *
 
 	if ((p->inputs & KeyStateTypeJump)) {
 		p->inputs &= ~KeyStateTypeJump;
-		p->velocity.z = -0.36;
+		p->vel.z = -0.36;
 	}
 
 	/* Add to velocity in the direction player is trying to move. Do vertical air friction too. */
-	p->velocity.x += p->orientation.x * acceleration * verticalMove;
-	p->velocity.y += p->orientation.y * acceleration * verticalMove;
-	p->velocity.x += rightSide.x * acceleration * horizontalMove;
-	p->velocity.y += rightSide.y * acceleration * horizontalMove;
-	p->velocity.z += secondsSinceLastUpdate;
+	p->vel.x += p->ori.x * acceleration * verticalMove;
+	p->vel.y += p->ori.y * acceleration * verticalMove;
+	p->vel.x += rightSide.x * acceleration * horizontalMove;
+	p->vel.y += rightSide.y * acceleration * horizontalMove;
+	p->vel.z += secondsSinceLastUpdate;
 	/* All of this adding 1 seems like a fire hazard. */
-	p->velocity.z /= secondsSinceLastUpdate + 1;
+	p->vel.z /= secondsSinceLastUpdate + 1;
 
 	/* Horizontal friction, for water, air or ground. */
 	friction = secondsSinceLastUpdate * (p->wade ? 6 : (p->airborne ? 1 : 4)) + 1;
-	p->velocity.x /= friction;
-	p->velocity.y /= friction;
+	p->vel.x /= friction;
+	p->vel.y /= friction;
 
 	/* Call into the demon core. */
-	oldZVelocity = p->velocity.z;
+	oldZVelocity = p->vel.z;
 	boxclipmove(p, secondsSinceLastUpdate, solidData, wrap);
 
 	if (wrap) {
-		p->position.x = fmodf(p->position.x, 512);
-		p->position.y = fmodf(p->position.y, 512);
-		if (p->position.x < 0)
-			p->position.x += 512;
-		if (p->position.y < 0)
-			p->position.y += 512;
+		p->pos.x = fmodf(p->pos.x, 512);
+		p->pos.y = fmodf(p->pos.y, 512);
+		if (p->pos.x < 0)
+			p->pos.x += 512;
+		if (p->pos.y < 0)
+			p->pos.y += 512;
 	}
 
-	if (p->velocity.z == 0 && (oldZVelocity > FALL_SLOW_DOWN)) {
+	if (p->vel.z == 0 && (oldZVelocity > FALL_SLOW_DOWN)) {
 		/* Player went from an airborne state to a grounded one, and had enough velocity to slow down. */
-		p->velocity.x *= 0.5;
-		p->velocity.y *= 0.5;
+		p->vel.x *= 0.5;
+		p->vel.y *= 0.5;
 
 		if (oldZVelocity > FALL_DAMAGE_VELOCITY) {
 			/* Player also had enough velocity to be damaged. */

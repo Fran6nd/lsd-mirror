@@ -268,7 +268,10 @@ static void send_state_tc(plid pid, plid from, const char teamname[][10], const 
 
 static void send_state(plid pid, struct State *st) {
 	st->f.send_connected_players(pid, st);
+	if (!st->p[pid].initStateSent)
+		st->f.demand_fingerprint(pid, st);
 	st->f.send_state_ctf(pid, pid, st->globals.teamname, st->globals.teamcolor, st->globals.fog, st->globals.teamscore, st->globals.maxscore, st->globals.intelplayers, st->globals.intelpos, st->globals.tentpos, st);
+	st->p[pid].initStateSent = 1;
 }
 
 static void send_connected_players(plid pid, struct State *st) {

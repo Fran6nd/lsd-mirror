@@ -1,4 +1,5 @@
 /* masterlist.c -- Implementation of a version 0.75 masterlist client */
+/* TODO: implement callbacks for logging? i.e. on_connect, on_disconnect, on_recv (should never happen, maybe just on_err), . . . */
 #include "masterlist.h"
 #include <string.h>
 
@@ -157,6 +158,7 @@ void masterlist_service(struct MasterState *ms) {
 			/* This is never supposed to happen. */
 			enet_packet_destroy(event.packet);
 			enet_peer_reset(event.peer);
+			event.peer->data = NULL;
 			break;
 		case ENET_EVENT_TYPE_NONE:
 			break;

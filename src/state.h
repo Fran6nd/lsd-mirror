@@ -44,37 +44,97 @@ typedef int bint;
 typedef ivec3p ivec3;
 typedef fvec3p fvec3;
 
+/* Work around buggerspades bugs */
+#define BS_BUG_INFLOOR 1
+#define BS_BUG_NOSHORTPLAYER 2
+/* TODO: BS_BUG_NODEADNADE */
+/* TODO: BS_BUG_BORKEDRELOAD */
+/* TODO: BS_BUG_MOUSEINPUTISFUCKED */
+/* TODO: BS_BUG_INCOMPATIBLE_CHAT_STANDARD */
+/* TODO: wonder how to handle sprintcrouching */
+
+/* TODO: consider the version stuff an ext too? */
+/* TODO: consider the *other* version packet an ext? */
+/* TODO: do i have to bother with that mapCached thing? */
+/* TODO: EXT_COMPATIBLE_CHAT_STANDARD */
+/* TODO: EXT_76WUPD */
+/* TODO: EXT_BMASKUPD -- for this one you MUST have some way to clear the velocity of a player so you don't have to send redundant data if the velocity gets desynchronized */
+/* TODO: combine the latter two, or go to 10 Hz? */
+/* TODO: EXT_12HzPOSRATE */
+/* TODO: EXT_60HzPOSRATE */
+/* TODO: EXT_csUTF8 */
+/* Like chat macros but superpowered. . . should probably allow using them as fallback though */
+/* TODO: EXT_BINDKEYS */
+/* With my little research into how ENet deals with its datagrams I
+ * think it should be possible for the client to send some early data
+ * down the wire, before map transfer does anything
+ * TODO: get libpvx2 into a usable state already
+ */
+/* TODO: EXT_PVX */
+/* At least the stats */
+/* TODO: EXT_CUSTOMWEAPON */
+/* TODO: go find your scattered notes for that gamma protocol */
+/* TODO: EXT_BS_PLAYERPROP */
+/* TODO: EXT_PUBKEY_AUTHN -- should this one be handled more generically and by lua? */
+/* TODO: play with enet channels -- all clients i've looked into have
+ * a max of 1, but we can change that for at least my private client
+ * TODO: play with alternate transports, libenetproto
+ */
+
 /* TODO: aoscam/src/demoncore.h has an incompatible struct definition; i recommend merging all the random struct Player's strewn about the place. Or just removing everything after int joined; */
+/* TODO: the capitalization is inconsistent here */
 struct Player {
+	/*
+	 * Life-based
+	 */
+	clk estfiretime; /* Used to decrease estMagAmmo and not much else. . . TODO: buggerspades */
+	clk reloadtime;
 	fvec3 pos;
 	fvec3 ori;
 	fvec3 vel;
+	unsigned reserveAmmo;
+	int alive;
+	int wade;
+	int airborne;
+	uint8_t blockColor[3];
 	uint8_t inputs;
 	uint8_t mouseInputs;
 	uint8_t tool;
-	int wade;
-	int airborne;
 	uint8_t weapon;
-	int joined;
-	int alive;
-	char name[16];
 	uint8_t team;
-	uint8_t blockColor[3];
-	int hp;
-	uint32_t score; /* TODO: pretty sure the clients all use an int32_t */
+	uint8_t blocks;
+	uint8_t grenades;
+	/* TODO: validate pellets -- or leave that to dd? */
+	uint8_t estMagAmmo; /* Estimated magazine ammo -- what we *think* this player has */
+	uint8_t maxMagAmmo; /* Max magazine ammo -- the most this player can physically have */
+
+	/*
+	 * Join-based
+	 */
+	char name[16];
+	clk spawntime;
 	fvec3 lastagreedpos;
+	uint32_t score; /* TODO: pretty sure the clients all use an int32_t */
+	int joined;
+	int hp;
 	/* team and weapon are set to these two on the next spawn */
 	uint8_t newteam;
 	uint8_t newweapon;
-	clk spawntime;
-	uint8_t blocks;
-	uint8_t grenades;
-	uint8_t estMagAmmo; /* Estimated magazine ammo -- what we *think* this player has */
-	uint8_t maxMagAmmo; /* Max magazine ammo -- the most this player can physically have */
-	/* TODO: validate pellets -- or leave that to dd? */
-	unsigned reserveAmmo;
-	clk estfiretime; /* Used to decrease estMagAmmo and not much else. . . TODO: buggerspades */
-	clk reloadtime;
+
+	/*
+	 * Connection-based
+	 */
+	uint8_t idChar;
+	uint8_t verMajor;
+	int initStateSent;
+	uint64_t bugMask;
+	uint64_t extMask;
+	int wantFingerprint;
+	/* TODO: is checking for handshake whatnot really necessary? */
+	int handshaked;
+	/* TODO: assert(idChar != 0) */
+	uint8_t verMinor;
+	uint8_t verPatch;
 };
 
 struct State;
@@ -110,6 +170,8 @@ struct Functions {
 	void (*on_hit)(plid pid, unsigned type, plid hitPlayer, struct State *st);
 	void (*on_grenade)(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st);
 	void (*on_reload)(plid pid, struct State *st);
+	void (*on_handshake)(plid pid, struct State *st);
+	void (*on_version)(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, struct State *st);
 
 	/* TODO: player spawn? why not just spawn */
 	fvec3 (*on_player_spawn)(plid pid, struct State *st);
@@ -168,7 +230,8 @@ struct Functions {
 	int (*send_packet_unreliable)(bplid pid, const void *data, size_t length, struct State *st);
 
 	void (*send_map)(bplid pid, struct State *st);
-	void (*send_state)(bplid pid, struct State *st);
+	/* TODO: send_state feels more like it belongs as a "player func" than a "send function" */
+	void (*send_state)(plid pid, struct State *st);
 
 	void (*send_state_ctf)(bplid pid, nplid from, const char teamname[][10], const color *teamcolor, color fog, const unsigned *teamscore, unsigned maxscore, const plid *holders, const fvec3 *intelpos, const fvec3 *tentpos, struct State *st);
 	void (*send_state_tc)(bplid pid, nplid from, const char teamname[][10], const color *teamcolor, color fog, unsigned tentcount, const fvec3 *tentpos, unsigned *tentteam, struct State *st);
@@ -199,6 +262,7 @@ struct Functions {
 	void (*spawn_player)(plid pid, struct State *st);
 	void (*reload_player)(plid pid, struct State *st);
 	void (*restock)(plid pid, struct State *st);
+	void (*demand_fingerprint)(plid pid, struct State *st);
 	/* TODO: allow hijacking respawn time */
 	void (*kill)(plid pid, unsigned type, plid killer, struct State *st);
 	void (*set_ammo)(plid pid, unsigned mag, unsigned reserve, struct State *st);
@@ -220,7 +284,6 @@ struct Functions {
 
 struct Globals {
 	struct BitmaskUData map;
-	int loadingMap;
 	/* pristineBuf points to some zlib-compressed map data if:
 	 * the current map was loaded with load_map(),
 	 * a PATH.zlib file existed at that time,
@@ -233,14 +296,15 @@ struct Globals {
 	struct Grenade *grenades;
 	size_t grenadeSize;
 	size_t grenadeCount;
-	color fog;
-	color teamcolor[2];
 	char teamname[2][10];
 	unsigned teamscore[2];
 	unsigned maxscore;
+	int loadingMap;
 	plid intelplayers[2];
 	fvec3 intelpos[2];
 	fvec3 tentpos[2];
+	color fog;
+	color teamcolor[2];
 };
 
 struct State {
@@ -253,8 +317,8 @@ struct State {
 	clk epoch; /* Time the server was started at, as measured by get_time() */
 	clk nextTickTime;
 	clk tickrate;
-	int crapline;
 	const char *crapcond;
 	const char *crappacketname;
+	int crapline;
 };
 #endif

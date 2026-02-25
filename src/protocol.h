@@ -633,32 +633,32 @@ struct LIBSPADES_PACKED PacketExtensionInfo {
 	                                                                                 Variable length. */
 };
 
-/** A packet that must usually be answered with @ref PacketHandShakeReturn to gain access to extensions. @ingroup packets
+/** A packet that must usually be answered with @ref PacketHandshakeReturn to gain access to extensions. @ingroup packets
  * @note This packet and the return are non-existent in SpadesX, because the
  * maintainer said he "found them not needed".
  * @note See piqueserver
  * [#289](https://github.com/piqueserver/piqueserver/issues/289).
  */
-struct LIBSPADES_PACKED PacketHandShakeInit {
+struct LIBSPADES_PACKED PacketHandshakeInit {
 	uint8_t packetID;   /**< 31 `(Client<--Server)` */
 	uint32_t challenge; /**< 4 bytes that must be copied over to the return packet.
 	                                           It is unknown why this would be necessary. */
 };
 
-/** The packet used to answer @ref PacketHandShakeInit. @ingroup packets
+/** The packet used to answer @ref PacketHandshakeInit. @ingroup packets
  * @note This packet and the init are non-existent in SpadesX, because the
  * maintainer said he "found them not needed".
  * @note See piqueserver
  * [#289](https://github.com/piqueserver/piqueserver/issues/289).
  */
-struct LIBSPADES_PACKED PacketHandShakeReturn { /* just a copy of PacketHandShakeInit but whatever */
+struct LIBSPADES_PACKED PacketHandshakeReturn { /* just a copy of PacketHandshakeInit but whatever */
 	uint8_t packetID;                       /**< 32 `(Client-->Server)` */
 	uint32_t challenge;                     /**< 4 bytes that must be copied over from the init packet.
 	                                                           It is unknown why this would be necessary. */
 };
 
 /** Requests client information from the client if the @ref
- * PacketHandShakeInit "Hand Shake" was completed (if supported). @ingroup packets
+ * PacketHandshakeInit "Hand shake" was completed (if supported). @ingroup packets
  * The information may be sent in @ref PacketVersionResponse, but it
  * is not required.
  * @note This packet is actually pretty useless,
@@ -813,9 +813,9 @@ enum PacketType {
 	PacketTypeMapCached = 31,        /* Client-->Server */
 
 	/* extension packets. NOTE: for most servers, you must complete the
-	   HandShakeInit and Return to gain access to extensions. */
-	PacketTypeHandShakeInit = 31,   /* Client<--Server */
-	PacketTypeHandShakeReturn = 32, /* Client-->Server */
+	   HandshakeInit and Return to gain access to extensions. */
+	PacketTypeHandshakeInit = 31,   /* Client<--Server */
+	PacketTypeHandshakeReturn = 32, /* Client-->Server */
 	PacketTypeVersionRequest = 33,
 	/* Client<--Server */ /* sent before extension info is provided */
 	PacketTypeVersionResponse = 34,

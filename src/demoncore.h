@@ -5,38 +5,8 @@
 #include "protocol.h"
 #include "bitmask.h"
 #include <stdint.h>
+#include "state.h"
 
-typedef fvec3p fvec3;
-/*
-typedef struct {
-	float x;
-	float y;
-	float z;
-} fvec3;*/
-struct Vector {float x, y, z;};
-struct Vector32 {int32_t x, y, z;};
-struct Vector32u {uint32_t x, y, z;};
-
-typedef uint64_t clk;
-/* TODO: nuke REDEF_PLAYER? need to merge into ls2 though */
-struct Player;
-#ifdef REDEF_PLAYER
-struct Player {
-	fvec3 position;
-	fvec3 orientation;
-	fvec3 velocity;
-	uint8_t inputs;
-	uint8_t mouseInputs;
-	uint8_t item;
-	int wade;
-	int airborne;
-	int connected;
-	int alive;
-	char name[16];
-	uint8_t team;
-	uint8_t blockColor[3];
-};
-#endif
 /* TODO: if i throw a grenade on bubble tower blue team and change to red, does it destroy blue team blocks? */
 struct Grenade {
 	clk detonateTime;

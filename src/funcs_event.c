@@ -17,15 +17,7 @@ static void on_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State 
 	st->f.send_grenade(PID_BROADCAST_EXCEPT(pid), pos, vel, fuse, 0, st);
 }
 
-/* TODO: can this be altered? */
-/* TODO: should canceled reload send a reload packet with current estimation in it? */
-static const clk reloadTime[3] = {
-	/* The first two are 2.5 s, the last is 0.5 s */
-	2500000000,
-	2500000000,
-	 500000000 /* This last one is annoying and repeats the reload a lot */
-};
-
+extern const clk reloadTime[3];
 extern const clk fireTime[3];
 
 static void on_reload(plid pid, struct State *st) {
@@ -70,6 +62,16 @@ static void on_disconnect(plid pid, struct State *st) {
 	st->p[pid].joined = 0;
 	st->p[pid].alive = 0;
 
+	st->p[pid].bugMask = 0;
+	st->p[pid].extMask = 0;
+	st->p[pid].initStateSent = 0;
+	st->p[pid].wantFingerprint = 0;
+	st->p[pid].handshaked = 0;
+	st->p[pid].idChar = 0;
+	st->p[pid].verMajor = 0;
+	st->p[pid].verMinor = 0;
+	st->p[pid].verPatch = 0;
+
 	st->f.after_player_destroy(pid, st);
 }
 
@@ -95,6 +97,7 @@ static void on_join(plid pid, unsigned team, unsigned weapon, const char *name, 
 	st->p[pid].score = 0;
 	st->p[pid].newteam = team;
 	st->p[pid].newweapon = weapon;
+	st->p[pid].wantFingerprint = 0;
 	strcpy(st->p[pid].name, name);
 
 	st->f.spawn_player(pid, st);
@@ -110,9 +113,11 @@ static void on_switch(plid pid, unsigned team, unsigned weapon, struct State *st
 	/* TODO: should spectators haven't a respawn timer? */
 	/* TODO: how to only switch after spawn? */
 	if (st->p[pid].team == 255) {
-		st->f.spawn_player(pid, st);
-		if (st->p[pid].alive)
-			st->f.kill(pid, KillTypeTeamChange, 0, st);
+		if (!(st->p[pid].bugMask & BS_BUG_NOSHORTPLAYER) || team != 255) {
+			st->f.spawn_player(pid, st);
+			if (st->p[pid].alive)
+				st->f.kill(pid, KillTypeTeamChange, 0, st);
+		}
 	} else if (team != st->p[pid].team && st->p[pid].alive)
 		st->f.kill(pid, KillTypeTeamChange, 0, st);
 	else if (st->p[pid].alive)
@@ -134,6 +139,7 @@ static void on_tool_change(plid pid, unsigned tool, struct State *st) {
 
 	if (st->p[pid].estfiretime == 0 && st->p[pid].tool == ToolTypeGun && st->p[pid].mouseInputs & 1) {
 		st->p[pid].estfiretime = get_time() + fireTime[st->p[pid].weapon];
+		st->p[pid].reloadtime = 0;
 
 		if (st->p[pid].estMagAmmo != 0)
 			st->p[pid].estMagAmmo--;
@@ -195,6 +201,7 @@ static void on_mouse_input(plid pid, unsigned bitmask, struct State *st) {
 
 	if (st->p[pid].estfiretime == 0 && st->p[pid].tool == ToolTypeGun && st->p[pid].mouseInputs & 1) {
 		st->p[pid].estfiretime = get_time() + fireTime[st->p[pid].weapon];
+		st->p[pid].reloadtime = 0;
 
 		if (st->p[pid].estMagAmmo != 0)
 			st->p[pid].estMagAmmo--;
@@ -227,6 +234,22 @@ static void on_block_line(plid pid, ivec3 start, ivec3 end, struct State *st) {
 	st->f.block_line(start, end, pid, st);
 }
 
+void on_handshake(plid pid, struct State *st) {
+	st->p[pid].handshaked = 1;
+}
+
+void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, struct State *st) {
+	st->p[pid].wantFingerprint = 0;
+	st->p[pid].idChar = idChar;
+	st->p[pid].verMajor = major;
+	st->p[pid].verMinor = minor;
+	st->p[pid].verPatch = patch;
+	if (st->p[pid].idChar == 'B')
+		st->p[pid].bugMask = (uint32_t)-1;
+
+	LOG("%s:%u (#%u) got version: '%c' (%u) v%u.%u.%u", IP(pid), PORT(pid), pid, idChar < 0x20 || idChar >= 0x7f ? '?' : idChar, idChar, major, minor, patch);
+}
+
 void set_funcs_event(struct State *st) {
 	st->f.on_any_connect = on_any_connect;
 	st->f.on_successful_connect = on_successful_connect;
@@ -247,4 +270,6 @@ void set_funcs_event(struct State *st) {
 	st->f.on_reload = on_reload;
 	st->f.on_game_end = on_game_end;
 	st->f.on_shutdown = on_shutdown;
+	st->f.on_handshake = on_handshake;
+	st->f.on_version = on_version;
 }

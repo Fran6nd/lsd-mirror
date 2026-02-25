@@ -591,6 +591,16 @@ const uint8_t initialReserveAmmo[3] = {
 	48
 };
 
+
+/* TODO: can this be altered? */
+/* TODO: should canceled reload send a reload packet with current estimation in it? */
+const clk reloadTime[3] = {
+	/* The first two are 2.5 s, the last is 0.5 s */
+	2500000000,
+	2500000000,
+	 500000000 /* This last one is annoying and repeats the reload a lot */
+};
+
 const clk fireTime[3] = {
 	 500000000,
 	 100000000,
@@ -746,6 +756,7 @@ static void restock(plid pid, struct State *st) {
 
 static void spawn_player(plid pid, struct State *st) {
 	struct PacketCreatePlayer cr;
+	plid i;
 
 	st->p[pid].spawntime = 0;
 	st->p[pid].reloadtime = 0;
@@ -787,16 +798,22 @@ static void spawn_player(plid pid, struct State *st) {
 	cr.playerID = pid;
 	cr.weapon = st->p[pid].weapon;
 	cr.team = st->p[pid].team;
-
-	/* This +2 is here because *sane* clients always subtract 2 from CreatePlayer z
-	 * BetterSpades is not sane, since it was based on piqueserver.
-	 */
 	cr.pos = st->p[pid].pos;
-	cr.pos.z += 2;
-
 	strcpy(cr.name, st->p[pid].name);
 
-	SEND(PID_BROADCAST, cr);
+	for (i=0;i<MAX_PLAYERS;i++) {
+		if (pid_matches(PID_BROADCAST, i, st)) {
+			/* This +2 is here because *sane* clients always subtract 2 from CreatePlayer z.
+			 * BetterSpades is not sane, since it was based on piqueserver.
+			 */
+			if (st->p[i].bugMask & BS_BUG_INFLOOR)
+				cr.pos.z = st->p[pid].pos.z;
+			else
+				cr.pos.z = st->p[pid].pos.z + 2;
+
+			SEND(i, cr);
+		}
+	}
 }
 
 static void set_ammo(plid pid, unsigned mag, unsigned reserve, struct State *st) {
@@ -811,15 +828,22 @@ static void reload_player(plid pid, struct State *st) {
 	unsigned ammo = st->p[pid].estMagAmmo < st->p[pid].maxMagAmmo ? st->p[pid].estMagAmmo : st->p[pid].maxMagAmmo;
 	unsigned transfer = initialMagAmmo[st->p[pid].weapon] - ammo;
 
-	/* TODO: no reloading *and* firing, except maybe with the shotgun */
-	st->p[pid].reloadtime = 0;
-
-	if (ammo >= initialMagAmmo[st->p[pid].weapon])
-		return;
-
 	/* TODO: make sure you handle 0 mag/reserve ammo properly everywhere */
 	if (transfer > st->p[pid].reserveAmmo)
 		transfer = st->p[pid].reserveAmmo;
+
+	if (ammo >= initialMagAmmo[st->p[pid].weapon] || transfer == 0) {
+		st->p[pid].reloadtime = 0;
+		return;
+	}
+
+	/* TODO: no reloading *and* firing, except maybe with the shotgun */
+	if (st->p[pid].weapon == 2) {
+		/* TODO: either that last TODO or stop reloading when mag is max */
+		transfer = 1;
+		st->p[pid].reloadtime += reloadTime[st->p[pid].weapon];
+	} else
+		st->p[pid].reloadtime = 0;
 
 	st->f.set_ammo(pid, ammo+transfer, st->p[pid].reserveAmmo-transfer, st);
 }
@@ -1001,6 +1025,30 @@ static void boot_players_to_limbo(struct State *st) {
 
 		st->f.after_player_destroy(i, st);
 	}
+}
+
+/* TODO: separate out into dedicated send funcs */
+/* TODO: account for endianness in dedicated send funcs */
+/* TODO: unpack dedicated send funcs??? */
+static void demand_fingerprint(plid pid, struct State *st) {
+	plid i;
+
+	struct PacketHandshakeInit hi = {PacketTypeHandshakeInit, 0xdeadbeef};
+	struct PacketVersionRequest vr = {PacketTypeVersionRequest};
+
+	for (i=0;i<MAX_PLAYERS;i++) {
+		if (pid_matches(pid, i, st)) {
+			st->p[i].wantFingerprint = 1;
+
+			/* TODO: maybe just send handshake once instead of every call until recieved?
+			 * i.e. use initStateSent. . . makes the function less useful though
+			 */
+			if (st->p[i].handshaked)
+				SEND(i, hi);
+		}
+	}
+
+	SEND(pid, vr);
 }
 
 static clk on_kill(plid pid, struct State *st) {
@@ -1280,6 +1328,7 @@ static void set_funcs(struct State *st) {
 	st->f.move_intel = move_intel;
 	st->f.after_player_destroy = after_player_destroy;
 	st->f.boot_players_to_limbo = boot_players_to_limbo;
+	st->f.demand_fingerprint = demand_fingerprint;
 	st->f.move_tent = move_tent;
 	st->f.register_grenade = register_grenade;
 	st->f.spawn_grenade = spawn_grenade;

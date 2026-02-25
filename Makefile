@@ -25,6 +25,7 @@ serverg: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c sr
 
 exec/libunixsock.so: src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c
 	# TODO: remove getaddrinfo malloc from unixsock tcp
+	mkdir -p exec
 	$(CC) $(CFLAGS) --shared -o exec/libunixsock.so src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c -Wl,--exclude-libs,ALL
 
 dist.tar.gz: serverstatic aloha.lua exec scripts maps dirty

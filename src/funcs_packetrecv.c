@@ -236,8 +236,11 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		SCASEALIVE
 		SEXACT();
 
-		SBAD(st->p[pid].maxMagAmmo == 0);
-		st->p[pid].maxMagAmmo--;
+		/* Only decrease maxMagAmmo if client reports not using a spade */
+		if (PACKET.type != 4) {
+			SBAD(st->p[pid].maxMagAmmo == 0);
+			st->p[pid].maxMagAmmo--;
+		}
 
 		/* TODO: rename playerID here, it misleads -- playerID is not the player's ID, just the ID of the hit player */
 		SBAD(PACKET.playerID > MAX_PLAYERS);

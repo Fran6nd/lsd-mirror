@@ -183,8 +183,8 @@ local function try_drop(pid)
 
 		-- TODO: too many packets
 		drop_intel(pid, intelloc);
-		raise_intel(get_team(pid), intelloc);
-		lower_intel(get_team(pid), intelloc);
+		raise_intel(1+get_team(pid), intelloc);
+		lower_intel(1+get_team(pid), intelloc);
 
 		drop_timeout = get_time() + 2;
 		return true;

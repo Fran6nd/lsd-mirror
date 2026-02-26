@@ -121,7 +121,7 @@ int cast2(const uint8_t *solidData, float startX, float startY, float startZ, fl
 	offz = endZ - startZ;
 
 #if 0
-	/* Normalize that relative pos. This is only needed if hypot ends up as a really small value
+	/* Normalize that relative position. This is only needed if hypot ends up as a really small value
 	 * -- multiplying offx,y,z by a really large number would have a similar effect.
 	 * The need for this could probably be mitigated with double precision, too.
 	 */
@@ -321,7 +321,7 @@ void dcore_block_line(int32_t startX, int32_t startY, int32_t startZ, int32_t en
 	Vector32 cursor, step;
 	uint32_t maxoff;
 
-	/* End pos's offset relative to the start pos. */
+	/* End pos's offset relative to the start position. */
 	off.x = abs(endX - startX);
 	off.y = abs(endY - startY);
 	off.z = abs(endZ - startZ);

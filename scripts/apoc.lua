@@ -77,8 +77,8 @@ function mod.after.kill(pid, type, killer)
 	end
 end
 
-local nadestart = {{x=256-49,  y=256-64}, {x=256-128,  y=256-64}};
-local nadeend   = {{x=255+128, y=255+64}, {x=255+49, y=255+64}};
+local nadestart = {{x=256-49,  y=256-64}, {x=256-128, y=256-64}};
+local nadeend   = {{x=255+128, y=255+64}, {x=255+49,  y=255+64}};
 
 local function start_apoc(pid)
 	nexttick = get_time() + 0.05;

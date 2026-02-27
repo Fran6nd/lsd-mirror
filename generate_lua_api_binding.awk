@@ -11,23 +11,6 @@ END {
 	printf("\n#define LUA_CALLS %s\n#endif\n", lua_calls);
 }
 
-# void register_functions(lua_State *l, struct State *st) {
-# 	const struct luaL_Reg *func = funcs;
-#
-# 	while (func->name != NULL) {
-# 		lua_pushcfunction(l, func->func);
-# 		lua_setglobal(l, func->name);
-#
-# 		func++;
-# 	}
-#
-# 	luaL_openlib(l, "server", funcs, 0);
-#
-# 	f = st->f;
-# 	st->f.tick = ctick;
-# 	st->f.set_color = cset_color;
-# 	st->f.send_chat = csend_chat;
-
 function extract_name(arg) {
 	toklen = split(arg, tokens, " ");
 	match(tokens[toklen], /[_a-zA-Z0-9]*$/);

@@ -79,7 +79,7 @@ static clk from_s(clk ts) {
 	return ts * 1000000000;
 }
 
-static clk from_s_double(double ts) {
+extern clk from_s_double(double ts) {
 	return ts * 1000000000;
 }
 
@@ -712,7 +712,7 @@ static float highest_point_spawn(int32_t x, int32_t y, struct State *st) {
 	return z;
 }
 
-static fvec3 on_player_spawn(plid pid, struct State *st) {
+static fvec3 get_spawn_position(plid pid, struct State *st) {
 	fvec3 pos;
 
 	switch (st->p[pid].team) {
@@ -747,6 +747,7 @@ static void restock(plid pid, struct State *st) {
 	st->f.send_restock(pid, pid, st);
 }
 
+/* TODO: make this take a position arg and default it to get_spawn_position() */
 static void spawn_player(plid pid, struct State *st) {
 	struct PacketCreatePlayer cr;
 	plid i;
@@ -758,9 +759,7 @@ static void spawn_player(plid pid, struct State *st) {
 	/* TODO: do i even need newweapon or just newteam? */
 	st->p[pid].weapon = st->p[pid].newweapon;
 
-	/* TODO: what if on_player_spawn doesn't want the player to spawn, and what about spectators */
-	/* TODO: on_player_spawn -> on_spawn_player? */
-	st->p[pid].pos = st->f.on_player_spawn(pid, st);
+	st->p[pid].pos = st->f.get_spawn_position(pid, st);
 	st->p[pid].ori.x = st->p[pid].team == 0 ? 1 : -1;
 	st->p[pid].ori.y = 0;
 	st->p[pid].ori.z = 0;
@@ -1044,7 +1043,7 @@ static void demand_fingerprint(plid pid, struct State *st) {
 	SEND(pid, vr);
 }
 
-static clk on_kill(plid pid, struct State *st) {
+static clk get_spawn_time(plid pid, struct State *st) {
 	clk now = get_time();
 	(void)pid;
 	(void)st;
@@ -1060,28 +1059,22 @@ static clk on_kill(plid pid, struct State *st) {
 /* TODO: kill packet only gets sent if pid 0 is joined */
 /* This one is named func_kill instead of kill because POSIX took that name. */
 static void func_kill(plid pid, unsigned type, plid killer, struct State *st) {
-	struct PacketKill kl;
+	clk now;
+	clk delta;
 
-	st->p[pid].spawntime = st->f.on_kill(pid, st);
+	st->p[pid].spawntime = st->f.get_spawn_time(pid, st);
 	st->p[pid].reloadtime = 0;
 	st->p[pid].estfiretime = 0;
 
 	st->p[pid].alive = 0;
 
-	kl.packetID = PacketTypeKill;
-	kl.playerID = pid;
-	kl.killerID = killer;
-	kl.killType = type;
-	/* TODO: spawns -- getspawntime func? on_kill? */
-	/* TODO: should i call get_time from here or use st->something? */
-	kl.respawnTime = to_s(st->p[pid].spawntime - get_time() + 500000000);
+	now = get_time();
+	delta = st->p[pid].spawntime - now;
 
-	/* Send respawn time to the dead player and spectators, but nobody else. */
-	SEND(pid, kl);
-	SEND(PID_BROADCAST_TEAM(255), kl);
+	if (st->p[pid].spawntime < now)
+		delta = 0;
 
-	kl.respawnTime = 0;
-	SEND(PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(255, pid), kl);
+	st->f.send_kill(PID_BROADCAST, delta, type, killer, pid, st);
 
 	if (type < 4 && pid != killer)
 		st->p[killer].score++;
@@ -1291,8 +1284,8 @@ static void set_funcs(struct State *st) {
 	set_funcs_packetrecv(st);
 	set_funcs_event(st);
 	set_funcs_send(st);
-	st->f.on_player_spawn = on_player_spawn;
-	st->f.on_kill = on_kill;
+	st->f.get_spawn_position = get_spawn_position;
+	st->f.get_spawn_time = get_spawn_time;
 	st->f.spawn_player = spawn_player;
 	st->f.set_ammo = set_ammo;
 	st->f.reload_player = reload_player;

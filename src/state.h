@@ -174,9 +174,8 @@ struct Functions {
 	void (*on_handshake)(plid pid, struct State *st);
 	void (*on_version)(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, struct State *st);
 
-	/* TODO: player spawn? why not just spawn */
-	fvec3 (*on_player_spawn)(plid pid, struct State *st);
-	clk (*on_kill)(plid pid, struct State *st);
+	fvec3 (*get_spawn_position)(plid pid, struct State *st);
+	clk (*get_spawn_time)(plid pid, struct State *st);
 	int (*get_hit_damage)(plid pid, unsigned type, struct State *st);
 	/* TODO: make name less ambiguous? refers to players dying/disconnecting/whatever but could be interpreted as block destroying */
 	void (*after_player_destroy)(plid pid, struct State *st);

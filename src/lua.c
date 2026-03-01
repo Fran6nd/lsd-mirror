@@ -9,6 +9,10 @@
 #include "demoncore.h"
 #include <poll.h>
 
+clk get_time(void);
+double to_s_double(clk ts);
+clk from_s_double(double ts);
+
 #define LOG(x, ...) fprintf(stderr, x"\n", __VA_ARGS__)
 #define LOG1(x) fputs(x"\n", stderr);
 #define LERR luaL_error
@@ -78,6 +82,20 @@ unsigned check_gteamid(lua_State *l, int numArg) {
 	if (val != 0 && val != 1)
 		LERR(l, "gteamid is invalid (%.0f)", val);
 	return val;
+}
+
+static void push_clk(lua_State *l, clk val) {
+	lua_pushnumber(l, to_s_double(val));
+}
+
+clk check_clk(lua_State *l, int numArg) {
+	double val = luaL_checknumber(l, numArg);
+
+	/* Silently return 0 since clk is unsigned. . . should I make it signed? */
+	if (val < 0)
+		return 0;
+
+	return from_s_double(val);
 }
 
 /* TODO: handle legitimate use cases for negative pos (i.e. -1), ***don't overflow the int -- set to -1 if you have to*** */
@@ -475,23 +493,24 @@ static int csend_packet_unreliable(plid pid, const void *data, size_t length, st
 	return ret;
 }
 
-static int lon_player_spawn(lua_State *l) {
+/* TODO: why isn't this done by luaawk? */
+static int lget_spawn_position(lua_State *l) {
 	plid pid = check_plid(l, 1);
-	push_fvec3(f.on_player_spawn(pid, st));
+	push_fvec3(f.get_spawn_position(pid, st));
 	return 1;
 }
 
-static fvec3 con_player_spawn(plid pid, struct State *st) {
+static fvec3 cget_spawn_position(plid pid, struct State *st) {
 	fvec3 ret;
 
-	lua_getglobal(l, "on_player_spawn");
+	lua_getglobal(l, "get_spawn_position");
 
 	lua_pushnumber(l, pid);
 
 	/* TODO: think some more about deferring to core implementation with lua errors */
 	if (lua_pcall(l, 1, 1, 0) != 0) {
-		LOG("on_player_spawn: %s", luaL_checkstring(l, -1));
-		return f.on_player_spawn(pid, st);
+		LOG("get_spawn_position: %s", luaL_checkstring(l, -1));
+		return f.get_spawn_position(pid, st);
 	}
 
 	/* TODO: make -2 less unexpected -- it really refers to -1 (i think? hope? or can i just use an absolute index?) */
@@ -544,9 +563,6 @@ static int simulate_grenade_physics(lua_State *l) {
 
 	return 3;
 }
-
-clk get_time(void);
-double to_s_double(clk ts);
 
 /* TODO: validate index here and elsewhere */
 static int get_grenade_detonate_time(lua_State *l) {
@@ -985,7 +1001,7 @@ static const struct luaL_Reg funcs[] = {
 	{"send_state_ctf", lsend_state_ctf},
 	{"send_packet", lsend_packet},
 	{"send_packet_unreliable", lsend_packet_unreliable},
-	{"on_player_spawn", lon_player_spawn},
+	{"get_spawn_position", lget_spawn_position},
 
 	/* TODO: these two are not like the rest */
 	{"disconnect", disconnect},
@@ -1071,7 +1087,7 @@ void register_functions(lua_State *l, struct State *st) {
 	st->f.send_state_ctf = csend_state_ctf;
 	st->f.send_packet = csend_packet;
 	st->f.send_packet_unreliable = csend_packet_unreliable;
-	st->f.on_player_spawn = con_player_spawn;
+	st->f.get_spawn_position = cget_spawn_position;
 	register_luaawk(l, st);
 }
 

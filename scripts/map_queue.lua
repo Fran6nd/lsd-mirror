@@ -47,6 +47,8 @@ end
 -- TODO: should /showrotation be able to set rotation? (a la /mapqueue)
 local cmd = {name={"showrotation", "mapqueue"}, fakepid=true, desc="List the default map queue."};
 function cmd.func(pid)
+	cmd_assert(pid, cmd, #argv == 0);
+
 	for _,y in ipairs(map_queue) do
 		server_msg(pid, y);
 	end
@@ -56,6 +58,7 @@ register_command(cmd);
 -- If you just want to let someone use e.g. /advance, give that someone the "cmd:advance" cap
 local cmd = {name="queuemap", caps="map_queue", fakepid=true, usage="path", desc="Append a map to the temporary map queue."};
 function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 1);
 	table.insert(nextqueue, argv[1]);
 end
 register_command(cmd);
@@ -63,12 +66,15 @@ register_command(cmd);
 -- TODO: on_game_end -> end_game?
 local cmd = {name="advance", caps="map_queue", fakepid=true, desc="Load the next queued map."};
 function cmd.func(pid)
+	cmd_assert(pid, cmd, #argv == 0);
 	on_game_end();
 end
 register_command(cmd);
 
 local cmd = {name="loadmap", caps="map_queue", fakepid=true, usage="path", desc="Immediately load the map at the specified path."};
 function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 1);
+
 	table.insert(nextqueue, argv[1]);
 	on_game_end();
 end

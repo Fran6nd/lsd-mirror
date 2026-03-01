@@ -495,4 +495,8 @@ void set_funcs_send(struct State *st) {
         st->f.send_grenade = send_grenade;
         st->f.send_fog = send_fog;
         st->f.send_orientation = send_orientation;
+	st->f.send_existing_player = send_existing_player;
+	st->f.send_move_input = send_move_input;
+	st->f.send_mouse_input = send_mouse_input;
+	st->f.send_kill = send_kill;
 }

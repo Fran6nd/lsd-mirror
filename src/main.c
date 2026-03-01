@@ -67,7 +67,7 @@ static clk to_ms(clk ts) {
 	return ts / 1000000;
 }
 
-static clk to_s(clk ts) {
+extern clk to_s(clk ts) {
 	return ts / 1000000000;
 }
 

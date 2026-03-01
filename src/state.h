@@ -257,6 +257,10 @@ struct Functions {
 	void (*send_move_object)(bplid pid, fvec3 pos, unsigned id, gteamid team, struct State *st);
 	void (*send_map_start)(bplid pid, unsigned size, struct State *st);
 	void (*send_fog)(bplid pid, color color, struct State *st);
+	void (*send_existing_player)(plid pid, unsigned team, unsigned weapon, unsigned tool, unsigned score, color blockColor, const char *name, plid from, struct State *st);
+	void (*send_move_input)(plid pid, unsigned inputs, plid from, struct State *st);
+	void (*send_mouse_input)(plid pid, unsigned inputs, plid from, struct State *st);
+	void (*send_kill)(plid pid, clk spawndelta, unsigned type, plid killer, plid from, struct State *st);
 
 	/*
 	 * Player funcs -- these send packets and modify player state

@@ -3,6 +3,9 @@
 #include <isa-l.h>
 #include <stdio.h>
 
+clk get_time(void);
+clk to_s(clk ts);
+
 #define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
 #define SEND(pid, data) st->f.send_packet(pid, &(data), sizeof(data), st)
 #define LOG(x, ...) do {st->f.before_log(st); fprintf(stderr, x"\n", __VA_ARGS__); st->f.after_log(st);} while (0)
@@ -88,6 +91,7 @@ static void send_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, 
 static void send_reload(plid pid, unsigned mag, unsigned reserve, plid from, struct State *st) {
 	struct PacketWeaponReload rl;
 
+	/* TODO: might need to limit to 254 instead of 255 */
 	rl.packetID = PacketTypeWeaponReload;
 	rl.playerID = from;
 	rl.magazineAmmo = mag > 255 ? 255 : mag;
@@ -274,54 +278,78 @@ static void send_state(plid pid, struct State *st) {
 	st->p[pid].initStateSent = 1;
 }
 
-static void send_connected_players(plid pid, struct State *st) {
+static void send_existing_player(plid pid, unsigned team, unsigned weapon, unsigned tool, unsigned score, color blockColor, const char *name, plid from, struct State *st) {
 	struct PacketExistingPlayer ep;
-	struct PacketInput in;
-	struct PacketWeaponInput wi;
-	struct PacketKill ki;
-	plid i;
 
+	/* TODO: better validate the name length */
 	ep.packetID = PacketTypeExistingPlayer;
-	in.packetID = PacketTypeInput;
-	wi.packetID = PacketTypeWeaponInput;
+	ep.playerID = from;
+	ep.team = team;
+	ep.weapon = weapon;
+	ep.tool = tool;
+	ep.score = score;
+	ep.blue = blockColor[0];
+	ep.green = blockColor[1];
+	ep.red = blockColor[2];
+	strcpy(ep.name, name);
 
-	ki.packetID = PacketTypeKill;
-	ki.killerID = 0;
-	ki.killType = KillTypeFall;
-	ki.respawnTime = 0;
+	/* TODO: sure hope this doesn't involve lots of copying when sent through lua */
+	st->f.send_packet(pid, &ep, 13+strlen(ep.name), st);
+}
+
+static void send_move_input(plid pid, unsigned inputs, plid from, struct State *st) {
+	struct PacketInput in;
+
+	in.packetID = PacketTypeInput;
+	in.playerID = from;
+	in.keyStates = inputs;
+
+	SEND(pid, in);
+}
+
+/* TODO: rename this too? it's slightly more specific than mere mouse input (excluding betterspades) */
+static void send_mouse_input(plid pid, unsigned inputs, plid from, struct State *st) {
+	/* TODO: rename */
+	struct PacketWeaponInput mi;
+
+	mi.packetID = PacketTypeWeaponInput;
+	mi.playerID = from;
+	mi.weaponInput = inputs;
+
+	SEND(pid, mi);
+}
+
+static void send_kill(plid pid, clk spawndelta, unsigned type, plid killer, plid from, struct State *st) {
+	struct PacketKill kl;
+
+	kl.packetID = PacketTypeKill;
+	kl.playerID = from;
+	kl.killerID = killer;
+	kl.killType = type;
+	kl.respawnTime = to_s(spawndelta + 500000000);
+
+	SEND(pid, kl);
+}
+
+static void send_connected_players(plid pid, struct State *st) {
+	plid i;
 	
 	for (i=0;i<MAX_PLAYERS;i++) {
 		if (!st->p[i].joined)
 			continue;
 
-		ep.playerID = i;
-		ep.team = st->p[i].team;
-		ep.weapon = st->p[i].weapon;
-		ep.tool = st->p[i].tool;
-		ep.score = st->p[i].score;
-		ep.blue = st->p[i].blockColor[0];
-		ep.green = st->p[i].blockColor[1];
-		ep.red = st->p[i].blockColor[2];
-		strcpy(ep.name, st->p[i].name);
+		st->f.send_existing_player(pid, st->p[i].team, st->p[i].weapon, st->p[i].tool, st->p[i].score, st->p[i].blockColor, st->p[i].name, i, st);
 
-		in.playerID = i;
-		in.keyStates = st->p[i].inputs;
+		if (st->p[i].inputs != 0)
+			st->f.send_move_input(pid, st->p[i].inputs, i, st);
 
-		wi.playerID = i;
-		wi.weaponInput = st->p[i].mouseInputs;
+		/* TODO: deal with mouse input desync? */
+		if (st->p[i].mouseInputs != 0)
+			st->f.send_mouse_input(pid, st->p[i].mouseInputs, i, st);
 
-		ki.playerID = i;
-
-		st->f.send_packet(pid, &ep, 13+strlen(ep.name), st);
-
-		if (in.keyStates != 0)
-			SEND(pid, in);
-
-		if (wi.weaponInput != 0)
-			SEND(pid, wi);
-
+		/* TODO: actually send spawn delta? */
 		if (st->p[i].team != 255 && !st->p[i].alive)
-			SEND(pid, ki);
+			st->f.send_kill(pid, 0, KillTypeFall, 0, i, st);
 	}
 }
 

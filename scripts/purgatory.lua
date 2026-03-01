@@ -54,7 +54,7 @@ function send_to_purgatory(pid)
 	-- TODO: reorganize args
 	--send_player(0, SPECTATOR, 0, 0, 0, {r=0, g=0, b=0}, "");
 	for line in string.gmatch(purgatory_msg, "([^\n]+)") do
-		send_chat(pid, line, 2, 0);
+		server_msg(pid, line);
 	end
 	sendanyway = false;
 end

@@ -2,7 +2,7 @@
 
 local cmd = {name="say", caps="say", fakepid=true, usage="msg", desc="Send a message to all players, displayed as if the server sent it. Does not parse arguments."};
 function cmd.func(pid, argv, msg)
-	send_chat(PID_BROADCAST, string.sub(msg, 5), 2, 0);
+	server_msg(PID_BROADCAST, string.sub(msg, 5));
 end
 register_command(cmd);
 

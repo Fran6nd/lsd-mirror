@@ -225,6 +225,7 @@ function mod.send_chat(pid, msg, type, from)
 		return;
 	end
 
+	-- TODO: add player ID, probably don't show if has log cap, show connect/disconnect, maybe spectator team chat
 	if (pid == PID_BROADCAST) then
 		for pid, con in pairs(sock.cons) do
 			if (from < MAX_PLAYERS and type ~= 2) then

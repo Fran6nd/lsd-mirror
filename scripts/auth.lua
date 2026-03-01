@@ -1,12 +1,13 @@
 -- auth.lua -- Leak your passwords to the world with /login
 require "lib_l10n";
-local mod = {after={}};
+local mod = init_mod();
 local sql = require "lsqlite3";
 local sodium = require "luasodium";
 local totp = require "lib_totp";
 local db;
 local stmt = {};
 
+-- TODO: pidtables
 local granted = {};
 auth_users = {};
 
@@ -173,12 +174,12 @@ function cmd.func(pid, argv)
 
 	local encodedkey = totp.base32enc(totp_key);
 
-	send_chat(pid, string.upper(totp_type)..", "..totp_interval.." s, key: "..encodedkey, 2, 0)
+	server_msg(pid, string.upper(totp_type)..", "..totp_interval.." s, key: "..encodedkey)
 	-- TODO: verify that the user actually did something with the key
 	-- TODO: password reset resets TOTP too?
-	send_chat(pid, totp.gen_code(totp_key, os.time()/totp_interval, hmac[totp_type]), 2, 0);
-	send_chat(pid, totp.gen_code(totp_key, os.time()/totp_interval+1, hmac[totp_type]), 2, 0);
-	send_chat(pid, totp.gen_code(totp_key, os.time()/totp_interval+2, hmac[totp_type]), 2, 0);
+	server_msg(pid, totp.gen_code(totp_key, os.time()/totp_interval, hmac[totp_type]));
+	server_msg(pid, totp.gen_code(totp_key, os.time()/totp_interval+1, hmac[totp_type]));
+	server_msg(pid, totp.gen_code(totp_key, os.time()/totp_interval+2, hmac[totp_type]));
 end
 register_command(cmd);
 
@@ -268,7 +269,7 @@ function cmd.func(pid, argv)
 
 	::okay::
 	-- TODO: send id?
-	send_chat(pid, "OK", 2, 0);
+	server_msg(pid, "OK");
 
 	-- TODO: remove caps from table
 	auth_users[pid] = vals[1];
@@ -294,7 +295,7 @@ register_command(cmd);
 -- TODO: move user to caps so we don't clear everything on unload?
 local cmd = {name="id", caps="login", fakepid=true, desc="Print your account name and groups."};
 function cmd.func(pid, argv)
-	send_chat(pid, string.format("uid=%s groups=[%s] computed=[%s]", auth_users[pid], get_cap_groups(pid), get_caps(pid)), 2, 0);
+	server_msg(pid, string.format("uid=%s groups=[%s] computed=[%s]", auth_users[pid], get_cap_groups(pid), get_caps(pid)));
 end
 register_command(cmd);
 

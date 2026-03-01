@@ -52,7 +52,7 @@ function cmd.func(pid, argv)
 
 		if (start < 1) then
 			for _, val in ipairs(sorted) do
-				send_chat(pid, print_cmd(val), 2, 0);
+				server_msg(pid, print_cmd(val));
 			end
 			return;
 		end
@@ -61,7 +61,7 @@ function cmd.func(pid, argv)
 			if (i > #sorted) then
 				break;
 			end
-			send_chat(pid, print_cmd(sorted[i]), 2, 0);
+			server_msg(pid, print_cmd(sorted[i]));
 		end
 		return;
 	end
@@ -75,7 +75,7 @@ function cmd.func(pid, argv)
 	table.sort(sorted);
 
 	-- TODO: limit line length
-	send_chat(pid, table.concat(sorted, ", "), 2, 0);
+	server_msg(pid, table.concat(sorted, ", "));
 end
 register_command(cmd);
 
@@ -90,7 +90,7 @@ function cmd.func(pid, argv)
 
 	-- TODO: show aliases
 	if (val ~= nil and can_see_command(pid, val)) then
-		send_chat(pid, print_cmd(val), 2, 0);
+		server_msg(pid, print_cmd(val));
 	else
 		l10n_send_chat(pid, unknown_cmd_msg);
 	end

@@ -29,11 +29,11 @@ end
 -- TODO: make BROADCAST_ plids unsigned?
 function l10n_send_chat(pid, msgtab, interptab)
 	if (is_fakepid(pid)) then
-		send_chat(pid, l10n_get_str_pid(pid, msgtab, interptab), 2, 0);
+		server_msg(pid, l10n_get_str_pid(pid, msgtab, interptab));
 		return;
 	end
 	-- TODO: support invalid PIDs?
 	for i in piditer(pid) do
-		send_chat(i, l10n_get_str_pid(i, msgtab, interptab), 2, 0);
+		server_msg(i, l10n_get_str_pid(i, msgtab, interptab));
 	end
 end

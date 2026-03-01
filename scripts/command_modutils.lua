@@ -25,7 +25,7 @@ register_command(cmd);
 local cmd = {name="lsmod", caps="modutils", fakepid=true, desc="Crusty listing of all loaded modules."};
 function cmd.func(pid)
 	for x,y in ipairs(modules) do
-		send_chat(pid, tostring(y.name or y), 2, 0);
+		server_msg(pid, tostring(y.name or y));
 		--print("mod", y);
 		--for x,y in pairs(y) do
 		--print(x, y);

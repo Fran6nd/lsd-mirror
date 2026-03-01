@@ -4,7 +4,7 @@ getcfg("motd", "Server owner forgot to set the motd, oh no");
 
 local function send_motd(pid)
 	for line in string.gmatch(motd, "([^\n]+)") do
-		send_chat(pid, line, 2, 0);
+		server_msg(pid, line);
 	end
 end
 

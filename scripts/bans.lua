@@ -302,7 +302,6 @@ function cmd.func(pid, argv)
 	local now = os.time();
 	-- TODO: link up with auth.lua for banner name determination
 	ban(addr, addr, now, now+duration, get_name(banpid), reason, get_name(pid), bans_default_badcaps);
-	-- TODO: make from arg optional in send_chat
 	-- Hopefully this plays well with self-bans. . .
 	l10n_send_chat(pid, ban_id_msg, {id=db:last_insert_rowid()});
 end
@@ -320,7 +319,6 @@ function cmd.func(pid, argv)
 	local now = os.time();
 	-- TODO: link up with auth.lua for banner name determination
 	ban(addr, addr, now, now+duration, get_name(banpid), reason, get_name(pid), table.concat(argv, " ", 4));
-	-- TODO: make from arg optional in send_chat
 	-- Hopefully this plays well with self-bans. . .
 	l10n_send_chat(pid, ban_id_msg, {id=db:last_insert_rowid()});
 end
@@ -351,7 +349,7 @@ function cmd.func(pid, argv)
 	elseif (#argv == 2) then
 		vals = query_addr(stmt.queryaddr, argv[1], argv[2], pid);
 	else
-		send_chat(pid, "Give it a name or a range.", 2, 0);
+		server_msg(pid, "Give it a name or a range.");
 	end
 end
 register_command(cmd);
@@ -365,7 +363,7 @@ function cmd.func(pid, argv)
 	elseif (#argv == 2) then
 		vals = query_addr(stmt.queryaddrarc, argv[1], argv[2], pid);
 	else
-		send_chat(pid, "Give it a name or a range.", 2, 0);
+		server_msg(pid, "Give it a name or a range.");
 	end
 end
 register_command(cmd);

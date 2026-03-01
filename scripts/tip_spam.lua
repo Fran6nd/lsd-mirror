@@ -23,7 +23,7 @@ function mod.after.tick()
 	end
 
 	if (get_time() >= next_tip_spam) then
-		send_chat(PID_BROADCAST, tips[tip_spam_idx], 2, 0);
+		server_msg(PID_BROADCAST, tips[tip_spam_idx]);
 
 		tip_spam_idx = tip_spam_idx + 1;
 		if (tip_spam_idx > #tips) then

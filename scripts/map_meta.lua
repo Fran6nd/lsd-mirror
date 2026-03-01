@@ -52,7 +52,7 @@ function mod.before.load_map(name)
 			end
 
 			-- TODO: thanks to betterspades for making a 2nd standard that i have to support
-			send_chat(PID_BROADCAST, "N% "..str, 2, 0);
+			server_msg(PID_BROADCAST, "N% "..str);
 		end
 	end
 
@@ -70,7 +70,7 @@ end
 -- TODO: don't depend on fmtval for this
 local cmd = {name={"mapinfo", "mapname"}, fakepid=true, desc="Dump the current map's metadata."};
 function cmd.func(pid)
-	send_chat(pid, fmtval(meta), 2, 0);
+	server_msg(pid, fmtval(meta));
 end
 register_command(cmd);
 

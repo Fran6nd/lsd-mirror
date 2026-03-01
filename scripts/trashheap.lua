@@ -1,7 +1,7 @@
 -- trashheap.lua -- trash not a burner likes to /exec
 require "lib_bulk_destroy";
 
-function sc(x)send_chat(PID_BROADCAST,tostring(x),2,0)end
+function sc(x)server_msg(PID_BROADCAST,tostring(x))end
 function scl(x)for y in string.gmatch(x,"[^\n]+")do sc(y)end;end
 function ptab(tbl, depth)
 	if (depth == nil) then
@@ -66,9 +66,9 @@ function ticker2.tick()
 	next_call("tick", ticker2.tick)();
 	
 	if false then
-		send_chat(PID_BROADCAST, string.format("N%% %f", now - before2 - 0.01666666666666666666), 2, 0);
+		server_msg(PID_BROADCAST, string.format("N%% %f", now - before2 - 0.01666666666666666666));
 	elseif (now - before2 > 0.019) then
-		send_chat(PID_BROADCAST, string.format("N%% %f", now - before2 - 0.01666666666666666666), 2, 0);
+		server_msg(PID_BROADCAST, string.format("N%% %f", now - before2 - 0.01666666666666666666));
 	end
 
 	before2 = now;
@@ -79,7 +79,7 @@ function whereami.tick()
 	next_call("tick", whereami.tick)();
 	
 	local pos = get_position(0);
-	send_chat(0, string.format("N%% pos: {%.3f, %.3f, %.3f}", pos.x, pos.y, pos.z), 2, 0);
+	server_msg(0, string.format("N%% pos: {%.3f, %.3f, %.3f}", pos.x, pos.y, pos.z));
 end
 
 function nuketest()

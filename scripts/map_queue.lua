@@ -48,7 +48,7 @@ end
 local cmd = {name={"showrotation", "mapqueue"}, fakepid=true, desc="List the default map queue."};
 function cmd.func(pid)
 	for _,y in ipairs(map_queue) do
-		send_chat(pid, y, 2, 0);
+		server_msg(pid, y);
 	end
 end
 register_command(cmd);

@@ -272,7 +272,7 @@ function handle_command(pid, msg, nolog)
 	end
 
 	if (not nolog) then
-		send_chat(pid, "> /"..msg, 2, 0);
+		server_msg(pid, "> /"..msg);
 		log("%s: /%s", get_name(pid), msg);
 	end
 
@@ -305,7 +305,7 @@ function send_usage(pid, cmd)
 		name = name .. " " .. invocation;
 	end
 
-	send_chat(pid, name, 2, 0);
+	server_msg(pid, name);
 end
 
 function mod.on_chat(pid, msg, type)

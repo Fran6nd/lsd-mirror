@@ -219,6 +219,7 @@ struct Functions {
 	void (*send_grenade)(bplid pid, fvec3 pos, fvec3 vel, float fuse, nplid from, struct State *st);
 	size_t (*register_grenade)(bplid pid, teamid team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
 	size_t (*spawn_grenade)(bplid pid, teamid team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
+	void (*server_msg)(bplid pid, const char *msg, struct State *st);
 
 	/*
 	 * Player actions

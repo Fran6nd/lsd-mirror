@@ -545,6 +545,45 @@ static int simulate_grenade_physics(lua_State *l) {
 	return 3;
 }
 
+clk get_time(void);
+double to_s_double(clk ts);
+
+/* TODO: validate index here and elsewhere */
+static int get_grenade_detonate_time(lua_State *l) {
+	size_t index = luaL_checknumber(l, 1);
+
+	lua_pushnumber(l, to_s_double(st->globals.grenades[index].detonateTime));
+	return 1;
+}
+
+static int get_grenade_position(lua_State *l) {
+	size_t index = luaL_checknumber(l, 1);
+
+	push_fvec3(st->globals.grenades[index].pos);
+	return 1;
+}
+
+static int get_grenade_velocity(lua_State *l) {
+	size_t index = luaL_checknumber(l, 1);
+
+	push_fvec3(st->globals.grenades[index].vel);
+	return 1;
+}
+
+static int get_grenade_pid(lua_State *l) {
+	size_t index = luaL_checknumber(l, 1);
+
+	lua_pushnumber(l, st->globals.grenades[index].pid);
+	return 1;
+}
+
+static int get_grenade_team(lua_State *l) {
+	size_t index = luaL_checknumber(l, 1);
+
+	lua_pushnumber(l, st->globals.grenades[index].team);
+	return 1;
+}
+
 static int set_max_score(lua_State *l) {
 	unsigned maxscore = luaL_checknumber(l, 1);
 	st->globals.maxscore = maxscore;
@@ -915,9 +954,6 @@ static int get_team_score(lua_State *l) {
 	return 1;
 }
 
-clk get_time(void);
-double to_s_double(clk ts);
-
 static int lget_time(struct lua_State *l) {
 	lua_pushnumber(l, to_s_double(get_time()));
 	return 1;
@@ -983,6 +1019,11 @@ static const struct luaL_Reg funcs[] = {
 	{"input_on_stdin", input_on_stdin},
 	{"raycast", raycast},
 	{"simulate_grenade_physics", simulate_grenade_physics},
+	{"get_grenade_detonate_time", get_grenade_detonate_time},
+	{"get_grenade_position", get_grenade_position},
+	{"get_grenade_velocity", get_grenade_velocity},
+	{"get_grenade_pid", get_grenade_pid},
+	{"get_grenade_team", get_grenade_team},
 	{"is_solid", is_solid},
 	{"get_fog", get_fog},
 	{"get_team_name", get_team_name},

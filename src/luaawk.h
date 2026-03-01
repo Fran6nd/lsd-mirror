@@ -989,19 +989,21 @@ static size_t cspawn_grenade(bplid pid, teamid team, fvec3 pos, fvec3 vel, float
 
 
 static int lserver_msg(lua_State *l) {
-	const char *msg = luaL_checkstring(l, 1);
+	bplid pid = check_bplid(l, 1);
+	const char *msg = luaL_checkstring(l, 2);
 
-	f.server_msg(msg, st);
+	f.server_msg(pid, msg, st);
 	return 0;
 }
 
-static void cserver_msg(const char *msg, struct State *st) {
+static void cserver_msg(bplid pid, const char *msg, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "server_msg");
 
+	lua_pushnumber(l, pid);
 	lua_pushstring(l, msg);
 
-	if (lua_pcall(l, 1, 0, 0) != 0)
+	if (lua_pcall(l, 2, 0, 0) != 0)
 		CBAIL("server_msg: %s", luaL_checkstring(l, -1));
 }
 

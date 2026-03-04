@@ -95,23 +95,44 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="selstart", caps="sel", desc="Set the start of a selection."};
+local cmd = {name="selstart", caps="sel", usage="[x y z]", desc="Set the start of a selection."};
 function cmd.func(pid, argv)
-	cmd_assert(pid, cmd, #argv == 0);
+	cmd_assert(pid, cmd, #argv == 0 or #argv == 3);
 
-	sel[pid] = -1;
-	sel_start[pid] = nil;
-	l10n_send_chat(pid, sel_begin_start_msg);
+	if (#argv == 0) then
+		sel[pid] = -1;
+		sel_start[pid] = nil;
+		l10n_send_chat(pid, sel_begin_start_msg);
+	else
+		sel[pid] = nil;
+		sel_start[pid] = {
+			-- TODO: unhardcode map dimensions
+			x=math.floor(get_arg_num_range("x", pid, cmd, argv[1], 0, 511)),
+			y=math.floor(get_arg_num_range("y", pid, cmd, argv[2], 0, 511)),
+			z=math.floor(get_arg_num_range("z", pid, cmd, argv[3], 0, 63))
+		};
+		l10n_send_chat(pid, sel_start_done_msg, sel_start[pid]);
+	end
 end
 register_command(cmd);
 
-local cmd = {name="selend", caps="sel", desc="Set the end of a selection."};
+local cmd = {name="selend", caps="sel", usage="[x y z]", desc="Set the end of a selection."};
 function cmd.func(pid, argv)
-	cmd_assert(pid, cmd, #argv == 0);
+	cmd_assert(pid, cmd, #argv == 0 or #argv == 3);
 
-	sel[pid] = 1;
-	sel_end[pid] = nil;
-	l10n_send_chat(pid, sel_begin_end_msg);
+	if (#argv == 0) then
+		sel[pid] = 1;
+		sel_end[pid] = nil;
+		l10n_send_chat(pid, sel_begin_end_msg);
+	else
+		sel[pid] = nil;
+		sel_end[pid] = {
+			x=math.floor(get_arg_num_range("x", pid, cmd, argv[1], 0, 511)),
+			y=math.floor(get_arg_num_range("y", pid, cmd, argv[2], 0, 511)),
+			z=math.floor(get_arg_num_range("z", pid, cmd, argv[3], 0, 63))
+		};
+		l10n_send_chat(pid, sel_end_done_msg, sel_end[pid]);
+	end
 end
 register_command(cmd);
 
@@ -174,24 +195,48 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local function line(start, endp)
+local function linex(start, endp)
 	for x=start.x,endp.x,50 do
 		block_line({x=x, y=start.y, z=start.z}, {x=math.min(x+49, endp.x), y=endp.y, z=endp.z}, PID_COLOR_ANONYMOUS);
 	end
 end
 
-local function iter_box(pid, func)
-	for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
-		func({x=x, y=sel_start[pid].y, z=sel_start[pid].z}, {x=x, y=sel_start[pid].y, z=sel_end[pid].z});
-		func({x=x, y=sel_end[pid].y, z=sel_start[pid].z}, {x=x, y=sel_end[pid].y, z=sel_end[pid].z});
+local function liney(start, endp)
+	for y=start.y,endp.y,50 do
+		block_line({x=start.x, y=y, z=start.z}, {x=endp.x, y=math.min(y+49, endp.y), z=endp.z}, PID_COLOR_ANONYMOUS);
+	end
+end
+
+local function linez(start, endp)
+	for z=start.z,endp.z,50 do
+		block_line({x=start.x, y=start.y, z=z}, {x=endp.x, y=endp.y, z=math.min(z+49, endp.z)}, PID_COLOR_ANONYMOUS);
+	end
+end
+
+local function order(x1, x2)
+	if (x1 <= x2) then
+		return x1, x2;
 	end
 
-	for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
-		func({x=sel_start[pid].x, y=y, z=sel_start[pid].z}, {x=sel_end[pid].x, y=y, z=sel_start[pid].z});
-		func({x=sel_start[pid].x, y=y, z=sel_end[pid].z}, {x=sel_end[pid].x, y=y, z=sel_end[pid].z});
+	return x2, x1;
+end
 
-		func({x=sel_start[pid].x, y=y, z=sel_start[pid].z}, {x=sel_start[pid].x, y=y, z=sel_end[pid].z});
-		func({x=sel_end[pid].x, y=y, z=sel_start[pid].z}, {x=sel_end[pid].x, y=y, z=sel_end[pid].z});
+local function iter_box(pid)
+	local x1, x2 = order(sel_start[pid].x, sel_end[pid].x);
+	local y1, y2 = order(sel_start[pid].y, sel_end[pid].y);
+	local z1, z2 = order(sel_start[pid].z, sel_end[pid].z);
+
+	for x=x1, x2, x1 > x2 and -1 or 1 do
+		linez({x=x, y=y1, z=z1}, {x=x, y=y1, z=z2});
+		linez({x=x, y=y2, z=z1}, {x=x, y=y2, z=z2});
+	end
+
+	for y=y1, y2, y1 > y2 and -1 or 1 do
+		linex({x=x1, y=y, z=z1}, {x=x2, y=y, z=z1});
+		linex({x=x1, y=y, z=z2}, {x=x2, y=y, z=z2});
+
+		linez({x=x1, y=y, z=z1}, {x=x1, y=y, z=z2});
+		linez({x=x2, y=y, z=z1}, {x=x2, y=y, z=z2});
 	end
 end
 
@@ -200,23 +245,17 @@ function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
 	require_sel(pid);
 
-	local x1, x2;
-
-	if (sel_start[pid].x <= sel_end[pid].x) then
-		x1, x2 = sel_start[pid].x, sel_end[pid].x;
-	else
-		x1, x2 = sel_end[pid].x, sel_start[pid].x;
-	end
+	local x1, x2 = order(sel_start[pid].x, sel_end[pid].x);
 
 	set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
 	if (sel_shape[pid] == "cube") then
 		for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
 			for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
-				line({x=x1, y=y, z=z}, {x=x2, y=y, z=z});
+				linex({x=x1, y=y, z=z}, {x=x2, y=y, z=z});
 			end
 		end
 	elseif (sel_shape[pid] == "box") then
-		iter_box(pid, line);
+		iter_box(pid);
 	else
 		-- TODO: iter_sphere
 		for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do

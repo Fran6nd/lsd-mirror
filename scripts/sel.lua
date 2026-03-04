@@ -39,8 +39,9 @@ local sel_unended_msg = {
 	en="End the selection first."
 };
 
+-- TODO: automatically determine shapes
 local sel_invalid_shape_msg = {
-	en="shape should be one of the following: cube, box"
+	en="shape should be one of the following: cube, box, sphere"
 };
 
 local shapes = {

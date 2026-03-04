@@ -359,8 +359,8 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		SBAD((uint32_t)PACKET.end.y >= 512);
 		SBAD((uint32_t)PACKET.end.z >= 62);
 
-		/* Length can't be > 50 */
-		SBAD(1+abs(PACKET.end.x-PACKET.start.x)+abs(PACKET.end.y-PACKET.start.y)+abs(PACKET.end.z-PACKET.start.z) > 50);
+		/* Length can't be greater than whatever amount of blocks the player has */
+		SBAD(1+abs(PACKET.end.x-PACKET.start.x)+abs(PACKET.end.y-PACKET.start.y)+abs(PACKET.end.z-PACKET.start.z) > st->p[pid].blocks);
 
 		SBAD(st->p[pid].tool != ToolTypeBlock);
 

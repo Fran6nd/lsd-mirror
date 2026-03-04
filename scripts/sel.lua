@@ -332,6 +332,26 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
+-- TODO: handle voxlap
+local cmd = {name="selpaint", caps="sel", desc="Set color of all blocks in a box."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 0);
+	require_sel(pid);
+
+	set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
+	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
+		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
+			for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
+				local pos = {x=x, y=y, z=z};
+				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid]) and is_solid(pos)) then
+					block_action(pos, 0, PID_COLOR_ANONYMOUS);
+				end
+			end
+		end
+	end
+end
+register_command(cmd);
+
 function mod.on_block_action(pid, pos, type)
 	if (type <= 1 and sel[pid]) then
 		if (sel[pid] <= 0) then

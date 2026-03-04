@@ -776,16 +776,6 @@ static int get_fog(lua_State *l) {
 	return 1;
 }
 
-static int get_team_name(lua_State *l) {
-	unsigned team = check_teamid(l, 1);
-	/* TODO: support -1 too? */
-	if (team == 255)
-		lua_pushliteral(l, "Spectator");
-	else
-		lua_pushstring(l, st->globals.teamname[team]);
-	return 1;
-}
-
 /* TODO: ammunition estimation */
 #if 0
 static int get_ammo(lua_State *l) {
@@ -871,11 +861,25 @@ static int get_mouse_inputs(lua_State *l) {
 	return 1;
 }
 
+static int get_team(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].team);
+	return 1;
+}
+
 /* TODO: weapon -> gun? */
 static int get_weapon(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
 	lua_pushnumber(l, st->p[pid].weapon);
+	return 1;
+}
+
+static int get_next_team(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].newteam);
 	return 1;
 }
 
@@ -898,6 +902,14 @@ static int get_inputs(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
 	lua_pushnumber(l, st->p[pid].inputs);
+	return 1;
+}
+
+static int get_block_color(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	/* TODO: how to handle spectators and dead guys? */
+	push_color(st->p[pid].blockColor);
 	return 1;
 }
 
@@ -936,10 +948,13 @@ static int get_name(lua_State *l) {
 	return 1;
 }
 
-static int get_team(lua_State *l) {
-	plid pid = check_plid(l, 1);
-
-	lua_pushnumber(l, st->p[pid].team);
+static int get_team_name(lua_State *l) {
+	unsigned team = check_teamid(l, 1);
+	/* TODO: support -1 too? */
+	if (team == 255)
+		lua_pushliteral(l, "Spectator");
+	else
+		lua_pushstring(l, st->globals.teamname[team]);
 	return 1;
 }
 
@@ -1042,7 +1057,6 @@ static const struct luaL_Reg funcs[] = {
 	{"get_grenade_team", get_grenade_team},
 	{"is_solid", is_solid},
 	{"get_fog", get_fog},
-	{"get_team_name", get_team_name},
 	{"get_hp", get_hp},
 	{"get_ipaddr", get_ipaddr},
 	{"get_round_trip_time", get_round_trip_time},
@@ -1051,16 +1065,19 @@ static const struct luaL_Reg funcs[] = {
 	{"get_position", get_position},
 	{"get_orientation", get_orientation},
 	{"get_mouse_inputs", get_mouse_inputs},
+	{"get_team", get_team},
 	{"get_weapon", get_weapon},
+	{"get_next_team", get_next_team},
 	{"get_next_weapon", get_next_weapon},
 	{"get_tool", get_tool},
 	{"get_inputs", get_inputs},
+	{"get_block_color", get_block_color},
 	{"is_airborne", is_airborne},
 	{"is_alive", is_alive},
 	{"is_joined", is_joined},
 	{"is_connected", is_connected},
 	{"get_name", get_name},
-	{"get_team", get_team},
+	{"get_team_name", get_team_name},
 	{"get_team_color", get_team_color},
 	{"get_team_score", get_team_score},
 	{"get_time", lget_time},

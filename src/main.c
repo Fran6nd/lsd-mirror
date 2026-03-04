@@ -528,13 +528,13 @@ static void detonate_grenade(size_t index, struct State *st) {
 	st->f.block_action(ipos, BlockActionTypeGrenadeDestroy, nade.pid, st);
 }
 
-static size_t register_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+static size_t register_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, clk fuse, struct State *st) {
 	if (st->globals.grenadeCount == st->globals.grenadeSize && alloc_more_nades(st) == -1) {
 		LOG("Out of memory for more grenades (%lu currently allocated)", st->globals.grenadeSize);
 		return (size_t)-1;
 	}
 
-	st->globals.grenades[st->globals.grenadeCount].detonateTime = get_time()+from_s_double(fuse);
+	st->globals.grenades[st->globals.grenadeCount].detonateTime = get_time()+fuse;
 	st->globals.grenades[st->globals.grenadeCount].pos = pos;
 	st->globals.grenades[st->globals.grenadeCount].vel = vel;
 	st->globals.grenades[st->globals.grenadeCount].pid = pid;
@@ -544,10 +544,10 @@ static size_t register_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, fl
 	return st->globals.grenadeCount-1;
 }
 
-static size_t spawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
+static size_t spawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, clk fuse, struct State *st) {
 	size_t idx = st->f.register_grenade(pid, team, pos, vel, fuse, st);
 	if (idx != (size_t)-1)
-		st->f.send_grenade(PID_BROADCAST, pos, vel, fuse, 0, st);
+		st->f.send_grenade(PID_BROADCAST, pos, vel, to_s_double(fuse), 0, st);
 	return idx;
 }
 
@@ -749,7 +749,7 @@ static void restock(plid pid, struct State *st) {
 
 /* TODO: make this take a position arg and default it to get_spawn_position() */
 static void spawn_player(plid pid, struct State *st) {
-	struct PacketCreatePlayer cr;
+	fvec3 pos;
 	plid i;
 
 	st->p[pid].spawntime = 0;
@@ -786,12 +786,7 @@ static void spawn_player(plid pid, struct State *st) {
 	st->p[pid].lastagreedpos.y = st->p[pid].pos.y;
 	st->p[pid].lastagreedpos.z = st->p[pid].pos.z;
 
-	cr.packetID = PacketTypeCreatePlayer;
-	cr.playerID = pid;
-	cr.weapon = st->p[pid].weapon;
-	cr.team = st->p[pid].team;
-	cr.pos = st->p[pid].pos;
-	strcpy(cr.name, st->p[pid].name);
+	pos = st->p[pid].pos;
 
 	for (i=0;i<MAX_PLAYERS;i++) {
 		if (pid_matches(PID_BROADCAST, i, st)) {
@@ -799,11 +794,11 @@ static void spawn_player(plid pid, struct State *st) {
 			 * BetterSpades is not sane, since it was based on piqueserver.
 			 */
 			if (st->p[i].bugMask & BS_BUG_INFLOOR)
-				cr.pos.z = st->p[pid].pos.z;
+				pos.z = st->p[pid].pos.z;
 			else
-				cr.pos.z = st->p[pid].pos.z + 2;
+				pos.z = st->p[pid].pos.z + 2;
 
-			SEND(i, cr);
+			st->f.send_spawn_player(i, pos, st->p[pid].weapon, st->p[pid].team, st->p[pid].name, pid, st);
 		}
 	}
 }

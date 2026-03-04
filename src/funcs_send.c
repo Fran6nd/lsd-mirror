@@ -331,6 +331,21 @@ static void send_kill(plid pid, clk spawndelta, unsigned type, plid killer, plid
 	SEND(pid, kl);
 }
 
+/* TODO: should this work around betterspades or should spawn_player? */
+static void send_spawn_player(plid pid, fvec3 pos, unsigned weapon, unsigned team, const char *name, plid from, struct State *st) {
+	struct PacketCreatePlayer cr;
+
+	cr.packetID = PacketTypeCreatePlayer;
+	cr.playerID = from;
+	cr.weapon = weapon;
+	cr.team = team;
+	cr.pos = pos;
+	/* TODO: check strlen */
+	strcpy(cr.name, name);
+
+	SEND(pid, cr);
+}
+
 static void send_connected_players(plid pid, struct State *st) {
 	plid i;
 	
@@ -499,4 +514,5 @@ void set_funcs_send(struct State *st) {
 	st->f.send_move_input = send_move_input;
 	st->f.send_mouse_input = send_mouse_input;
 	st->f.send_kill = send_kill;
+	st->f.send_spawn_player = send_spawn_player;
 }

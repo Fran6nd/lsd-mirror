@@ -215,9 +215,8 @@ struct Functions {
 	void (*tick_player_physics)(bplid pid, float timeDelta, struct State *st);
 	void (*detonate_grenade)(size_t index, struct State *st);
 	void (*boot_players_to_limbo)(struct State *st);
-	void (*send_grenade)(bplid pid, fvec3 pos, fvec3 vel, float fuse, nplid from, struct State *st);
-	size_t (*register_grenade)(bplid pid, teamid team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
-	size_t (*spawn_grenade)(bplid pid, teamid team, fvec3 pos, fvec3 vel, float fuse, struct State *st);
+	size_t (*register_grenade)(bplid pid, teamid team, fvec3 pos, fvec3 vel, clk fuse, struct State *st);
+	size_t (*spawn_grenade)(bplid pid, teamid team, fvec3 pos, fvec3 vel, clk fuse, struct State *st);
 	void (*server_msg)(bplid pid, const char *msg, struct State *st);
 
 	/*
@@ -259,7 +258,9 @@ struct Functions {
 	void (*send_existing_player)(plid pid, unsigned team, unsigned weapon, unsigned tool, unsigned score, color blockColor, const char *name, plid from, struct State *st);
 	void (*send_move_input)(plid pid, unsigned inputs, plid from, struct State *st);
 	void (*send_mouse_input)(plid pid, unsigned inputs, plid from, struct State *st);
-	void (*send_kill)(plid pid, clk spawndelta, unsigned type, plid killer, plid from, struct State *st);
+	void (*send_kill)(bplid pid, clk spawndelta, unsigned type, plid killer, plid from, struct State *st);
+	void (*send_grenade)(bplid pid, fvec3 pos, fvec3 vel, float fuse, nplid from, struct State *st);
+	void (*send_spawn_player)(plid pid, fvec3 pos, unsigned weapon, unsigned team, const char *name, plid from, struct State *st);
 
 	/*
 	 * Player funcs -- these send packets and modify player state

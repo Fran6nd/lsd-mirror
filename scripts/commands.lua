@@ -54,10 +54,14 @@ function get_player_by_str(str)
 end
 
 local stexec = {};
+function cmd_exit()
+	error(stexec);
+end
+
 function cmd_assert(pid, cmd, condition)
 	if (not condition) then
 		send_usage(pid, cmd);
-		error(stexec);
+		cmd_exit();
 	end
 end
 
@@ -102,7 +106,7 @@ end
 function get_arg_str(argname, pid, cmd, arg)
 	if (arg == nil) then
 		send_usage(pid, cmd);
-		error(stexec);
+		cmd_exit();
 	end
 	return arg;
 end
@@ -131,13 +135,13 @@ function get_arg_time(argname, pid, cmd, arg)
 	if (num == nil) then
 		send_usage(pid, cmd);
 		l10n_send_chat(pid, delta_msg, {arg=argname});
-		error(stexec);
+		cmd_exit();
 	end
 	-- TODO: It should probably be finite, right?
 	if (not (num > -math.huge and num < math.huge)) then
 		send_usage(pid, cmd);
 		l10n_send_chat(pid, finite_msg, {arg=argname});
-		error(stexec);
+		cmd_exit();
 	end
 
 	if (unit == "") then
@@ -149,14 +153,14 @@ function get_arg_time(argname, pid, cmd, arg)
 
 	send_usage(pid, cmd);
 	l10n_send_chat(pid, unit_msg, {arg=argname});
-	error(stexec);
+	cmd_exit();
 end
 
 function get_arg_num_nonfinite(argname, pid, cmd, arg)
 	local num = tonumber(arg);
 	if (num == nil) then
 		send_usage(pid, cmd);
-		error(stexec);
+		cmd_exit();
 	end
 	return num;
 end
@@ -165,12 +169,12 @@ function get_arg_num_range(argname, pid, cmd, arg, start, endval)
 	local num = tonumber(arg);
 	if (num == nil) then
 		send_usage(pid, cmd);
-		error(stexec);
+		cmd_exit();
 	end
 	if (not (num >= start and num <= endval)) then
 		send_usage(pid, cmd);
 		l10n_send_chat(pid, range_msg, {arg=argname, min=start, max=endval});
-		error(stexec);
+		cmd_exit();
 	end
 	return num;
 end
@@ -183,7 +187,7 @@ function get_arg_num_finite_opt(argname, pid, cmd, arg)
 	if (num == nil or not (num > -math.huge and num < math.huge)) then
 		send_usage(pid, cmd);
 		l10n_send_chat(pid, finite_msg, {arg=argname});
-		error(stexec);
+		cmd_exit();
 	end
 	return num;
 end
@@ -192,7 +196,7 @@ function get_arg_num_finite(argname, pid, cmd, arg)
 	local num = get_arg_num_finite_opt(argname, pid, cmd, arg);
 	if (num == nil) then
 		send_usage(pid, cmd);
-		error(stexec);
+		cmd_exit();
 	end
 	return num;
 end
@@ -226,7 +230,7 @@ function get_arg_pid_opt(argname, pid, cmd, arg)
 		elseif (plr == -4) then
 			l10n_send_chat(pid, pid_invalid_msg, {arg=argname});
 		end
-		error(stexec);
+		cmd_exit();
 	end
 	return plr;
 end
@@ -235,7 +239,7 @@ function get_arg_pid(argname, pid, cmd, arg)
 	local plr = get_arg_pid_opt(argname, pid, cmd, arg);
 	if (plr == nil) then
 		send_usage(pid, cmd);
-		error(stexec);
+		cmd_exit();
 	end
 	return plr;
 end

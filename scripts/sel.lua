@@ -280,6 +280,7 @@ function cmd.func(pid, argv)
 
 	-- TODO: range iter for single points, this is a mess
 	if (sel_shape[pid] == "cube") then
+		-- Destroy perimeter
 		for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
 			for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
 				bdestroy_block_action({x=sel_start[pid].x, y=y, z=z}, 1);
@@ -301,6 +302,20 @@ function cmd.func(pid, argv)
 			end
 		end
 		bdestroy_finish();
+
+		-- Clean up after floating blocks
+		for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
+			for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
+				for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
+					local pos = {x=x, y=y, z=z};
+					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid])) then
+						block_action(pos, 1, PID_COLOR_ANONYMOUS);
+					end
+				end
+			end
+		end
+
+		return;
 	end
 
 	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do

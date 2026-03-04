@@ -308,7 +308,7 @@ function cmd.func(pid, argv)
 			for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
 				for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
 					local pos = {x=x, y=y, z=z};
-					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid])) then
+					if (is_solid(pos)) then
 						block_action(pos, 1, PID_COLOR_ANONYMOUS);
 					end
 				end

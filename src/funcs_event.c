@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 clk get_time(void);
+clk from_s_double(double ts);
 
 #define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
 #define SEND(pid, data) st->f.send_packet(pid, &(data), sizeof(data), st)
@@ -13,7 +14,7 @@ clk get_time(void);
 const char *host_ip(ENetAddress *addr);
 
 static void on_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
-	st->f.register_grenade(pid, st->p[pid].team, pos, vel, fuse, st);
+	st->f.register_grenade(pid, st->p[pid].team, pos, vel, from_s_double(fuse), st);
 	st->f.send_grenade(PID_BROADCAST_EXCEPT(pid), pos, vel, fuse, 0, st);
 }
 

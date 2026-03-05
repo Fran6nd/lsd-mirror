@@ -40,8 +40,12 @@ local sel_unended_msg = {
 };
 
 -- TODO: automatically determine shapes
-local sel_invalid_shape_msg = {
+local invalid_shape_msg = {
 	en="shape should be one of the following: cube, box, sphere"
+};
+
+local invalid_dir_msg = {
+	en="direction should be one of the following: x, -x, +x, y, -y, +y, z, -z, +z"
 };
 
 local shapes = {
@@ -151,7 +155,7 @@ function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 
 	if (shapes[argv[1]] == nil) then
-		l10n_send_chat(pid, sel_invalid_shape_msg);
+		l10n_send_chat(pid, invalid_shape_msg);
 		return;
 	end
 
@@ -349,6 +353,106 @@ function cmd.func(pid, argv)
 			end
 		end
 	end
+end
+register_command(cmd);
+
+local dirmap = {
+	["-x"]={x=-1, y= 0, z= 0},
+	["+x"]={x= 1, y= 0, z= 0},
+	[ "x"]={x= 1, y= 0, z= 0},
+
+	["-y"]={x= 0, y=-1, z= 0},
+	["+y"]={x= 0, y= 1, z= 0},
+	[ "y"]={x= 0, y= 1, z= 0},
+
+	["-z"]={x= 0, y= 0, z=-1},
+	["+z"]={x= 0, y= 0, z= 1},
+	[ "z"]={x= 0, y= 0, z= 1},
+};
+
+local function do_selcpy(cmd, pid, argv)
+	cmd_assert(pid, cmd, #argv == 2);
+
+	local dir = dirmap[argv[1]];
+	if (dir == nil) then
+		l10n_send_chat(pid, invalid_dir_msg);
+		return;
+	end
+
+	local times = get_arg_num_finite("times", pid, cmd, argv[2]),
+
+	require_sel(pid);
+
+	local x1, x2 = order(sel_start[pid].x, sel_end[pid].x);
+	local y1, y2 = order(sel_start[pid].y, sel_end[pid].y);
+	local z1, z2 = order(sel_start[pid].z, sel_end[pid].z);
+
+	local off = {x=0, y=0, z=0};
+	for i=1,times do
+		local offpremult = {
+			x=(x2-x1+1)*dir.x,
+			y=(y2-y1+1)*dir.y,
+			z=(z2-z1+1)*dir.z
+		}
+
+		off = {
+			x=offpremult.x*i,
+			y=offpremult.y*i,
+			z=offpremult.z*i
+		};
+
+		if (x1 + off.x < 0 or
+		    x2 + off.x >= 512 or
+		    y1 + off.y < 0 or
+		    y2 + off.y >= 512 or
+		    z1 + off.z < 0 or
+		    z2 + off.z >= 64) then
+			off = {
+				x=offpremult.x*(i-1),
+				y=offpremult.y*(i-1),
+				z=offpremult.z*(i-1)
+			};
+			break;
+		end
+
+		for z=z1,z2 do
+			for y=y1,y2 do
+				for x=x1,x2 do
+					local pos = {x=x, y=y, z=z};
+					local newpos = {x=x+off.x, y=y+off.y, z=z+off.z};
+
+					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid])) then
+						if (is_solid(pos)) then
+							set_block_color(PID_COLOR_ANONYMOUS, get_map_block_color(pos));
+							block_action(newpos, 0, PID_COLOR_ANONYMOUS);
+						else
+							block_action(newpos, 1, PID_COLOR_ANONYMOUS);
+						end
+					end
+				end
+			end
+		end
+	end
+
+	-- TODO: use z -3 instead of -z 3?
+	local isnegative = string.sub(argv[1], 1, 1) == '-';
+	if (isnegative) then
+		return {x=x1+off.x, y=y1+off.y, z=z1+off.z}, {x=x2, y=y2, z=z2};
+	end
+
+	return {x=x1, y=y1, z=z1}, {x=x2+off.x, y=y2+off.y, z=z2+off.z};
+end
+
+-- TODO: /reselcpy to select whatever was just copied
+local cmd = {name="selcpy", caps="sel", usage="direction times", desc="Duplicate the selection in a direction a certain number of times."};
+function cmd.func(pid, argv)
+	do_selcpy(cmd, pid, argv);
+end
+register_command(cmd);
+
+local cmd = {name="reselcpy", caps="sel", usage="direction times", desc="Duplicate the selection in a direction a certain number of times, then select the duplicated area."};
+function cmd.func(pid, argv)
+	sel_start[pid], sel_end[pid] = do_selcpy(cmd, pid, argv);
 end
 register_command(cmd);
 

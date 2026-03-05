@@ -913,6 +913,14 @@ static int get_block_color(lua_State *l) {
 	return 1;
 }
 
+/* TODO: you going to finish libpvx2 yet? */
+static int get_map_block_color(lua_State *l) {
+	ivec3 pos = get_ivec3(l, 1, 1);
+
+	push_color(st->globals.map.colorData+(CALC_I(pos.x, pos.y)+pos.z)*3);
+	return 1;
+}
+
 static int is_airborne(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
@@ -1071,7 +1079,9 @@ static const struct luaL_Reg funcs[] = {
 	{"get_next_weapon", get_next_weapon},
 	{"get_tool", get_tool},
 	{"get_inputs", get_inputs},
+	/* TODO: unfortunate naming */
 	{"get_block_color", get_block_color},
+	{"get_map_block_color", get_map_block_color},
 	{"is_airborne", is_airborne},
 	{"is_alive", is_alive},
 	{"is_joined", is_joined},

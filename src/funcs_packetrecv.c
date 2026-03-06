@@ -14,11 +14,13 @@ const char *host_ip(ENetAddress *addr);
 #define STR2(x) #x
 #define STR(x) STR2(x)
 
-#define BADRETURN do {st->crapline = __LINE__; return 1;} while (0)
+#define BADRETURN do {st->crapline = __LINE__; st->crapsilence = 0; return 1;} while (0)
+#define BADRETURNSILENT do {st->crapline = __LINE__; st->crapsilence = 1; return 1;} while (0)
 #define SBAD(cond) do {if (cond) {st->crapcond = "SBAD("#cond");"; BADRETURN;}} while (0)
+#define SBADSILENT(cond) do {if (cond) {st->crapcond = "SBAD("#cond");"; BADRETURNSILENT;}} while (0)
 #define SCASEANY case CAT(PacketType, PCKT): st->crappacketname = STR(PCKT);
 #define SCASEJOINED SCASEANY SBAD(!st->p[pid].joined);
-#define SCASEALIVE SCASEANY SBAD(!st->p[pid].alive);
+#define SCASEALIVE SCASEANY SBADSILENT(!st->p[pid].alive);
 #define PCASE case CAT(PacketType, PCKT):
 #define PACKET (*(struct CAT(Packet, PCKT) *)packet->data)
 #define PACKETPTR ((struct CAT(Packet, PCKT) *)packet->data)
@@ -533,7 +535,8 @@ static void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
 static void on_crap_packet(plid pid, ENetPacket *packet, struct State *st) {
 	//LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
 	/* TODO: remove need for \r with linenoise */
-	LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\r\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
+	if (!st->crapsilence)
+		LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\r\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
 
 	if (packet->dataLength > 0)
 	switch (packet->data[0]) {

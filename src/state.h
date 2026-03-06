@@ -326,5 +326,6 @@ struct State {
 	const char *crapcond;
 	const char *crappacketname;
 	int crapline;
+	int crapsilence;
 };
 #endif

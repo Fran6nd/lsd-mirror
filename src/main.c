@@ -91,12 +91,11 @@ static void handle_event(ENetEvent *event, struct State *st) {
 	case ENET_EVENT_TYPE_DISCONNECT:
 		st->f.on_disconnect(event->peer->incomingPeerID, st);
 		break;
-	case ENET_EVENT_TYPE_RECEIVE: {
+	case ENET_EVENT_TYPE_RECEIVE:
 		if (st->f.on_any_packet(event->peer->incomingPeerID, event->packet, st))
 			st->f.on_crap_packet(event->peer->incomingPeerID, event->packet, st);
 		else
 			st->f.on_sane_packet(event->peer->incomingPeerID, event->packet, st);
-		}
 
 		enet_packet_destroy(event->packet);
 		break;

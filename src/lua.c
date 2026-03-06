@@ -637,7 +637,7 @@ static int input_on_stdin(lua_State *l) {
 
 static int raycast(lua_State *l) {
 	fvec3 start = get_fvec3(l, 1);
-	fvec3 end = get_fvec3(l, 1);
+	fvec3 end = get_fvec3(l, 2);
 	int last = lua_toboolean(l, 3);
 
 	ivec3 hitpos;

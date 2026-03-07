@@ -17,7 +17,9 @@ function cmd.func(pid, argv, msg)
 
 	if (err ~= nil) then
 		-- err being whatever was returned, if applicable
-		server_msg(pid, tostring(err));
+		for line in string.gmatch(tostring(err), "[^\n]+") do
+			server_msg(pid, line);
+		end
 	end
 end
 register_command(cmd);

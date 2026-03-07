@@ -3,10 +3,12 @@ require "lib_l10n";
 require "lib_bulk_destroy";
 local bit = require("bit");
 local mod = init_mod();
-local sel = pid_joined_table(nil);
-local sel_shape = pid_joined_table("cube");
+
+local sel       = pid_joined_table(nil);
 local sel_start = pid_joined_table(nil);
-local sel_end = pid_joined_table(nil);
+local sel_end   = pid_joined_table(nil);
+local sel_shape = pid_joined_table("cube");
+local sel_noise = pid_joined_table(0);
 
 local sel_begin_msg = {
 	en="Beginning selection."
@@ -251,6 +253,13 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
+local cmd = {name={"selnoise", "selns"}, caps="sel", usage="noise", desc="Change selection noise."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 1);
+	sel_noise[pid] = math.floor(get_arg_num_range("noise", pid, cmd, argv[1], 0, math.huge));
+end
+register_command(cmd);
+
 -- TODO: nuke PID_COLOR_ANONYMOUS
 PID_COLOR_ANONYMOUS=31;
 
@@ -268,17 +277,32 @@ local function require_sel(pid)
 	end
 end
 
+local function set_noised_color(pid, clr)
+	local noise = math.random(-sel_noise[pid], sel_noise[pid]);
+	for chan,val in pairs(clr) do
+		clr[chan] = math.min(math.max(val + noise, 0), 255);
+	end
+	set_block_color(PID_COLOR_ANONYMOUS, clr);
+end
+
 local cmd = {name="selrep", caps="sel", desc="Fill and replace a box."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
 	require_sel(pid);
 
-	set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
+	-- TODO: remove and just use the per-block set_color?
+	if (sel_noise[pid] == 0) then
+		set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
+	end
+
 	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
 		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
 			for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
 				local pos = {x=x, y=y, z=z};
 				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid])) then
+					if (sel_noise[pid] ~= 0) then
+						set_noised_color(pid, get_block_color(pid));
+					end
 					block_action(pos, 0, PID_COLOR_ANONYMOUS);
 				end
 			end
@@ -339,14 +363,16 @@ function cmd.func(pid, argv)
 
 	local x1, x2 = order(sel_start[pid].x, sel_end[pid].x);
 
-	set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
-	if (sel_shape[pid] == "cube") then
+	if (sel_noise[pid] == 0) then
+		set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
+	end
+	if (sel_shape[pid] == "cube" and sel_noise[pid] == 0) then
 		for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
 			for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
 				linex({x=x1, y=y, z=z}, {x=x2, y=y, z=z});
 			end
 		end
-	elseif (sel_shape[pid] == "box") then
+	elseif (sel_shape[pid] == "box" and sel_noise[pid] == 0) then
 		iter_box(pid);
 	else
 		-- TODO: iter_sphere
@@ -355,6 +381,9 @@ function cmd.func(pid, argv)
 				for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
 					local pos = {x=x, y=y, z=z};
 					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid]) and not is_solid(pos)) then
+						if (sel_noise[pid] ~= 0) then
+							set_noised_color(pid, get_block_color(pid));
+						end
 						block_action(pos, 0, PID_COLOR_ANONYMOUS);
 					end
 				end
@@ -434,12 +463,17 @@ function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
 	require_sel(pid);
 
-	set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
+	if (sel_noise[pid] == 0) then
+		set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
+	end
 	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
 		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
 			for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
 				local pos = {x=x, y=y, z=z};
 				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid]) and is_solid(pos)) then
+					if (sel_noise[pid] ~= 0) then
+						set_noised_color(pid, get_block_color(pid));
+					end
 					block_action(pos, 0, PID_COLOR_ANONYMOUS);
 				end
 			end
@@ -555,7 +589,7 @@ local function do_selcpy(cmd, pid, argv, is_solid, get_map_block_color, forceoff
 
 					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid])) then
 						if (is_solid(pos)) then
-							set_block_color(PID_COLOR_ANONYMOUS, get_map_block_color(pos));
+							set_noised_color(pid, get_map_block_color(pos));
 							block_action(newpos, 0, PID_COLOR_ANONYMOUS);
 						end
 					end

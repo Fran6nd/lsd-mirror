@@ -46,7 +46,7 @@ end
 -- TODO: how to specify a command takes no args?
 -- TODO: should /showrotation be able to set rotation? (a la /mapqueue)
 local cmd = {name={"showrotation", "mapqueue"}, fakepid=true, desc="List the default map queue."};
-function cmd.func(pid)
+function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
 
 	for _,y in ipairs(map_queue) do
@@ -65,7 +65,7 @@ register_command(cmd);
 
 -- TODO: on_game_end -> end_game?
 local cmd = {name="advance", caps="map_queue", fakepid=true, desc="Load the next queued map."};
-function cmd.func(pid)
+function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
 	on_game_end();
 end

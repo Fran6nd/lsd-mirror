@@ -109,7 +109,7 @@ function mod.on_any_packet(pid, data)
 		return 1;
 	end
 
-	next_call("on_any_packet", mod.on_any_packet)(pid, data);
+	return next_call("on_any_packet", mod.on_any_packet)(pid, data);
 end
 
 return mod;

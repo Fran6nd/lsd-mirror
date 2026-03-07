@@ -661,6 +661,40 @@ local function do_selmv(pid, cmd, off)
 	};
 end
 
+local function swiz_vec(vec, swiz, swizflip)
+	vec = {
+		x=vec[swiz.x],
+		y=vec[swiz.y],
+		z=vec[swiz.z]
+	};
+
+	for axis,_ in pairs(swizflip) do
+		vec[axis] = -vec[axis];
+	end
+
+	return vec;
+end
+
+local function swiz_pos(pos, starts, start, swiz, swizsiz, swizflip)
+	local swizpos = {
+		x=pos[swiz.x]-starts[swiz.x],
+		y=pos[swiz.y]-starts[swiz.y],
+		z=pos[swiz.z]-starts[swiz.z]
+	};
+
+	-- Axes which shouldn't be flipped
+	-- are set to nil, and not iterated
+	for axis,_ in pairs(swizflip) do
+		swizpos[axis] = swizsiz[axis]-swizpos[axis];
+	end
+
+	for axis,val in pairs(swizpos) do
+		swizpos[axis] = start[axis] + val;
+	end
+
+	return swizpos;
+end
+
 -- TODO: merge with selmv?
 local function do_selswiz(pid, cmd, swiz, swizflip)
 	require_sel(pid);
@@ -709,21 +743,7 @@ local function do_selswiz(pid, cmd, swiz, swizflip)
 				local pos = {x=x, y=y, z=z};
 				if (is_solid(pos)) then
 					local clr = get_map_block_color(pos);
-					local swizpos = {
-						x=pos[swiz.x]-starts[swiz.x],
-						y=pos[swiz.y]-starts[swiz.y],
-						z=pos[swiz.z]-starts[swiz.z]
-					};
-
-					-- Axes which shouldn't be flipped
-					-- are set to nil, and not iterated
-					for axis,_ in pairs(swizflip) do
-						swizpos[axis] = swizsiz[axis]-swizpos[axis];
-					end
-
-					for axis,val in pairs(swizpos) do
-						swizpos[axis] = start[axis] + val;
-					end
+					local swizpos = swiz_pos(pos, starts, start, swiz, swizsiz, swizflip);
 
 					area[swizpos.z+swizpos.x*64+swizpos.y*512*64] = bit.bor(clr.r, bit.bor(bit.lshift(clr.g, 8), bit.lshift(clr.b, 16)));
 				end
@@ -753,7 +773,7 @@ local function do_selswiz(pid, cmd, swiz, swizflip)
 	-- Move players standing on selection (TODOTODO)
 	for i in piditer(PID_BROADCAST) do
 		-- TODO: conform to selshape?
-		if (false and is_alive(i) and not is_airborne(i)) then
+		if (is_alive(i) and not is_airborne(i)) then
 			local pos = get_position(i);
 			if (
 				pos.x >= x1 - 0.45 and
@@ -764,7 +784,8 @@ local function do_selswiz(pid, cmd, swiz, swizflip)
 				pos.z >= z1 - 2.3 and
 				pos.z < z2 - 0.3
 			) then
-				set_position(i, {x=pos.x+off.x, y=pos.y+off.y, z=pos.z+off.z});
+				set_position(i, swiz_pos(pos, starts, start, swiz, {x=swizsiz.x+1, y=swizsiz.y+1, z=swizsiz.z+1}, swizflip));
+				set_orientation(i, swiz_vec(get_orientation(i), swiz, swizflip));
 			end
 		end
 	end

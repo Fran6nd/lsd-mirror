@@ -1,6 +1,7 @@
 -- sel.lua -- Perform bulk place/destroy operations on selections
 require "lib_l10n";
 require "lib_bulk_destroy";
+local bit = require("bit");
 local mod = init_mod();
 local sel = pid_joined_table(nil);
 local sel_shape = pid_joined_table("cube");
@@ -41,17 +42,24 @@ local sel_unended_msg = {
 
 -- TODO: automatically determine shapes
 local invalid_shape_msg = {
-	en="shape should be one of the following: cube, box, sphere"
+	en="shape should be one of the following: cube, box, sphere, cylinderx, cylindery, cylinderz"
 };
 
 local invalid_dir_msg = {
 	en="direction should be one of the following: x, -x, +x, y, -y, +y, z, -z, +z"
 };
 
+local cast_not_hit_msg = {
+	en="Couldn't find any block in that cast. You're certain you're not looking at the sky?"
+};
+
 local shapes = {
 	cube=true,
 	box=true,
-	sphere=true
+	sphere=true,
+	cylinderx=true,
+	cylindery=true,
+	cylinderz=true
 };
 
 local function in_shape(pos, start, endp, shape)
@@ -65,7 +73,7 @@ local function in_shape(pos, start, endp, shape)
 		       pos.z == start.z or pos.z == endp.z;
 	end
 
-	if (shape == "sphere") then
+	if (shape == "sphere" or string.find(shape, "^cylinder"))then
 		local radius = {
 			x=(endp.x-start.x)/2,
 			y=(endp.y-start.y)/2,
@@ -84,7 +92,15 @@ local function in_shape(pos, start, endp, shape)
 			z=pos.z-ctr.z,
 		};
 
-		return (diff.x*diff.x) / (radius.x*radius.x) + (diff.y*diff.y) / (radius.y*radius.y) + (diff.z*diff.z) / (radius.z*radius.z) <= 1;
+		if (shape == "sphere") then
+			return (diff.x*diff.x) / (radius.x*radius.x) + (diff.y*diff.y) / (radius.y*radius.y) + (diff.z*diff.z) / (radius.z*radius.z) <= 1;
+		elseif (shape == "cylinderx") then
+			return (diff.y*diff.y) / (radius.y*radius.y) + (diff.z*diff.z) / (radius.z*radius.z) <= 1;
+		elseif (shape == "cylindery") then
+			return (diff.x*diff.x) / (radius.x*radius.x) + (diff.z*diff.z) / (radius.z*radius.z) <= 1;
+		else
+			return (diff.x*diff.x) / (radius.x*radius.x) + (diff.y*diff.y) / (radius.y*radius.y) <= 1;
+		end
 	end
 end
 
@@ -99,7 +115,7 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="selstart", caps="sel", usage="[x y z]", desc="Set the start of a selection."};
+local cmd = {name={"selstart", "sel1"}, caps="sel", usage="[x y z]", desc="Set the start of a selection."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0 or #argv == 3);
 
@@ -120,7 +136,41 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="selend", caps="sel", usage="[x y z]", desc="Set the end of a selection."};
+local cmd = {name="sel1c", caps="sel", desc="Raycast the start of a selection."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 0);
+
+	-- TODO: only not dead?
+	-- TODO: make cast prettier?
+	local pos = get_position(pid);
+	local ori = get_orientation(pid);
+	local castpos = raycast(pos, {x=pos.x+ori.x*512, y=pos.y+ori.y*512, z=pos.z+ori.z*512}, false);
+
+	if (castpos == nil) then
+		l10n_send_chat(pid, cast_not_hit_msg);
+		return;
+	end
+
+	sel[pid] = nil;
+	sel_start[pid] = castpos;
+	l10n_send_chat(pid, sel_start_done_msg, sel_start[pid]);
+end
+register_command(cmd);
+
+local cmd = {name="sel1h", caps="sel", desc="Set the start of a selection to your head's position."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 0);
+
+	local pos = get_position(pid);
+	pos.z = math.max(0, pos.z);
+
+	sel[pid] = nil;
+	sel_start[pid] = {x=math.floor(pos.x), y=math.floor(pos.y), z=math.floor(pos.z)};
+	l10n_send_chat(pid, sel_start_done_msg, sel_start[pid]);
+end
+register_command(cmd);
+
+local cmd = {name={"selend", "sel2"}, caps="sel", usage="[x y z]", desc="Set the end of a selection."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0 or #argv == 3);
 
@@ -140,6 +190,40 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
+local cmd = {name="sel2c", caps="sel", desc="Raycast the end of a selection."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 0);
+
+	-- TODO: dedup sel1c/sel2c?
+	local pos = get_position(pid);
+	local ori = get_orientation(pid);
+	local castpos = raycast(pos, {x=pos.x+ori.x*512, y=pos.y+ori.y*512, z=pos.z+ori.z*512}, false);
+
+	if (castpos == nil) then
+		l10n_send_chat(pid, cast_not_hit_msg);
+		return;
+	end
+
+	sel[pid] = nil;
+	sel_end[pid] = castpos;
+	l10n_send_chat(pid, sel_end_done_msg, sel_end[pid]);
+end
+register_command(cmd);
+
+local cmd = {name="sel2h", caps="sel", desc="Set the end of a selection to your head's position."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 0);
+
+	local pos = get_position(pid);
+	pos.z = math.max(0, pos.z);
+
+	sel[pid] = nil;
+	sel_end[pid] = {x=math.floor(pos.x), y=math.floor(pos.y), z=math.floor(pos.z)};
+	l10n_send_chat(pid, sel_end_done_msg, sel_end[pid]);
+end
+register_command(cmd);
+
+-- TODO: unsel -> selstop?
 local cmd = {name="unsel", caps="sel", desc="Stop a selection."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
@@ -150,7 +234,7 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="selshape", caps="sel", usage="shape", desc="Change selection shape."};
+local cmd = {name={"selshape", "selsh"}, caps="sel", usage="shape", desc="Change selection shape."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 
@@ -276,12 +360,7 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
--- TODO: integrate bulk operations into core, and do it smartly
-local cmd = {name="selrm", caps="sel", desc="Destroy a box."};
-function cmd.func(pid, argv)
-	cmd_assert(pid, cmd, #argv == 0);
-	require_sel(pid);
-
+local function do_rm(pid)
 	-- TODO: range iter for single points, this is a mess
 	if (sel_shape[pid] == "cube") then
 		-- Destroy perimeter
@@ -334,6 +413,15 @@ function cmd.func(pid, argv)
 	end
 	bdestroy_finish();
 end
+
+-- TODO: integrate bulk operations into core, and do it smartly
+local cmd = {name="selrm", caps="sel", desc="Destroy a box."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 0);
+	require_sel(pid);
+
+	do_rm(pid);
+end
 register_command(cmd);
 
 -- TODO: handle voxlap
@@ -370,16 +458,34 @@ local dirmap = {
 	[ "z"]={x= 0, y= 0, z= 1},
 };
 
-local function do_selcpy(cmd, pid, argv)
-	cmd_assert(pid, cmd, #argv == 2);
+local function get_player_dir(pid)
+	local ori = get_orientation(pid);
 
-	local dir = dirmap[argv[1]];
-	if (dir == nil) then
-		l10n_send_chat(pid, invalid_dir_msg);
-		return;
+	if (math.abs(ori.x) >= math.abs(ori.y) and math.abs(ori.x) >= math.abs(ori.z)) then
+		return {x=ori.x<0 and -1 or 1, y=0, z=0};
+	elseif (math.abs(ori.y) >= math.abs(ori.z)) then
+		return {x=0, y=ori.y<0 and -1 or 1, z=0};
 	end
 
-	local times = get_arg_num_finite("times", pid, cmd, argv[2]),
+	return {x=0, y=0, z=ori.z<0 and -1 or 1};
+end
+
+local function do_selcpy(cmd, pid, argv, is_solid, get_map_block_color, forceoff)
+	cmd_assert(pid, cmd, #argv <= 2);
+
+	-- TODO: use -3 z instead of 3 -z?
+	local dir;
+	local times = get_arg_num_finite_opt("times", pid, cmd, argv[1]) or 1;
+
+	if (#argv == 2) then
+		dir = dirmap[argv[2]];
+		if (dir == nil) then
+			l10n_send_chat(pid, invalid_dir_msg);
+			return;
+		end
+	else
+		dir = get_player_dir(pid);
+	end
 
 	require_sel(pid);
 
@@ -395,11 +501,15 @@ local function do_selcpy(cmd, pid, argv)
 			z=(z2-z1+1)*dir.z
 		}
 
-		off = {
-			x=offpremult.x*i,
-			y=offpremult.y*i,
-			z=offpremult.z*i
-		};
+		if (forceoff == nil) then
+			off = {
+				x=offpremult.x*i,
+				y=offpremult.y*i,
+				z=offpremult.z*i
+			};
+		else
+			off = forceoff;
+		end
 
 		if (x1 + off.x < 0 or
 		    x2 + off.x >= 512 or
@@ -422,11 +532,27 @@ local function do_selcpy(cmd, pid, argv)
 					local newpos = {x=x+off.x, y=y+off.y, z=z+off.z};
 
 					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid])) then
+						if (not is_solid(pos)) then
+							-- TODO: make destroy optional
+							-- TODO: make sure this doesn't allow gravity to be "helpful"
+							-- TODO: bring gravitied blocks back from the dead if you have to
+							block_action(newpos, 1, PID_COLOR_ANONYMOUS);
+						end
+					end
+				end
+			end
+		end
+
+		for z=z1,z2 do
+			for y=y1,y2 do
+				for x=x1,x2 do
+					local pos = {x=x, y=y, z=z};
+					local newpos = {x=x+off.x, y=y+off.y, z=z+off.z};
+
+					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid])) then
 						if (is_solid(pos)) then
 							set_block_color(PID_COLOR_ANONYMOUS, get_map_block_color(pos));
 							block_action(newpos, 0, PID_COLOR_ANONYMOUS);
-						else
-							block_action(newpos, 1, PID_COLOR_ANONYMOUS);
 						end
 					end
 				end
@@ -434,25 +560,131 @@ local function do_selcpy(cmd, pid, argv)
 		end
 	end
 
-	-- TODO: use z -3 instead of -z 3?
-	local isnegative = string.sub(argv[1], 1, 1) == '-';
-	if (isnegative) then
-		return {x=x1+off.x, y=y1+off.y, z=z1+off.z}, {x=x2, y=y2, z=z2};
-	end
+	local min = {
+		x=math.min(x1+off.x, x1),
+		y=math.min(y1+off.y, y1),
+		z=math.min(z1+off.z, z1)
+	}
 
-	return {x=x1, y=y1, z=z1}, {x=x2+off.x, y=y2+off.y, z=z2+off.z};
+	local max = {
+		x=math.max(x2, x2+off.x),
+		y=math.max(y2, y2+off.y),
+		z=math.max(z2, z2+off.z)
+	}
+
+	return min, max;
 end
 
 -- TODO: /reselcpy to select whatever was just copied
-local cmd = {name="selcpy", caps="sel", usage="direction times", desc="Duplicate the selection in a direction a certain number of times."};
+local cmd = {name="selcpy", caps="sel", usage="[times] [direction]", desc="Duplicate the selection in a direction a certain number of times."};
 function cmd.func(pid, argv)
-	do_selcpy(cmd, pid, argv);
+	do_selcpy(cmd, pid, argv, is_solid, get_map_block_color);
 end
 register_command(cmd);
 
-local cmd = {name="reselcpy", caps="sel", usage="direction times", desc="Duplicate the selection in a direction a certain number of times, then select the duplicated area."};
+local cmd = {name="reselcpy", caps="sel", usage="[times] [direction]", desc="Duplicate the selection in a direction a certain number of times, then select the duplicated area."};
 function cmd.func(pid, argv)
-	sel_start[pid], sel_end[pid] = do_selcpy(cmd, pid, argv);
+	sel_start[pid], sel_end[pid] = do_selcpy(cmd, pid, argv, is_solid, get_map_block_color);
+end
+register_command(cmd);
+
+local function do_selmv(pid, cmd, off)
+	require_sel(pid);
+
+	local area = {};
+	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
+		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
+			for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
+				local pos = {x=x, y=y, z=z};
+				if (is_solid(pos)) then
+					local clr = get_map_block_color(pos);
+					area[z+x*64+y*512*64] = bit.bor(clr.r, bit.bor(bit.lshift(clr.g, 8), bit.lshift(clr.b, 16)));
+				end
+			end
+		end
+	end
+
+	do_rm(pid);
+
+	-- TODO: bitmask api. . ???
+	-- TODO: selclip/paste/save/load
+	-- TODO: way to freeze arbitrary blocks in air?
+	local function mv_is_solid(pos)
+		return area[pos.z+pos.x*64+pos.y*512*64] ~= nil;
+	end
+
+	local function mv_get_map_block_color(pos)
+		local ent = area[pos.z+pos.x*64+pos.y*512*64];
+		return {r=bit.band(ent, 255), g=bit.band(bit.rshift(ent, 8), 255), b=bit.rshift(ent, 16)};
+	end
+
+	do_selcpy(cmd, pid, {1}, mv_is_solid, mv_get_map_block_color, off);
+
+	-- Move players standing on selection
+	local x1, x2 = order(sel_start[pid].x, sel_end[pid].x);
+	local y1, y2 = order(sel_start[pid].y, sel_end[pid].y);
+	local z1, z2 = order(sel_start[pid].z, sel_end[pid].z);
+
+	for i in piditer(PID_BROADCAST) do
+		-- TODO: conform to selshape?
+		if (is_alive(i) and not is_airborne(i)) then
+			local pos = get_position(i);
+			if (
+				pos.x >= x1 - 0.45 and
+				pos.x < x2 + 1.45 and
+				pos.y >= y1 - 0.45 and
+				pos.y < y2 + 1.45 and
+
+				pos.z >= z1 - 2.3 and
+				pos.z < z2 - 0.3
+			) then
+				set_position(i, {x=pos.x+off.x, y=pos.y+off.y, z=pos.z+off.z});
+			end
+		end
+	end
+
+	sel_start[pid] = {
+		x=sel_start[pid].x + off.x,
+		y=sel_start[pid].y + off.y,
+		z=sel_start[pid].z + off.z
+	};
+
+	sel_end[pid] = {
+		x=sel_end[pid].x + off.x,
+		y=sel_end[pid].y + off.y,
+		z=sel_end[pid].z + off.z
+	};
+end
+
+local cmd = {name="selmv", caps="sel", usage="x y z", desc="Move the selection, then select the moved area."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 3);
+
+	-- TODO: modulo/validate??? what about z?
+	local off = {
+		x=math.floor(get_arg_num_finite("x", pid, cmd, argv[1])),
+		y=math.floor(get_arg_num_finite("y", pid, cmd, argv[2])),
+		z=math.floor(get_arg_num_finite("z", pid, cmd, argv[3]))
+	};
+
+	do_selmv(pid, cmd, off);
+end
+register_command(cmd);
+
+local cmd = {name="selmvd", caps="sel", usage="dist", desc="Move the selection dist blocks in the direction you're facing, then select the moved area."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 1);
+	local dist = get_arg_num_finite("dist", pid, cmd, argv[1]);
+
+	-- TODO: modulo/validate??? what about z?
+	local off = get_player_dir(pid);
+	off = {
+		x=off.x*dist,
+		y=off.y*dist,
+		z=off.z*dist
+	};
+
+	do_selmv(pid, cmd, off);
 end
 register_command(cmd);
 

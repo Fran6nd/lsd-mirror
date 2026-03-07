@@ -575,7 +575,6 @@ local function do_selcpy(cmd, pid, argv, is_solid, get_map_block_color, forceoff
 	return min, max;
 end
 
--- TODO: /reselcpy to select whatever was just copied
 local cmd = {name="selcpy", caps="sel", usage="[times] [direction]", desc="Duplicate the selection in a direction a certain number of times."};
 function cmd.func(pid, argv)
 	do_selcpy(cmd, pid, argv, is_solid, get_map_block_color);
@@ -676,7 +675,6 @@ function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 	local dist = get_arg_num_finite("dist", pid, cmd, argv[1]);
 
-	-- TODO: modulo/validate??? what about z?
 	local off = get_player_dir(pid);
 	off = {
 		x=off.x*dist,

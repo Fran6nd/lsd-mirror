@@ -46,7 +46,11 @@ local invalid_shape_msg = {
 };
 
 local invalid_dir_msg = {
-	en="direction should be one of the following: x, -x, +x, y, -y, +y, z, -z, +z"
+	en="%(arg) should be one of the following: x, -x, +x, y, -y, +y, z, -z, +z"
+};
+
+local missing_component_msg = {
+	en="Swizzle must map all of x, y and z"
 };
 
 local cast_not_hit_msg = {
@@ -480,7 +484,7 @@ local function do_selcpy(cmd, pid, argv, is_solid, get_map_block_color, forceoff
 	if (#argv == 2) then
 		dir = dirmap[argv[2]];
 		if (dir == nil) then
-			l10n_send_chat(pid, invalid_dir_msg);
+			l10n_send_chat(pid, invalid_dir_msg, {arg="direction"});
 			return;
 		end
 	else
@@ -642,6 +646,8 @@ local function do_selmv(pid, cmd, off)
 		end
 	end
 
+	-- TODO: wouldn't it be "easier" to set off to 0 and just
+	-- use pre-off'd sel_start/end?
 	sel_start[pid] = {
 		x=sel_start[pid].x + off.x,
 		y=sel_start[pid].y + off.y,
@@ -653,6 +659,115 @@ local function do_selmv(pid, cmd, off)
 		y=sel_end[pid].y + off.y,
 		z=sel_end[pid].z + off.z
 	};
+end
+
+-- TODO: merge with selmv?
+local function do_selswiz(pid, cmd, swiz, swizflip)
+	require_sel(pid);
+
+	local x1, x2 = order(sel_start[pid].x, sel_end[pid].x);
+	local y1, y2 = order(sel_start[pid].y, sel_end[pid].y);
+	local z1, z2 = order(sel_start[pid].z, sel_end[pid].z);
+
+	-- Technically off by one
+	local starts = {x=x1, y=y1, z=z1};
+	local ends = {x=x2, y=y2, z=z2};
+	local selsiz = {
+		x=x2-x1,
+		y=y2-y1,
+		z=z2-z1
+	};
+
+	local swizsiz = {
+		x=ends[swiz.x]-starts[swiz.x],
+		y=ends[swiz.y]-starts[swiz.y],
+		z=ends[swiz.z]-starts[swiz.z]
+	};
+
+	local selctr = {
+		x=x2-selsiz.x/2,
+		y=y2-selsiz.y/2,
+		z=z2-selsiz.z/2
+	};
+
+	start = {
+		x=math.floor(selctr.x-swizsiz.x/2),
+		y=math.floor(selctr.y-swizsiz.y/2),
+		z=math.floor(selctr.z-swizsiz.z/2)
+	};
+
+	endp = {
+		x=start.x+swizsiz.x,
+		y=start.y+swizsiz.y,
+		z=start.z+swizsiz.z
+	};
+
+	local area = {};
+	for z=z1, z2 do
+		for y=y1, y2 do
+			for x=x1, x2 do
+				local pos = {x=x, y=y, z=z};
+				if (is_solid(pos)) then
+					local clr = get_map_block_color(pos);
+					local swizpos = {
+						x=pos[swiz.x]-starts[swiz.x],
+						y=pos[swiz.y]-starts[swiz.y],
+						z=pos[swiz.z]-starts[swiz.z]
+					};
+
+					-- Axes which shouldn't be flipped
+					-- are set to nil, and not iterated
+					for axis,_ in pairs(swizflip) do
+						swizpos[axis] = swizsiz[axis]-swizpos[axis];
+					end
+
+					for axis,val in pairs(swizpos) do
+						swizpos[axis] = start[axis] + val;
+					end
+
+					area[swizpos.z+swizpos.x*64+swizpos.y*512*64] = bit.bor(clr.r, bit.bor(bit.lshift(clr.g, 8), bit.lshift(clr.b, 16)));
+				end
+			end
+		end
+	end
+
+	do_rm(pid);
+
+	sel_start[pid] = start;
+	sel_end[pid] = endp;
+
+	-- TODO: bitmask api. . ???
+	-- TODO: selclip/paste/save/load
+	-- TODO: way to freeze arbitrary blocks in air?
+	local function mv_is_solid(pos)
+		return area[pos.z+pos.x*64+pos.y*512*64] ~= nil;
+	end
+
+	local function mv_get_map_block_color(pos)
+		local ent = area[pos.z+pos.x*64+pos.y*512*64];
+		return {r=bit.band(ent, 255), g=bit.band(bit.rshift(ent, 8), 255), b=bit.rshift(ent, 16)};
+	end
+
+	do_selcpy(cmd, pid, {1}, mv_is_solid, mv_get_map_block_color, {x=0, y=0, z=0});
+
+	-- Move players standing on selection (TODOTODO)
+	for i in piditer(PID_BROADCAST) do
+		-- TODO: conform to selshape?
+		if (false and is_alive(i) and not is_airborne(i)) then
+			local pos = get_position(i);
+			if (
+				pos.x >= x1 - 0.45 and
+				pos.x < x2 + 1.45 and
+				pos.y >= y1 - 0.45 and
+				pos.y < y2 + 1.45 and
+
+				pos.z >= z1 - 2.3 and
+				pos.z < z2 - 0.3
+			) then
+				set_position(i, {x=pos.x+off.x, y=pos.y+off.y, z=pos.z+off.z});
+			end
+		end
+	end
 end
 
 local cmd = {name="selmv", caps="sel", usage="x y z", desc="Move the selection, then select the moved area."};
@@ -683,6 +798,54 @@ function cmd.func(pid, argv)
 	};
 
 	do_selmv(pid, cmd, off);
+end
+register_command(cmd);
+
+local axismap = {
+	     x="x",      y="y",      z="z",
+	["+x"]="x", ["+y"]="y", ["+z"]="z",
+	["-x"]="x", ["-y"]="y", ["-z"]="z"
+};
+
+local flipmap = {
+	     x=nil,       y=nil,       z=nil,
+	["+x"]=nil,  ["+y"]=nil,  ["+z"]=nil,
+	["-x"]=true, ["-y"]=true, ["-z"]=true
+};
+
+local cmd = {name="selswiz", caps="sel", usage="x y z", desc="Swizzle the dimensions of the selection around to flip and rotate."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 3);
+
+	local swiz = {
+		x=axismap[argv[1]];
+		y=axismap[argv[2]];
+		z=axismap[argv[3]];
+	};
+
+	local swizflip = {
+		x=flipmap[argv[1]];
+		y=flipmap[argv[2]];
+		z=flipmap[argv[3]];
+	};
+
+	local found = {};
+	for _,axis in ipairs{"x", "y", "z"} do
+		if (swiz[axis] == nil) then
+			l10n_send_chat(pid, invalid_dir_msg, {arg=axis});
+			return;
+		end
+		found[swiz[axis]] = true;
+	end
+
+	for _,axis in ipairs{"x", "y", "z"} do
+		if (found[axis] == nil) then
+			l10n_send_chat(pid, missing_component_msg);
+			return;
+		end
+	end
+
+	do_selswiz(pid, cmd, swiz, swizflip);
 end
 register_command(cmd);
 

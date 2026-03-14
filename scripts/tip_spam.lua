@@ -1,5 +1,5 @@
 -- tip_spam.lua -- Occasionally spam all connected players with useless tips
-local mod = {after={}};
+local mod = init_mod();
 local next_tip_spam = nil;
 local tip_spam_idx = 1;
 -- TODO: randomly pick tips? (maybe with that shuffle method tetris uses)
@@ -23,7 +23,13 @@ function mod.after.tick()
 	end
 
 	if (get_time() >= next_tip_spam) then
-		server_msg(PID_BROADCAST, tips[tip_spam_idx]);
+		local tip = tips[tip_spam_idx];
+
+		if (type(tip) == "function") then
+			server_msg(PID_BROADCAST, tip());
+		else
+			server_msg(PID_BROADCAST, tip);
+		end
 
 		tip_spam_idx = tip_spam_idx + 1;
 		if (tip_spam_idx > #tips) then

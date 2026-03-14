@@ -495,7 +495,7 @@ static void detonate_grenade(size_t index, struct State *st) {
 	ivec3 ipos;
 	struct Grenade nade = st->globals.grenades[index];
 
-	remove_grenade(index, st);
+	st->f.remove_grenade(index, st);
 
 	/* TODO: what if player leaves? */
 	/* Switching team and nading has potential to be annoying. */
@@ -1302,6 +1302,7 @@ static void set_funcs(struct State *st) {
 	st->f.set_hp = set_hp;
 	st->f.set_hp_directional = set_hp_directional;
 	st->f.server_msg = server_msg;
+	st->f.remove_grenade = remove_grenade;
 	st->f.detonate_grenade = detonate_grenade;
 	st->f.set_block_color = set_block_color;
 	st->f.set_jump = set_jump;

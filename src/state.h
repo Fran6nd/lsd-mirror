@@ -213,6 +213,7 @@ struct Functions {
 	void (*block_line)(ivec3 start, ivec3 end, nplid from, struct State *st);
 	void (*set_fog)(color color, struct State *st);
 	void (*tick_player_physics)(bplid pid, float timeDelta, struct State *st);
+	void (*remove_grenade)(size_t index, struct State *st);
 	void (*detonate_grenade)(size_t index, struct State *st);
 	void (*boot_players_to_limbo)(struct State *st);
 	size_t (*register_grenade)(bplid pid, teamid team, fvec3 pos, fvec3 vel, clk fuse, struct State *st);

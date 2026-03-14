@@ -4,11 +4,12 @@ require "lib_bulk_destroy";
 local bit = require("bit");
 local mod = init_mod();
 
-local sel       = pid_joined_table(nil);
-local sel_start = pid_joined_table(nil);
-local sel_end   = pid_joined_table(nil);
-local sel_shape = pid_joined_table("cube");
-local sel_noise = pid_joined_table(0);
+local sel         = pid_joined_table(nil);
+local sel_start   = pid_joined_table(nil);
+local sel_end     = pid_joined_table(nil);
+local sel_shape   = pid_joined_table("cube");
+local sel_shapefn = pid_joined_table(function() return function() return bit.band(bit.bxor(bit.bxor(off.x, off.y), off.z), 1) == 1; end; end);
+local sel_noise   = pid_joined_table(0);
 
 local sel_begin_msg = {
 	en="Beginning selection."
@@ -44,7 +45,7 @@ local sel_unended_msg = {
 
 -- TODO: automatically determine shapes
 local invalid_shape_msg = {
-	en="shape should be one of the following: cube, box, sphere, cylinderx, cylindery, cylinderz"
+	en="shape should be one of the following: cube, box, sphere, cylinderx, cylindery, cylinderz, fn"
 };
 
 local invalid_dir_msg = {
@@ -65,10 +66,11 @@ local shapes = {
 	sphere=true,
 	cylinderx=true,
 	cylindery=true,
-	cylinderz=true
+	cylinderz=true,
+	fn=true
 };
 
-local function in_shape(pos, start, endp, shape)
+local function in_shape(pos, start, endp, shape, pid)
 	if (shape == "cube") then
 		return true;
 	end
@@ -108,6 +110,69 @@ local function in_shape(pos, start, endp, shape)
 		else
 			return (diff.x*diff.x) / (radius.x*radius.x) + (diff.y*diff.y) / (radius.y*radius.y) <= 1;
 		end
+	end
+
+	if (shape == "fn") then
+		local env = {
+			x=pos.x-start.x,
+			y=pos.y-start.y,
+			z=pos.z-start.z,
+			size={x=endp.x-start.x+1, y=endp.y-start.y+1, z=endp.z-start.z+1},
+			bit={
+				tobit=bit.tobit,
+				tohex=bit.tohex,
+				bnot=bit.bnot,
+				band=bit.band,
+				bor=bit.bor,
+				bxor=bit.bxor,
+				lshift=bit.lshift,
+				rshift=bit.rshift,
+				arshift=bit.arshift,
+				rol=bit.rol,
+				ror=bit.ror,
+				bswap=bit.bswap
+			},
+			math={
+				abs=math.abs,
+				acos=math.acos,
+				asin=math.asin,
+				atan=math.atan,
+				atan2=math.atan2,
+				ceil=math.ceil,
+				cos=math.cos,
+				cosh=math.cosh,
+				deg=math.deg,
+				exp=math.exp,
+				floor=math.floor,
+				fmod=math.fmod,
+				frexp=math.frexp,
+				huge=math.huge,
+				ldexp=math.ldexp,
+				log=math.log,
+				log10=math.log10,
+				max=math.max,
+				min=math.min,
+				modf=math.modf,
+				pi=math.pi,
+				pow=math.pow,
+				rad=math.rad,
+				random=math.random,
+				sin=math.sin,
+				sinh=math.sinh,
+				sqrt=math.sqrt,
+				tan=math.tan,
+				tanh=math.tanh
+			}
+		};
+		setfenv(sel_shapefn[pid], env);
+
+		local status, err = pcall(sel_shapefn[pid]);
+		if (status == false) then
+			server_msg(pid, "pcall: "..tostring(err));
+			return false;
+		end
+
+		return not not err;
 	end
 end
 
@@ -255,6 +320,20 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
+local cmd = {name={"selshapefn", "selshfn"}, caps="sel", usage="lua", desc="Change \"fn\" selection shape. Does not parse args."};
+function cmd.func(pid, argv, msg)
+	-- Sure hope nobody runs this without LuaJIT.
+	local func, err = loadstring(string.sub(msg, 6, 6) == "a" and string.sub(msg, 11, -1) or string.sub(msg, 8, -1), "t");
+
+	if (func == nil) then
+		server_msg(pid, "loadstring: "..tostring(err));
+		return;
+	end
+
+	sel_shapefn[pid] = func;
+end
+register_command(cmd);
+
 local cmd = {name={"selnoise", "selns"}, caps="sel", usage="noise", desc="Change selection noise."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
@@ -301,7 +380,7 @@ function cmd.func(pid, argv)
 		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
 			for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
 				local pos = {x=x, y=y, z=z};
-				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid])) then
+				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
 					if (sel_noise[pid] ~= 0) then
 						set_noised_color(pid, get_block_color(pid));
 					end
@@ -382,7 +461,7 @@ function cmd.func(pid, argv)
 			for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
 				for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
 					local pos = {x=x, y=y, z=z};
-					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid]) and not is_solid(pos)) then
+					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid) and not is_solid(pos)) then
 						if (sel_noise[pid] ~= 0) then
 							set_noised_color(pid, get_block_color(pid));
 						end
@@ -440,7 +519,7 @@ local function do_rm(pid)
 		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
 			for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
 				local pos = {x=x, y=y, z=z};
-				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid])) then
+				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
 					bdestroy_block_action(pos, 1);
 				end
 			end
@@ -472,7 +551,7 @@ function cmd.func(pid, argv)
 		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
 			for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
 				local pos = {x=x, y=y, z=z};
-				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid]) and is_solid(pos)) then
+				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid) and is_solid(pos)) then
 					if (sel_noise[pid] ~= 0) then
 						set_noised_color(pid, get_block_color(pid));
 					end
@@ -572,7 +651,7 @@ local function do_selcpy(cmd, pid, argv, is_solid, get_map_block_color, forceoff
 					local pos = {x=x, y=y, z=z};
 					local newpos = {x=x+off.x, y=y+off.y, z=z+off.z};
 
-					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid])) then
+					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
 						if (not is_solid(pos)) then
 							-- TODO: make destroy optional
 							-- TODO: make sure this doesn't allow gravity to be "helpful"
@@ -590,7 +669,7 @@ local function do_selcpy(cmd, pid, argv, is_solid, get_map_block_color, forceoff
 					local pos = {x=x, y=y, z=z};
 					local newpos = {x=x+off.x, y=y+off.y, z=z+off.z};
 
-					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid])) then
+					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
 						if (is_solid(pos)) then
 							set_noised_color(pid, get_map_block_color(pos));
 							block_action(newpos, 0, PID_COLOR_ANONYMOUS);

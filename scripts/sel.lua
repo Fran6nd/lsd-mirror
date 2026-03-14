@@ -8,7 +8,7 @@ local sel         = pid_joined_table(nil);
 local sel_start   = pid_joined_table(nil);
 local sel_end     = pid_joined_table(nil);
 local sel_shape   = pid_joined_table("cube");
-local sel_shapefn = pid_joined_table(function() return function() return bit.band(bit.bxor(bit.bxor(off.x, off.y), off.z), 1) == 1; end; end);
+local sel_shapefn = pid_joined_table(function() return function() return bit.band(bit.bxor(bit.bxor(x, y), z), 1) == 1; end; end);
 local sel_noise   = pid_joined_table(0);
 
 local sel_begin_msg = {
@@ -385,6 +385,34 @@ function cmd.func(pid, argv)
 						set_noised_color(pid, get_block_color(pid));
 					end
 					block_action(pos, 0, PID_COLOR_ANONYMOUS);
+				end
+			end
+		end
+	end
+end
+register_command(cmd);
+
+local cmd = {name={"selclobber", "selcb"}, caps="sel", desc="Clobber over everything in your selection to match the current shape."};
+function cmd.func(pid, argv)
+	cmd_assert(pid, cmd, #argv == 0);
+	require_sel(pid);
+
+	-- TODO: remove and just use the per-block set_color?
+	if (sel_noise[pid] == 0) then
+		set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
+	end
+
+	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
+		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
+			for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
+				local pos = {x=x, y=y, z=z};
+				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
+					if (sel_noise[pid] ~= 0) then
+						set_noised_color(pid, get_block_color(pid));
+					end
+					block_action(pos, 0, PID_COLOR_ANONYMOUS);
+				else
+					block_action(pos, 1, PID_COLOR_ANONYMOUS);
 				end
 			end
 		end

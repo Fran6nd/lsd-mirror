@@ -4,6 +4,10 @@ local mod = {};
 -- TODO: do we really want to clear all the commands on load?
 commands = {};
 
+-- Set to false by default by that pyspades binding
+getcfg("commands_hook_chat", true);
+getcfg("commands_register_hook", nil);
+
 function register_command(cmd)
 	if (type(cmd.name) == "table") then
 		for _, x in ipairs(cmd.name) do
@@ -11,6 +15,9 @@ function register_command(cmd)
 		end
 	else
 		commands[cmd.name] = cmd;
+	end
+	if (commands_register_hook ~= nil) then
+		commands_register_hook(cmd);
 	end
 end
 
@@ -312,6 +319,7 @@ function send_usage(pid, cmd)
 	server_msg(pid, name);
 end
 
+if (commands_hook_chat) then
 function mod.on_chat(pid, msg, type)
 	if (string.sub(msg, 1, 1) == "/") then
 		handle_command(pid, string.sub(msg, 2, -1));
@@ -319,6 +327,7 @@ function mod.on_chat(pid, msg, type)
 	end
 
 	next_call("on_chat", mod.on_chat)(pid, msg, type);
+end
 end
 
 return mod;

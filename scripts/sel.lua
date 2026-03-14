@@ -80,6 +80,7 @@ local function in_shape(pos, start, endp, shape)
 	end
 
 	if (shape == "sphere" or string.find(shape, "^cylinder"))then
+		-- TODO: fix sphere-on-a-wall not doing anything
 		local radius = {
 			x=(endp.x-start.x)/2,
 			y=(endp.y-start.y)/2,
@@ -245,6 +246,7 @@ function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 
 	if (shapes[argv[1]] == nil) then
+		send_usage(pid, cmd);
 		l10n_send_chat(pid, invalid_shape_msg);
 		return;
 	end
@@ -518,6 +520,7 @@ local function do_selcpy(cmd, pid, argv, is_solid, get_map_block_color, forceoff
 	if (#argv == 2) then
 		dir = dirmap[argv[2]];
 		if (dir == nil) then
+			send_usage(pid, cmd);
 			l10n_send_chat(pid, invalid_dir_msg, {arg="direction"});
 			return;
 		end
@@ -887,6 +890,7 @@ function cmd.func(pid, argv)
 	local found = {};
 	for _,axis in ipairs{"x", "y", "z"} do
 		if (swiz[axis] == nil) then
+			send_usage(pid, cmd);
 			l10n_send_chat(pid, invalid_dir_msg, {arg=axis});
 			return;
 		end

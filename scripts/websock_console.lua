@@ -51,7 +51,7 @@ local page = [[
 <textarea readonly id=stderr></textarea>
 <form id=input>
 <label for=stdin>Enter a command:</label>
-<input placeholder="cmds 0" id=stdin>
+<input autofocus placeholder="cmds 0" id=stdin>
 </form>
 <script>
 "use strict";

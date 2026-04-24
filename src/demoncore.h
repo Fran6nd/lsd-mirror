@@ -2,9 +2,10 @@
 #define PYPVX_DEMONCORE_H
 
 #include <stddef.h>
-#include "protocol.h"
-#include "bitmask.h"
 #include <stdint.h>
+
+#include "bitmask.h"
+#include "protocol.h"
 #include "state.h"
 
 /* TODO: if i throw a grenade on bubble tower blue team and change to red, does it destroy blue team blocks? */

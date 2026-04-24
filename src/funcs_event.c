@@ -23,7 +23,7 @@ extern const clk fireTime[3];
 
 static void on_reload(plid pid, struct State *st) {
 	st->f.send_reload(PID_BROADCAST_EXCEPT(pid), 255, 255, pid, st);
-	st->p[pid].reloadtime = get_time() + reloadTime[st->p[pid].weapon];
+	st->p[pid].reloadtime = get_time() + reloadTime[st->p[pid].gun];
 
 	/* Would've been nice if the packet reported what the
 	 * client thinks its ammo is. . .
@@ -35,7 +35,7 @@ static void on_reload(plid pid, struct State *st) {
 
 static void on_any_connect(plid pid, struct State *st) {
 	if (pid >= MAX_PLAYERS) {
-		LOG("%s:%u (#%u) attempted to connect but server was full", IP(pid), PORT(pid), pid);
+		LOG("%s:%"PRIu16" (#%"PRIiPID") attempted to connect but server was full", IP(pid), PORT(pid), pid);
 		/* TODO: should i disconnect_now or just disconnect? if just disconnect, should i increase the amount of connections? */
 		enet_peer_disconnect_now(st->host->peers+pid, 4);
 	} else
@@ -43,22 +43,17 @@ static void on_any_connect(plid pid, struct State *st) {
 }
 
 static void on_successful_connect(plid pid, struct State *st) {
-	LOG("%s:%u (#%u) connected", IP(pid), PORT(pid), pid);
+	LOG("%s:%"PRIu16" (#%"PRIiPID") connected", IP(pid), PORT(pid), pid);
 
 	st->f.send_map(pid, st);
 }
 
 static void on_disconnect(plid pid, struct State *st) {
-	LOG("%s:%u (#%u) disconnected", IP(pid), PORT(pid), pid);
+	int wasalive = st->p[pid].alive;
+	LOG("%s:%"PRIu16" (#%"PRIiPID") disconnected", IP(pid), PORT(pid), pid);
 
-	if (st->p[pid].joined) {
-		struct PacketPlayerLeft pl;
-
-		pl.packetID = PacketTypePlayerLeft;
-		pl.playerID = pid;
-
-		SEND(PID_BROADCAST, pl);
-	}
+	if (st->p[pid].joined)
+		st->f.send_disconnect(PID_BROADCAST, pid, st);
 
 	st->p[pid].joined = 0;
 	st->p[pid].alive = 0;
@@ -73,7 +68,8 @@ static void on_disconnect(plid pid, struct State *st) {
 	st->p[pid].verMinor = 0;
 	st->p[pid].verPatch = 0;
 
-	st->f.after_player_destroy(pid, st);
+	if (wasalive)
+		st->f.after_player_destroy(pid, st);
 }
 
 /* TODO: CP437, etc. . . */
@@ -90,56 +86,50 @@ static void on_chat(plid pid, const char *msg, unsigned type, struct State *st) 
 	st->f.send_chat(dest, msg, type, pid, st);
 }
 
-static void on_join(plid pid, unsigned team, unsigned weapon, const char *name, struct State *st) {
-	LOG("%s:%u (#%u) joined as \"%s\"", IP(pid), PORT(pid), pid, name);
+static void on_join(plid pid, unsigned team, unsigned gun, const char *name, struct State *st) {
+	LOG("%s:%"PRIu16" (#%"PRIiPID") joined as \"%s\"", IP(pid), PORT(pid), pid, name);
 
 	/* at this point the player is still not alive */
 	st->p[pid].joined = 1;
 	st->p[pid].score = 0;
 	st->p[pid].newteam = team;
-	st->p[pid].newweapon = weapon;
+	st->p[pid].newgun = gun;
 	st->p[pid].wantFingerprint = 0;
 	strcpy(st->p[pid].name, name);
 
-	st->f.spawn_player(pid, st);
+	st->f.spawn_player(pid, st->f.get_spawn_position(pid, st), st);
 }
 
-static void on_switch(plid pid, unsigned team, unsigned weapon, struct State *st) {
+static void on_switch(plid pid, unsigned team, unsigned gun, struct State *st) {
 	/* TODO: should its use as :kill be permitted? */
 	//LOG("%s:%u (#%u) tried to switch or something", IP(pid), PORT(pid), pid);
 
 	st->p[pid].newteam = team;
-	st->p[pid].newweapon = weapon;
+	st->p[pid].newgun = gun;
 
 	/* TODO: should spectators haven't a respawn timer? */
 	/* TODO: how to only switch after spawn? */
 	if (st->p[pid].team == 255) {
 		if (!(st->p[pid].bugMask & BS_BUG_NOSHORTPLAYER) || team != 255) {
-			st->f.spawn_player(pid, st);
+			st->f.spawn_player(pid, st->f.get_spawn_position(pid, st), st);
 			if (st->p[pid].alive)
 				st->f.kill(pid, KillTypeTeamChange, 0, st);
 		}
 	} else if (team != st->p[pid].team && st->p[pid].alive)
 		st->f.kill(pid, KillTypeTeamChange, 0, st);
 	else if (st->p[pid].alive)
-		st->f.kill(pid, KillTypeWeaponChange, 0, st);
+		st->f.kill(pid, KillTypeGunChange, 0, st);
 }
 
-/* TODO: st->f.set_tool */
 static void on_tool_change(plid pid, unsigned tool, struct State *st) {
-	struct PacketSetTool set;
-
 	st->p[pid].tool = tool;
 	st->p[pid].reloadtime = 0;
 
-	set.packetID = PacketTypeSetTool;
-	set.playerID = pid;
-	set.tool = tool;
-
-	SEND(PID_BROADCAST_EXCEPT(pid), set);
+	st->f.send_set_tool(PID_BROADCAST_EXCEPT(pid), tool, pid, st);
 
 	if (st->p[pid].estfiretime == 0 && st->p[pid].tool == ToolTypeGun && st->p[pid].mouseInputs & 1) {
-		st->p[pid].estfiretime = get_time() + fireTime[st->p[pid].weapon];
+		st->p[pid].estfiretime = get_time() + fireTime[st->p[pid].gun];
+		/* TODO: does this actually need to be here? */
 		st->p[pid].reloadtime = 0;
 
 		if (st->p[pid].estMagAmmo != 0)
@@ -169,9 +159,8 @@ static void on_orientation(plid pid, fvec3 ori, struct State *st) {
 	st->p[pid].ori = ori;
 }
 
+/* TODO: that estfiretime-canceling copy/pasted block? */
 static void on_move_input(plid pid, unsigned bitmask, struct State *st) {
-	struct PacketInput in;
-
 	/* TODO: validate uncrouch? handle openspades jump */
 	if ((bitmask & KeyStateTypeCrouch) ^ (st->p[pid].inputs & KeyStateTypeCrouch))
 		change_crouch(bitmask & KeyStateTypeCrouch, st->p+pid, st->globals.map.solidData, 0);
@@ -181,27 +170,17 @@ static void on_move_input(plid pid, unsigned bitmask, struct State *st) {
 
 	st->p[pid].inputs = bitmask;
 
-	in.packetID = PacketTypeInput;
-	in.playerID = pid;
-	in.keyStates = bitmask;
-
-	SEND(PID_BROADCAST_EXCEPT(pid), in);
+	st->f.send_move_input(PID_BROADCAST_EXCEPT(pid), bitmask, pid, st);
 }
 
 static void on_mouse_input(plid pid, unsigned bitmask, struct State *st) {
-	struct PacketWeaponInput in;
-
 	st->p[pid].mouseInputs = bitmask;
 
 	/* TODO: sidestep buggerspades */
-	in.packetID = PacketTypeWeaponInput;
-	in.playerID = pid;
-	in.weaponInput = bitmask;
-
-	SEND(PID_BROADCAST_EXCEPT(pid), in);
+	st->f.send_mouse_input(PID_BROADCAST_EXCEPT(pid), bitmask, pid, st);
 
 	if (st->p[pid].estfiretime == 0 && st->p[pid].tool == ToolTypeGun && st->p[pid].mouseInputs & 1) {
-		st->p[pid].estfiretime = get_time() + fireTime[st->p[pid].weapon];
+		st->p[pid].estfiretime = get_time() + fireTime[st->p[pid].gun];
 		st->p[pid].reloadtime = 0;
 
 		if (st->p[pid].estMagAmmo != 0)
@@ -248,7 +227,7 @@ void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsig
 	if (st->p[pid].idChar == 'B')
 		st->p[pid].bugMask = (uint32_t)-1;
 
-	LOG("%s:%u (#%u) got version: '%c' (%u) v%u.%u.%u", IP(pid), PORT(pid), pid, idChar < 0x20 || idChar >= 0x7f ? '?' : idChar, idChar, major, minor, patch);
+	LOG("%s:%"PRIu16" (#%"PRIiPID") got version: '%c' (%"PRIu8") v%"PRIu8".%"PRIu8".%"PRIu8, IP(pid), PORT(pid), pid, idChar < 0x20 || idChar >= 0x7f ? '?' : idChar, idChar, major, minor, patch);
 }
 
 void set_funcs_event(struct State *st) {

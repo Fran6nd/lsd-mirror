@@ -22,12 +22,12 @@ const char *host_ip(ENetAddress *addr);
 #define SCASEJOINED SCASEANY SBAD(!st->p[pid].joined);
 #define SCASEALIVE SCASEANY SBADSILENT(!st->p[pid].alive);
 #define PCASE case CAT(PacketType, PCKT):
-#define PACKET (*(struct CAT(Packet, PCKT) *)packet->data)
-#define PACKETPTR ((struct CAT(Packet, PCKT) *)packet->data)
-#define SRANGE(min, max) SBAD(packet->dataLength < (min) || packet->dataLength > (max))
-#define SEXACT() SBAD(packet->dataLength != sizeof(struct CAT(Packet, PCKT)))
-#define SNUL() SBAD(packet->data[packet->dataLength-1] != '\0')
-#define SPID() SBAD(packet->data[1] != pid)
+#define PACKET (*(struct CAT(Packet, PCKT) *)data)
+#define PACKETPTR ((struct CAT(Packet, PCKT) *)data)
+#define SRANGE(min, max) SBAD(length < (min) || length > (max))
+#define SEXACT() SBAD(length != sizeof(struct CAT(Packet, PCKT)))
+#define SNUL() SBAD(((uint8_t *)data)[length-1] != '\0')
+#define SPID() SBAD(((uint8_t *)data)[1] != pid)
 
 #define SCLIP(xoff, yoff, zoff, vec) clip_player(vec.x + (xoff), vec.y + (yoff), vec.z + (zoff), st->globals.map.solidData, 0)
 #define SCLIPB(zoff, vec) (SCLIP(-0.44, -0.44, zoff, vec) || SCLIP (-0.44, 0.44, zoff, vec) || SCLIP(0.44, -0.44, zoff, vec) || SCLIP(0.44, 0.44, zoff, vec))
@@ -110,12 +110,12 @@ static int neighboring_voxels(ivec3 pos, struct State *st) {
 	return count;
 }
 
-static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
+static int on_any_packet(plid pid, const void *data, size_t length, struct State *st) {
 	st->crappacketname = "?";
 
-	SBAD(packet->dataLength < 1);
+	SBAD(length < 1);
 
-	switch (packet->data[0]) {
+	switch (((uint8_t *)data)[0]) {
 #define PCKT PositionData
 		SCASEALIVE
 		SEXACT();
@@ -166,7 +166,7 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		/* TODO: keyStates -> keys */
 		return 0;
 #undef PCKT
-#define PCKT WeaponInput
+#define PCKT MouseInput
 		SCASEALIVE
 		SEXACT();
 		SPID();
@@ -193,7 +193,7 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 
 		/* TODO: should a spectator be allowed to switch to spectator? this doesn't match shortplayer (RENAME: something better; SpectatorSwitch?) either */
 		SBAD(PACKET.team > 1 && PACKET.team != 255);
-		SBAD(PACKET.weapon > 2);
+		SBAD(PACKET.gun > 2);
 		SBAD(PACKET.tool != ToolTypeGun);
 		/* OpenSpades puts its score (or some other data; I didn't check) in PACKET.score for some reason despite being ignored */
 		/* blue, green and red are ignored */
@@ -208,7 +208,7 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		SBAD(st->p[pid].team != 255);
 
 		SBAD(PACKET.team > 1);
-		SBAD(PACKET.weapon > 2);
+		SBAD(PACKET.gun > 2);
 
 		return 0;
 #undef PCKT
@@ -223,14 +223,14 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 
 		return 0;
 #undef PCKT
-#define PCKT ChangeWeapon
+#define PCKT ChangeGun
 		SCASEJOINED
 		SEXACT();
 		SPID();
 
 		SBAD(!(st->p[pid].bugMask & BS_BUG_NOSHORTPLAYER) && st->p[pid].team == 255);
 
-		SBAD(PACKET.weapon > 2);
+		SBAD(PACKET.gun > 2);
 
 		return 0;
 #undef PCKT
@@ -384,7 +384,7 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 
 		return 0;
 #undef PCKT
-#define PCKT WeaponReload
+#define PCKT GunReload
 		SCASEALIVE
 		SEXACT();
 		SPID();
@@ -418,7 +418,7 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 		/* TODO: dig into the datagrams if you feel like denying fingerprint sooner than join */
 		SBAD(!st->p[pid].wantFingerprint);
 		SBAD(PACKET.client == 0);
-		SBAD(packet->data[packet->dataLength-1] == '\0');
+		SBAD(((uint8_t *)data)[length-1] == '\0');
 
 		return 0;
 #undef PCKT
@@ -428,9 +428,11 @@ static int on_any_packet(plid pid, ENetPacket *packet, struct State *st) {
 	BADRETURN;
 }
 
-/* TODO: nuke the useless Data from everything, maybe rename WorldUpdate, un-action Kill, annihilate the british, *weapon* reload, . . . */
-static void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
-	switch (packet->data[0]) {
+/* TODO: nuke the useless Data from everything, maybe rename WorldUpdate, un-action Kill, annihilate the british, *gun* reload, . . . */
+static void on_sane_packet(plid pid, const void *data, size_t length, struct State *st) {
+	(void)length;
+
+	switch (((uint8_t *)data)[0]) {
 #undef PCKT
 #define PCKT PositionData
 		PCASE
@@ -452,9 +454,9 @@ static void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
 		st->f.on_move_input(pid, PACKET.keyStates, st);
 		break;
 #undef PCKT
-#define PCKT WeaponInput
+#define PCKT MouseInput
 		PCASE
-		st->f.on_mouse_input(pid, PACKET.weaponInput & 3, st);
+		st->f.on_mouse_input(pid, PACKET.input & 3, st);
 		break;
 #undef PCKT
 #define PCKT ChatMessage
@@ -466,26 +468,26 @@ static void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
 #define PCKT ExistingPlayer
 		PCASE
 		if (st->p[pid].joined)
-			st->f.on_switch(pid, PACKET.team, PACKET.weapon, st);
+			st->f.on_switch(pid, PACKET.team, PACKET.gun, st);
 		else
 			/* TODO: CP437/WIN-1252 */
-			st->f.on_join(pid, PACKET.team, PACKET.team == 255 ? 0 : PACKET.weapon, PACKET.name, st);
+			st->f.on_join(pid, PACKET.team, PACKET.team == 255 ? 0 : PACKET.gun, PACKET.name, st);
 
 		break;
 #undef PCKT
 #define PCKT ShortPlayerData
 		PCASE
-		st->f.on_switch(pid, PACKET.team, PACKET.weapon, st);
+		st->f.on_switch(pid, PACKET.team, PACKET.gun, st);
 		break;
 #undef PCKT
 #define PCKT ChangeTeam
 		PCASE
-		st->f.on_switch(pid, PACKET.team, st->p[pid].newweapon, st);
+		st->f.on_switch(pid, PACKET.team, st->p[pid].newgun, st);
 		break;
 #undef PCKT
-#define PCKT ChangeWeapon
+#define PCKT ChangeGun
 		PCASE
-		st->f.on_switch(pid, st->p[pid].newteam, PACKET.weapon, st);
+		st->f.on_switch(pid, st->p[pid].newteam, PACKET.gun, st);
 		break;
 #undef PCKT
 #define PCKT Hit
@@ -514,7 +516,7 @@ static void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
 		st->f.on_tool_change(pid, PACKET.tool, st);
 		break;
 #undef PCKT
-#define PCKT WeaponReload
+#define PCKT GunReload
 		PCASE
 		st->f.on_reload(pid, st);
 		break;
@@ -532,14 +534,14 @@ static void on_sane_packet(plid pid, ENetPacket *packet, struct State *st) {
 	}
 }
 
-static void on_crap_packet(plid pid, ENetPacket *packet, struct State *st) {
+static void on_crap_packet(plid pid, const void *data, size_t length, struct State *st) {
 	//LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
 	/* TODO: remove need for \r with linenoise */
 	if (!st->crapsilence)
-		LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\r\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
+		LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\r\n\t%s", IP(pid), PORT(pid), pid, length > 0 ? ((uint8_t *)data)[0] : -1, st->crappacketname, (unsigned long)length, st->crapline, st->crapcond);
 
-	if (packet->dataLength > 0)
-	switch (packet->data[0]) {
+	if (length > 0)
+	switch (((uint8_t *)data)[0]) {
 	case PacketTypePositionData:
 		/* OLD TODO: or should it just be a kick -- set to pos or lastagreedpos? */
 		/* NEW TODO: probably not a kick considering this has a chance of being validly triggered (in blocks) */

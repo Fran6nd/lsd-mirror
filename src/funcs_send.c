@@ -89,10 +89,10 @@ static void send_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, plid from, 
 }
 
 static void send_reload(plid pid, unsigned mag, unsigned reserve, plid from, struct State *st) {
-	struct PacketWeaponReload rl;
+	struct PacketGunReload rl;
 
 	/* TODO: might need to limit to 254 instead of 255 */
-	rl.packetID = PacketTypeWeaponReload;
+	rl.packetID = PacketTypeGunReload;
 	rl.playerID = from;
 	rl.magazineAmmo = mag > 255 ? 255 : mag;
 	rl.reserveAmmo = reserve > 255 ? 255 : reserve;
@@ -171,7 +171,9 @@ static void send_compressed_map_unpristine(plid pid, struct State *st) {
 					break;
 				}
 
-				st->f.send_packet(pid, outbuf, stream.next_out-outbuf, st);
+				/* Sometimes isal_deflate doesn't actually return anything immediately. */
+				if (stream.next_out != outbuf+1)
+					st->f.send_packet(pid, outbuf, stream.next_out-outbuf, st);
 			} while (stream.avail_in != 0);
 		}
 	}
@@ -222,6 +224,7 @@ static void fill_in_state(struct PacketStateData *sta, plid from, const char tea
 	sta->teamcolor[1][0] = teamcolor[1][0];
 	sta->teamcolor[1][1] = teamcolor[1][1];
 	sta->teamcolor[1][2] = teamcolor[1][2];
+	/* Each team name is 10 bytes; this memsets both of them. TODO: or just use two separate memsets? */
 	memset(sta->team1Name, 0, 20);
 	strcpy(sta->team1Name, teamname[0]);
 	strcpy(sta->team2Name, teamname[1]);
@@ -278,14 +281,14 @@ static void send_state(plid pid, struct State *st) {
 	st->p[pid].initStateSent = 1;
 }
 
-static void send_existing_player(plid pid, unsigned team, unsigned weapon, unsigned tool, unsigned score, color blockColor, const char *name, plid from, struct State *st) {
+static void send_existing_player(plid pid, unsigned team, unsigned gun, unsigned tool, unsigned score, color blockColor, const char *name, plid from, struct State *st) {
 	struct PacketExistingPlayer ep;
 
 	/* TODO: better validate the name length */
 	ep.packetID = PacketTypeExistingPlayer;
 	ep.playerID = from;
 	ep.team = team;
-	ep.weapon = weapon;
+	ep.gun = gun;
 	ep.tool = tool;
 	ep.score = score;
 	ep.blue = blockColor[0];
@@ -297,47 +300,13 @@ static void send_existing_player(plid pid, unsigned team, unsigned weapon, unsig
 	st->f.send_packet(pid, &ep, 13+strlen(ep.name), st);
 }
 
-static void send_move_input(plid pid, unsigned inputs, plid from, struct State *st) {
-	struct PacketInput in;
-
-	in.packetID = PacketTypeInput;
-	in.playerID = from;
-	in.keyStates = inputs;
-
-	SEND(pid, in);
-}
-
-/* TODO: rename this too? it's slightly more specific than mere mouse input (excluding betterspades) */
-static void send_mouse_input(plid pid, unsigned inputs, plid from, struct State *st) {
-	/* TODO: rename */
-	struct PacketWeaponInput mi;
-
-	mi.packetID = PacketTypeWeaponInput;
-	mi.playerID = from;
-	mi.weaponInput = inputs;
-
-	SEND(pid, mi);
-}
-
-static void send_kill(plid pid, clk spawndelta, unsigned type, plid killer, plid from, struct State *st) {
-	struct PacketKill kl;
-
-	kl.packetID = PacketTypeKill;
-	kl.playerID = from;
-	kl.killerID = killer;
-	kl.killType = type;
-	kl.respawnTime = to_s(spawndelta + 500000000);
-
-	SEND(pid, kl);
-}
-
 /* TODO: should this work around betterspades or should spawn_player? */
-static void send_spawn_player(plid pid, fvec3 pos, unsigned weapon, unsigned team, const char *name, plid from, struct State *st) {
+static void send_spawn_player(plid pid, fvec3 pos, unsigned gun, unsigned team, const char *name, plid from, struct State *st) {
 	struct PacketCreatePlayer cr;
 
 	cr.packetID = PacketTypeCreatePlayer;
 	cr.playerID = from;
-	cr.weapon = weapon;
+	cr.gun = gun;
 	cr.team = team;
 	cr.pos = pos;
 	/* TODO: check strlen */
@@ -353,7 +322,7 @@ static void send_connected_players(plid pid, struct State *st) {
 		if (!st->p[i].joined)
 			continue;
 
-		st->f.send_existing_player(pid, st->p[i].team, st->p[i].weapon, st->p[i].tool, st->p[i].score, st->p[i].blockColor, st->p[i].name, i, st);
+		st->f.send_existing_player(pid, st->p[i].team, st->p[i].gun, st->p[i].tool, st->p[i].score, st->p[i].blockColor, st->p[i].name, i, st);
 
 		if (st->p[i].inputs != 0)
 			st->f.send_move_input(pid, st->p[i].inputs, i, st);
@@ -366,6 +335,39 @@ static void send_connected_players(plid pid, struct State *st) {
 		if (st->p[i].team != 255 && !st->p[i].alive)
 			st->f.send_kill(pid, 0, KillTypeFall, 0, i, st);
 	}
+}
+
+static void send_move_input(plid pid, unsigned inputs, plid from, struct State *st) {
+	struct PacketInput in;
+
+	in.packetID = PacketTypeInput;
+	in.playerID = from;
+	in.keyStates = inputs;
+
+	SEND(pid, in);
+}
+
+/* TODO: rename this too? it's slightly more specific than mere mouse input (excluding betterspades) */
+static void send_mouse_input(plid pid, unsigned inputs, plid from, struct State *st) {
+	struct PacketMouseInput mi;
+
+	mi.packetID = PacketTypeMouseInput;
+	mi.playerID = from;
+	mi.input = inputs;
+
+	SEND(pid, mi);
+}
+
+static void send_kill(plid pid, clk spawndelta, unsigned type, plid killer, plid from, struct State *st) {
+	struct PacketKill kl;
+
+	kl.packetID = PacketTypeKill;
+	kl.playerID = from;
+	kl.killerID = killer;
+	kl.killType = type;
+	kl.respawnTime = to_s(spawndelta + 500000000);
+
+	SEND(pid, kl);
 }
 
 static void send_chat(plid pid, const char *msg, unsigned type, plid from, struct State *st) {
@@ -392,6 +394,15 @@ static void send_restock(plid pid, plid from, struct State *st) {
 	rs.playerID = from;
 
 	SEND(pid, rs);
+}
+
+static void send_disconnect(plid pid, plid from, struct State *st) {
+	struct PacketPlayerLeft dc;
+
+	dc.packetID = PacketTypePlayerLeft;
+	dc.playerID = from;
+
+	SEND(pid, dc);
 }
 
 static void send_block_action(plid pid, ivec3 pos, unsigned type, plid from, struct State *st) {
@@ -426,6 +437,16 @@ static void send_set_block_color(plid pid, color color, plid from, struct State 
 	sc.color[2] = color[2];
 
 	SEND(pid, sc);
+}
+
+static void send_set_tool(plid pid, unsigned tool, plid from, struct State *st) {
+	struct PacketSetTool set;
+
+	set.packetID = PacketTypeSetTool;
+	set.playerID = from;
+	set.tool = tool;
+
+	SEND(pid, set);
 }
 
 static void send_position(plid pid, fvec3 pos, struct State *st) {
@@ -498,6 +519,7 @@ void set_funcs_send(struct State *st) {
         st->f.send_position = send_position;
         st->f.send_block_line = send_block_line;
         st->f.send_set_block_color = send_set_block_color;
+        st->f.send_set_tool = send_set_tool;
         st->f.send_reload = send_reload;
         st->f.send_intel_capture = send_intel_capture;
         st->f.send_intel_pickup = send_intel_pickup;
@@ -505,6 +527,7 @@ void set_funcs_send(struct State *st) {
         st->f.send_state_ctf = send_state_ctf;
         st->f.send_state_tc = send_state_tc;
         st->f.send_restock = send_restock;
+        st->f.send_disconnect = send_disconnect;
         st->f.send_move_object = send_move_object;
         st->f.send_map_start = send_map_start;
         st->f.send_grenade = send_grenade;

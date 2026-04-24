@@ -513,7 +513,7 @@ static float calc_acceleration(PlayerType *p, float secondsSinceLastUpdate, int 
 		acceleration *= 0.1;
 	else if (p->inputs & KeyStateTypeCrouch)
 		acceleration *= 0.3;
-	else if ((p->mouseInputs & WeaponInputTypeSecondary && p->tool == ToolTypeGun) || p->inputs & KeyStateTypeSneak)
+	else if ((p->mouseInputs & GunInputTypeSecondary && p->tool == ToolTypeGun) || p->inputs & KeyStateTypeSneak)
 		acceleration *= 0.5;
 	else if (p->inputs & KeyStateTypeSprint)
 		acceleration *= 1.3;

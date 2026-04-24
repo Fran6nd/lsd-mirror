@@ -22,6 +22,9 @@ clk from_s_double(double ts);
 
 static lua_State *l;
 
+#define STR2(x) #x
+#define STR(x) STR2(x)
+
 /* TODO: color -> struct */
 void get_color2(lua_State *l, int table, color color) {
 	lua_pushliteral(l, "b");
@@ -432,66 +435,65 @@ static void csend_state_ctf(plid pid, plid from, const char teamname[][10], cons
 		CBAIL("send_state_ctf: %s", luaL_checkstring(l, -1));
 }
 
-static int lsend_packet(lua_State *l) {
-	bplid pid = check_bplid(l, 1);
-	size_t length;
-	const char *data = luaL_checklstring(l, 2, &length);
+#define PACKET_OP_FUNC_RETURN(name, check_func) \
+	static int l##name(lua_State *l) { \
+		plid pid = check_func(l, 1); \
+		size_t length; \
+		const char *data = luaL_checklstring(l, 2, &length); \
+\
+		lua_pushnumber(l, f.name(pid, data, length, st)); \
+		return 1; \
+	} \
+\
+	static int c##name(plid pid, const void *data, size_t length, struct State *st) { \
+		int ret; \
+		(void)st; \
+\
+		lua_getglobal(l, STR(name)); \
+\
+		lua_pushnumber(l, pid); \
+		lua_pushlstring(l, data, length); \
+\
+		/* TODO: throwing an error with no arg leads to panic due to this checkstring */ \
+		if (lua_pcall(l, 2, 1, 0) != 0) \
+			CBAILN1(STR(name)": %s", luaL_checkstring(l, -1)); \
+\
+		if (!lua_isnumber(l, -1)) \
+			CBAIL1N1(STR(name)": should return a number"); \
+\
+		ret = lua_tonumber(l, -1); \
+		lua_pop(l, 1); \
+\
+		return ret; \
+	}
 
-	lua_pushnumber(l, f.send_packet(pid, data, length, st));
-	return 1;
-}
+#define PACKET_OP_FUNC_NORETURN(name, check_func) \
+	static int l##name(lua_State *l) { \
+		plid pid = check_func(l, 1); \
+		size_t length; \
+		const char *data = luaL_checklstring(l, 2, &length); \
+\
+		f.name(pid, data, length, st); \
+		return 0; \
+	} \
+\
+	static void c##name(plid pid, const void *data, size_t length, struct State *st) { \
+		(void)st; \
+\
+		lua_getglobal(l, STR(name)); \
+\
+		lua_pushnumber(l, pid); \
+		lua_pushlstring(l, data, length); \
+\
+		if (lua_pcall(l, 2, 0, 0) != 0) \
+			CBAIL(STR(name)": %s", luaL_checkstring(l, -1)); \
+	}
 
-static int csend_packet(plid pid, const void *data, size_t length, struct State *st) {
-	int ret;
-	(void)st;
-
-	lua_getglobal(l, "send_packet");
-
-	lua_pushnumber(l, pid);
-	lua_pushlstring(l, data, length);
-
-	/* TODO: throwing an error with no arg leads to panic due to this checkstring */
-	if (lua_pcall(l, 2, 1, 0) != 0)
-		CBAILN1("send_packet: %s", luaL_checkstring(l, -1));
-
-	if (!lua_isnumber(l, -1))
-		CBAIL1N1("send_packet: should return a number");
-
-	ret = lua_tonumber(l, -1);
-	lua_pop(l, 1);
-
-	return ret;
-}
-
-static int lsend_packet_unreliable(lua_State *l) {
-	bplid pid = check_bplid(l, 1);
-	size_t length;
-	const char *data = luaL_checklstring(l, 2, &length);
-
-	lua_pushnumber(l, f.send_packet_unreliable(pid, data, length, st));
-	return 1;
-}
-
-static int csend_packet_unreliable(plid pid, const void *data, size_t length, struct State *st) {
-	int ret;
-	(void)st;
-
-	lua_getglobal(l, "send_packet_unreliable");
-
-	lua_pushnumber(l, pid);
-	lua_pushlstring(l, data, length);
-
-	if (lua_pcall(l, 2, 1, 0) != 0)
-		CBAILN1("send_packet_unreliable: %s", luaL_checkstring(l, -1));
-
-	if (!lua_isnumber(l, -1))
-		CBAIL1N1("send_packet_unreliable: should return a number");
-
-	ret = lua_tonumber(l, -1);
-	lua_pop(l, 1);
-
-	return ret;
-}
+PACKET_OP_FUNC_RETURN(send_packet, check_bplid)
+PACKET_OP_FUNC_RETURN(send_packet_unreliable, check_bplid)
+PACKET_OP_FUNC_RETURN(on_any_packet, check_plid)
+PACKET_OP_FUNC_NORETURN(on_sane_packet, check_plid)
+PACKET_OP_FUNC_NORETURN(on_crap_packet, check_plid)
 
 /* TODO: why isn't this done by luaawk? */
 static int lget_spawn_position(lua_State *l) {
@@ -707,7 +709,7 @@ static int masterlist_set_name(lua_State *l) {
 	size_t len;
 	const char *name = luaL_checklstring(l, 1, &len);
 	if (len+1 > sizeof(st->ms.name))
-		LERR(l, "masterlist_set_name: name length should be less than %lu", sizeof(st->ms.name));
+		LERR(l, "masterlist_set_name: name length should be less than %"PRIuSIZET, sizeof(st->ms.name));
 	memcpy(st->ms.name, name, len+1);
 	return 0;
 }
@@ -721,7 +723,7 @@ static int masterlist_set_gamemode(lua_State *l) {
 	size_t len;
 	const char *gamemode = luaL_checklstring(l, 1, &len);
 	if (len+1 > sizeof(st->ms.gamemode))
-		LERR(l, "masterlist_set_gamemode: gamemode length should be less than %lu", sizeof(st->ms.gamemode));
+		LERR(l, "masterlist_set_gamemode: gamemode length should be less than %"PRIuSIZET, sizeof(st->ms.gamemode));
 	memcpy(st->ms.gamemode, gamemode, len+1);
 	return 0;
 }
@@ -735,7 +737,7 @@ static int masterlist_set_map(lua_State *l) {
 	size_t len;
 	const char *map = luaL_checklstring(l, 1, &len);
 	if (len+1 > sizeof(st->ms.map))
-		LERR(l, "masterlist_set_map: map length should be less than %lu", sizeof(st->ms.map));
+		LERR(l, "masterlist_set_map: map length should be less than %"PRIuSIZET, sizeof(st->ms.map));
 	memcpy(st->ms.map, map, len+1);
 	return 0;
 }
@@ -868,11 +870,10 @@ static int get_team(lua_State *l) {
 	return 1;
 }
 
-/* TODO: weapon -> gun? */
-static int get_weapon(lua_State *l) {
+static int get_gun(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
-	lua_pushnumber(l, st->p[pid].weapon);
+	lua_pushnumber(l, st->p[pid].gun);
 	return 1;
 }
 
@@ -883,11 +884,11 @@ static int get_next_team(lua_State *l) {
 	return 1;
 }
 
-/* Weapon that the player will have on next respawn; switching weapon sets this, for example. */
-static int get_next_weapon(lua_State *l) {
+/* Gun that the player will have on next respawn; switching gun sets this, for example. */
+static int get_next_gun(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
-	lua_pushnumber(l, st->p[pid].newweapon);
+	lua_pushnumber(l, st->p[pid].newgun);
 	return 1;
 }
 
@@ -953,6 +954,46 @@ static int get_name(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
 	lua_pushstring(l, st->p[pid].name);
+	return 1;
+}
+
+static int get_client_handshaked(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushboolean(l, st->p[pid].handshaked);
+	return 1;
+}
+
+static int get_client_char(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	if (st->p[pid].idChar == 0)
+		lua_pushnil(l);
+	else
+		lua_pushnumber(l, st->p[pid].idChar);
+
+	return 1;
+}
+
+/* TODO: better to return a table? */
+static int get_client_major(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].verMajor);
+	return 1;
+}
+
+static int get_client_minor(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].verMinor);
+	return 1;
+}
+
+static int get_client_patch(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].verPatch);
 	return 1;
 }
 
@@ -1024,6 +1065,9 @@ static const struct luaL_Reg funcs[] = {
 	{"send_state_ctf", lsend_state_ctf},
 	{"send_packet", lsend_packet},
 	{"send_packet_unreliable", lsend_packet_unreliable},
+	{"on_any_packet", lon_any_packet},
+	{"on_sane_packet", lon_sane_packet},
+	{"on_crap_packet", lon_crap_packet},
 	{"get_spawn_position", lget_spawn_position},
 
 	/* TODO: these two are not like the rest */
@@ -1074,9 +1118,9 @@ static const struct luaL_Reg funcs[] = {
 	{"get_orientation", get_orientation},
 	{"get_mouse_inputs", get_mouse_inputs},
 	{"get_team", get_team},
-	{"get_weapon", get_weapon},
+	{"get_gun", get_gun},
 	{"get_next_team", get_next_team},
-	{"get_next_weapon", get_next_weapon},
+	{"get_next_gun", get_next_gun},
 	{"get_tool", get_tool},
 	{"get_inputs", get_inputs},
 	/* TODO: unfortunate naming */
@@ -1087,6 +1131,11 @@ static const struct luaL_Reg funcs[] = {
 	{"is_joined", is_joined},
 	{"is_connected", is_connected},
 	{"get_name", get_name},
+	{"get_client_handshaked", get_client_handshaked},
+	{"get_client_char", get_client_char},
+	{"get_client_major", get_client_major},
+	{"get_client_minor", get_client_minor},
+	{"get_client_patch", get_client_patch},
 	{"get_team_name", get_team_name},
 	{"get_team_color", get_team_color},
 	{"get_team_score", get_team_score},
@@ -1114,11 +1163,14 @@ void register_functions(lua_State *l, struct State *st) {
 	st->f.send_state_ctf = csend_state_ctf;
 	st->f.send_packet = csend_packet;
 	st->f.send_packet_unreliable = csend_packet_unreliable;
+	st->f.on_any_packet = con_any_packet;
+	st->f.on_sane_packet = con_sane_packet;
+	st->f.on_crap_packet = con_crap_packet;
 	st->f.get_spawn_position = cget_spawn_position;
 	register_luaawk(l, st);
 }
 
-void hook_lua(const char *cfg, struct State *st2) {
+void hook_lua(const char *cfg, unsigned long port, struct State *st2) {
 	l = lua_open();
 
 	st = st2;
@@ -1138,6 +1190,9 @@ void hook_lua(const char *cfg, struct State *st2) {
 	/* TODO: #define SPECTATOR 255? */
 	lua_pushnumber(l, 255);
 	lua_setglobal(l, "SPECTATOR");
+
+	lua_pushnumber(l, port);
+	lua_setglobal(l, "ENET_PORT");
 
 	if (luaL_loadfile(l, "scripts/core.lua") || lua_pcall(l, 0, 0, 0))
 		LERR(l, "Can't load scripts/core.lua: %s", lua_tostring(l, -1));

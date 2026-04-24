@@ -133,14 +133,14 @@ struct LIBSPADES_PACKED PacketInput {
 	 */
 };
 
-/** Changes the weapon inputs of a player @ingroup packets */
-struct LIBSPADES_PACKED PacketWeaponInput {
+/** Changes the mouse inputs of a player @ingroup packets */
+struct LIBSPADES_PACKED PacketMouseInput {
 	uint8_t packetID; /**< 4 `(Client<->Server)` */
-	uint8_t playerID; /**< The ID of the player whose weapon input is changing */
-	uint8_t weaponInput;
-	/**< The weapon input state. Possible values (ORed together) are:
-	 * - WeaponInputTypePrimary = 1,
-	 * - WeaponInputTypeSecondary = 2
+	uint8_t playerID; /**< The ID of the player whose mouse input is changing */
+	uint8_t input;
+	/**< The mouse input state. Possible values (ORed together) are:
+	 * - MouseInputTypePrimary = 1,
+	 * - MouseInputTypeSecondary = 2
 	 */
 };
 
@@ -165,7 +165,7 @@ struct LIBSPADES_PACKED PacketSetHP {
 	uint8_t type;
 	/**< The reason for the damage. Possible values are:
 	 * - HurtTypeFall = 0,
-	 * - HurtTypeWeapon = 1
+	 * - HurtTypeDirectional = 1
 	 */
 	fvec3p pos;
 };
@@ -237,11 +237,11 @@ struct LIBSPADES_PACKED PacketExistingPlayer {
 	uint8_t playerID; /**< The ID of the player */
 	uint8_t team;     /**< The team of the player. This may be 0 for the first team,
 	                                         1 for the second, and -1 for spectator. */
-	uint8_t weapon;
-	/**< The weapon of the player. Possible values are:
-	 * - WeaponTypeRifle = 0,
-	 * - WeaponTypeSMG = 1,
-	 * - WeaponTypeShotgun = 2
+	uint8_t gun;
+	/**< The gun of the player. Possible values are:
+	 * - GunTypeRifle = 0,
+	 * - GunTypeSMG = 1,
+	 * - GunTypeShotgun = 2
 	 */
 	uint8_t tool;
 	/**< The held tool of the player. Possible values are:
@@ -274,11 +274,11 @@ struct LIBSPADES_PACKED PacketExistingPlayer {
 	 */
 };
 
-/** Switches the client player's team/weapon from spectator mode @ingroup packets
+/** Switches the client player's team/gun from spectator mode @ingroup packets
  * @note This packet is exclusively used by the classic client, not even
  * BetterSpades uses it.
  * @note As for OpenSpades, it instead uses @ref PacketExistingPlayer
- * "Existing Player" for all team/weapon switching.
+ * "Existing Player" for all team/gun switching.
  * @todo VERIFY
  *
  * @serverbug Sending this packet as an alternative to @ref
@@ -288,13 +288,13 @@ struct LIBSPADES_PACKED PacketExistingPlayer {
 struct LIBSPADES_PACKED PacketShortPlayerData {
 	uint8_t packetID; /**< 10 `(Client-->Server)` */
 	uint8_t playerID;
-	/**< The ID of the player who changed weapon/team. This parameter should
+	/**< The ID of the player who changed gun/team. This parameter should
 	 * technically not be necessary since it is never meant to be received by
 	 * any clients (instead they should receive @ref PacketCreatePlayer "Create
 	 * Player"), but it is still here nonetheless.
 	 */
-	uint8_t team;   /**< The team to switch the player to */
-	uint8_t weapon; /**< The weapon to switch the player to */
+	uint8_t team; /**< The team to switch the player to */
+	uint8_t gun;  /**< The gun to switch the player to */
 };
 
 /** Moves objects. @todo implement and document @ingroup packets */
@@ -310,7 +310,7 @@ struct LIBSPADES_PACKED PacketMoveObject {
 struct LIBSPADES_PACKED PacketCreatePlayer {
 	uint8_t packetID; /**< 12 `(Client<--Server)` */
 	uint8_t playerID; /**< The ID of the player to spawn/modify */
-	uint8_t weapon;   /**< The player's weapon */
+	uint8_t gun;      /**< The player's gun */
 	uint8_t team;     /**< The player's team */
 	fvec3p pos;
 	char name[16];
@@ -440,13 +440,13 @@ struct LIBSPADES_PACKED PacketKill {
 	uint8_t killerID; /**< The ID of the killer. */
 	uint8_t killType;
 	/**< How the player died. Possible values are:
-	 * - KillTypeWeapon = 0,
+	 * - KillTypeGun = 0,
 	 * - KillTypeHeadshot = 1,
 	 * - KillTypeMelee = 2,
 	 * - KillTypeGrenade = 3,
 	 * - KillTypeFall = 4,
 	 * - KillTypeTeamChange = 5,
-	 * - KillTypeWeaponChange = 6
+	 * - KillTypeGunChange = 6
 	 *
 	 * @classicegg Values not in the range of 0 to 6 will display as "Derpy
 	 * Kill Message".
@@ -565,11 +565,11 @@ struct LIBSPADES_PACKED PacketFogColor {
 	color color;
 };
 
-/** Informs the client that a player has reloaded their weapon. @ingroup packets
+/** Informs the client that a player has reloaded their gun. @ingroup packets
  * For players other than the client player, this is usually used to
  * play sounds.
  */
-struct LIBSPADES_PACKED PacketWeaponReload {
+struct LIBSPADES_PACKED PacketGunReload {
 	uint8_t packetID;     /**< 28 `(Client<->Server)` */
 	uint8_t playerID;     /**< The ID of the player who has reloaded. */
 	uint8_t magazineAmmo; /**< The magazine (in-gun) ammunition count of the player who has reloaded. */
@@ -589,20 +589,20 @@ struct LIBSPADES_PACKED PacketChangeTeam {
 	 */
 };
 
-/** Changes a player's weapon. @ingroup packets */
-struct LIBSPADES_PACKED PacketChangeWeapon {
+/** Changes a player's gun. @ingroup packets */
+struct LIBSPADES_PACKED PacketChangeGun {
 	uint8_t packetID;
 	/**< 30 `(Client<->Server*)`
 	 * @piquebug *As a complete and utter showing of pyspades' (and therefore PySnip's and piqueserver's)
 	 * excellence, the only reason the server is capable of sending this packet is because it doesn't have a
 	 * reason. All packets of this type sent from the server can be safely ignored.
 	 */
-	uint8_t playerID; /**< The ID of the player who is changing weapon. */
-	uint8_t weapon;
-	/**< The weapon the player is changing to. Possible values are:
-	 * - WeaponTypeRifle = 0,
-	 * - WeaponTypeSMG = 1,
-	 * - WeaponTypeShotgun = 2
+	uint8_t playerID; /**< The ID of the player who is changing gun. */
+	uint8_t gun;
+	/**< The gun the player is changing to. Possible values are:
+	 * - GunTypeRifle = 0,
+	 * - GunTypeSMG = 1,
+	 * - GunTypeShotgun = 2
 	 */
 };
 
@@ -782,7 +782,7 @@ enum PacketType {
 	PacketTypeOrientationData = 1,   /* usually Client-->Server, but Client<->Server is possible */
 	PacketTypeWorldUpdate = 2,       /* Client<--Server */
 	PacketTypeInput = 3,             /* Client<->Server */
-	PacketTypeWeaponInput = 4,       /* Client<->Server */
+	PacketTypeMouseInput = 4,        /* Client<->Server */
 	PacketTypeHit = 5,               /* Client-->Server */
 	PacketTypeSetHP = 5,             /* Client<--Server */
 	PacketTypeGrenade = 6,           /* Client<->Server */
@@ -807,9 +807,9 @@ enum PacketType {
 	PacketTypeIntelDrop = 25,        /* Client<--Server */
 	PacketTypeRestock = 26,          /* Client<--Server */
 	PacketTypeFogColor = 27,         /* Client<--Server */
-	PacketTypeWeaponReload = 28,     /* Client<->Server */
+	PacketTypeGunReload = 28,     /* Client<->Server */
 	PacketTypeChangeTeam = 29,       /* Client-->Server */
-	PacketTypeChangeWeapon = 30,     /* Client<->Server */
+	PacketTypeChangeGun = 30,     /* Client<->Server */
 	PacketTypeMapCached = 31,        /* Client-->Server */
 
 	/* extension packets. NOTE: for most servers, you must complete the
@@ -840,7 +840,7 @@ enum SubPacketType {
 	SubPacketTypeSendSignature = 4          /* Client-->Server */
 };
 
-enum WeaponType { WeaponTypeRifle = 0, WeaponTypeSMG = 1, WeaponTypeShotgun = 2 };
+enum GunType { GunTypeRifle = 0, GunTypeSMG = 1, GunTypeShotgun = 2 };
 
 enum BlockActionType {
 	BlockActionTypeBuild = 0,
@@ -849,7 +849,7 @@ enum BlockActionType {
 	BlockActionTypeGrenadeDestroy = 3
 };
 
-enum HurtType { HurtTypeFall = 0, HurtTypeWeapon = 1 };
+enum HurtType { HurtTypeFall = 0, HurtTypeDirectional = 1 };
 
 enum ChatType { ChatTypeAll = 0, ChatTypeTeam = 1, ChatTypeSystem = 2 };
 
@@ -921,16 +921,16 @@ enum ToolType {
 };
 
 enum KillType {
-	KillTypeWeapon = 0,
+	KillTypeGun = 0,
 	KillTypeHeadshot = 1,
 	KillTypeMelee = 2,
 	KillTypeGrenade = 3,
 	KillTypeFall = 4,
 	KillTypeTeamChange = 5,
-	KillTypeWeaponChange = 6
+	KillTypeGunChange = 6
 };
 
-enum WeaponInputType { WeaponInputTypePrimary = 1, WeaponInputTypeSecondary = 2 };
+enum GunInputType { GunInputTypePrimary = 1, GunInputTypeSecondary = 2 };
 
 enum HitType { HitTypeTorso = 0, HitTypeHead = 1, HitTypeArms = 2, HitTypeLegs = 3, HitTypeMelee = 4 };
 

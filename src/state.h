@@ -5,6 +5,11 @@
 #include "bitmask.h"
 #include "masterlist.h"
 
+/* Some printf format constants */
+#include <inttypes.h>
+#define PRIuSIZET "zu"
+#define PRIiPID "i"
+
 /* For blocks and block lines when no player has placed them */
 #define PID_COLOR_ANONYMOUS 32
 /* TODO: merge broadcast and broadcast_except? */
@@ -73,7 +78,7 @@ typedef fvec3p fvec3;
  */
 /* TODO: EXT_PVX */
 /* At least the stats */
-/* TODO: EXT_CUSTOMWEAPON */
+/* TODO: EXT_CUSTOMGUN */
 /* TODO: go find your scattered notes for that gamma protocol */
 /* TODO: EXT_BS_PLAYERPROP */
 /* TODO: EXT_PUBKEY_AUTHN -- should this one be handled more generically and by lua? */
@@ -101,7 +106,7 @@ struct Player {
 	uint8_t inputs;
 	uint8_t mouseInputs;
 	uint8_t tool;
-	uint8_t weapon;
+	uint8_t gun;
 	uint8_t team;
 	uint8_t blocks;
 	uint8_t grenades;
@@ -118,9 +123,9 @@ struct Player {
 	uint32_t score; /* TODO: pretty sure the clients all use an int32_t */
 	int joined;
 	int hp;
-	/* team and weapon are set to these two on the next spawn */
+	/* team and gun are set to these two on the next spawn */
 	uint8_t newteam;
-	uint8_t newweapon;
+	uint8_t newgun;
 
 	/*
 	 * Connection-based
@@ -150,14 +155,14 @@ struct Functions {
 	void (*on_disconnect)(plid pid, struct State *st);
 
 	/* Handles received packets of any kind -- valid or invalid. Returns nonzero if packet should be marked as crap. */
-	int (*on_any_packet)(plid pid, ENetPacket *packet, struct State *st);
+	int (*on_any_packet)(plid pid, const void *data, size_t length, struct State *st);
 	/* Handles received packets that are known and valid */
-	void (*on_sane_packet)(plid pid, ENetPacket *packet, struct State *st);
+	void (*on_sane_packet)(plid pid, const void *data, size_t length, struct State *st);
 	/* Handles received packets that are unknown or invalid */
-	void (*on_crap_packet)(plid pid, ENetPacket *packet, struct State *st);
+	void (*on_crap_packet)(plid pid, const void *data, size_t length, struct State *st);
 
-	void (*on_join)(plid pid, teamid team, unsigned weapon, const char *name, struct State *st);
-	void (*on_switch)(plid pid, teamid team, unsigned weapon, struct State *st);
+	void (*on_join)(plid pid, teamid team, unsigned gun, const char *name, struct State *st);
+	void (*on_switch)(plid pid, teamid team, unsigned gun, struct State *st);
 
 	void (*on_position)(plid pid, fvec3 pos, struct State *st);
 	void (*on_orientation)(plid pid, fvec3 ori, struct State *st);
@@ -216,8 +221,8 @@ struct Functions {
 	void (*remove_grenade)(size_t index, struct State *st);
 	void (*detonate_grenade)(size_t index, struct State *st);
 	void (*boot_players_to_limbo)(struct State *st);
-	size_t (*register_grenade)(bplid pid, teamid team, fvec3 pos, fvec3 vel, clk fuse, struct State *st);
-	size_t (*spawn_grenade)(bplid pid, teamid team, fvec3 pos, fvec3 vel, clk fuse, struct State *st);
+	size_t (*register_grenade)(plid pid, teamid team, fvec3 pos, fvec3 vel, clk fuse, struct State *st);
+	size_t (*spawn_grenade)(plid pid, teamid team, fvec3 pos, fvec3 vel, clk fuse, struct State *st);
 	void (*server_msg)(bplid pid, const char *msg, struct State *st);
 
 	/*
@@ -244,7 +249,8 @@ struct Functions {
 	/* Try to limit sent block lines to 50 blocks or openspades will eat you. */
 	void (*send_block_line)(bplid pid, ivec3 start, ivec3 end, nplid from, struct State *st);
 	void (*send_set_block_color)(bplid pid, color color, nplid from, struct State *st);
-	void (*send_player_update)(bplid pid, struct State *st); /* TODO: hide too-far players, /ups */
+	void (*send_set_tool)(bplid pid, unsigned tool, plid from, struct State *st);
+	void (*send_player_update)(bplid pid, struct State *st); /* TODO: hide too-far players */
 	void (*send_orientation)(bplid pid, fvec3 ori, struct State *st);
 	void (*send_position)(bplid pid, fvec3 pos, struct State *st);
 	void (*send_reload)(bplid pid, unsigned mag, unsigned reserve, nplid from, struct State *st);
@@ -252,21 +258,22 @@ struct Functions {
 	void (*send_intel_pickup)(bplid pid, nplid from, struct State *st);
 	void (*send_intel_drop)(bplid pid, fvec3 pos, nplid from, struct State *st);
 	void (*send_restock)(bplid pid, nplid from, struct State *st);
+	void (*send_disconnect)(bplid pid, nplid from, struct State *st);
 	/* TODO: should this be gteamid or something else entirely? */
 	void (*send_move_object)(bplid pid, fvec3 pos, unsigned id, gteamid team, struct State *st);
 	void (*send_map_start)(bplid pid, unsigned size, struct State *st);
 	void (*send_fog)(bplid pid, color color, struct State *st);
-	void (*send_existing_player)(plid pid, unsigned team, unsigned weapon, unsigned tool, unsigned score, color blockColor, const char *name, plid from, struct State *st);
-	void (*send_move_input)(plid pid, unsigned inputs, plid from, struct State *st);
-	void (*send_mouse_input)(plid pid, unsigned inputs, plid from, struct State *st);
+	void (*send_existing_player)(bplid pid, unsigned team, unsigned gun, unsigned tool, unsigned score, color blockColor, const char *name, plid from, struct State *st);
+	void (*send_move_input)(bplid pid, unsigned inputs, plid from, struct State *st);
+	void (*send_mouse_input)(bplid pid, unsigned inputs, plid from, struct State *st);
 	void (*send_kill)(bplid pid, clk spawndelta, unsigned type, plid killer, plid from, struct State *st);
 	void (*send_grenade)(bplid pid, fvec3 pos, fvec3 vel, float fuse, nplid from, struct State *st);
-	void (*send_spawn_player)(plid pid, fvec3 pos, unsigned weapon, unsigned team, const char *name, plid from, struct State *st);
+	void (*send_spawn_player)(bplid pid, fvec3 pos, unsigned gun, unsigned team, const char *name, plid from, struct State *st);
 
 	/*
 	 * Player funcs -- these send packets and modify player state
 	 */
-	void (*spawn_player)(plid pid, struct State *st);
+	void (*spawn_player)(plid pid, fvec3 pos, struct State *st);
 	void (*reload_player)(plid pid, struct State *st);
 	void (*restock)(plid pid, struct State *st);
 	void (*demand_fingerprint)(plid pid, struct State *st);

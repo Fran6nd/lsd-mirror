@@ -1,19 +1,25 @@
-#include <time.h>
-#include <stdio.h>
-#include <signal.h>
-#include <math.h>
+#include <ctype.h>
 #include <errno.h>
+#include <math.h>
+#include <signal.h>
+#include <stdio.h>
+#include <time.h>
+
+#include <inttypes.h>
+#define PRIuSIZET "zu"
+
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <isa-l.h>
-#include "state.h"
-#include "pvx/src/vxl.h"
+
 #include "cull.h"
 #include "demoncore.h"
+#include "pvx/src/vxl.h"
 #include "sandbox.h"
-
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
+#include "state.h"
 
 /* TODO: can i no-op a map load for clients that won't take direct statedata? */
 /* TODO: what happens if a smelly haxor takes the intel out of bounds (in pyspades)?
@@ -24,7 +30,21 @@
 
 /* Tick rate in Hz. Every tick physics and such is calculated. */
 #define TICKRATE 60
-//#define TICKRATE 120
+
+struct ColumnStack stack;
+struct ColumnStack *stackData = &stack;
+uint64_t *rememberedSolidity;
+uint64_t *keepSolid;
+
+const uint8_t ColorFilled[3] = {40, 64, 103};
+
+static const char *cfg = "config.lua";
+/* TODO: allow changing port from cfg? and maybe allow
+ * unsharing/pledging different crap in a special cfg file too */
+static unsigned long port = 32887;
+
+static volatile sig_atomic_t keepRunning = 1;
+static struct State *exit_st;
 
 static ENetHost *bringup_host(ENetAddress *addr) {
 	ENetHost *host;
@@ -92,10 +112,10 @@ static void handle_event(ENetEvent *event, struct State *st) {
 		st->f.on_disconnect(event->peer->incomingPeerID, st);
 		break;
 	case ENET_EVENT_TYPE_RECEIVE:
-		if (st->f.on_any_packet(event->peer->incomingPeerID, event->packet, st))
-			st->f.on_crap_packet(event->peer->incomingPeerID, event->packet, st);
+		if (st->f.on_any_packet(event->peer->incomingPeerID, event->packet->data, event->packet->dataLength, st))
+			st->f.on_crap_packet(event->peer->incomingPeerID, event->packet->data, event->packet->dataLength, st);
 		else
-			st->f.on_sane_packet(event->peer->incomingPeerID, event->packet, st);
+			st->f.on_sane_packet(event->peer->incomingPeerID, event->packet->data, event->packet->dataLength, st);
 
 		enet_packet_destroy(event->packet);
 		break;
@@ -203,7 +223,7 @@ static void remove_grenade(size_t index, struct State *st) {
 		st->globals.grenadeCount--;
 
 	if (st->globals.grenadeCount < st->globals.grenadeSize && alloc_less_nades(st) == -1)
-		LOG("realloc doesn't want to shrink the grenades buffer (%lu currently allocated)", st->globals.grenadeSize);
+		LOG("realloc doesn't want to shrink the grenades buffer (%"PRIuSIZET" currently allocated)", st->globals.grenadeSize);
 }
 
 static float sqr_len3(fvec3 vec) {
@@ -234,11 +254,6 @@ static float safe_sqr_dist3(fvec3 pos1, fvec3 pos2) {
 static int libspades_voxel_bounds_check_player(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) {
 	return (x < MAP_SIZE_X && y < MAP_SIZE_Y && z < (MAP_SIZE_Z - 2));
 }
-
-struct ColumnStack stack;
-struct ColumnStack *stackData = &stack;
-uint64_t *rememberedSolidity;
-uint64_t *keepSolid;
 
 static void set_solid(ivec3 pos, struct State *st) {
 	pvx_voxel_create4(st->globals.map.solidData, CALC_I(pos.x, pos.y), pos.z);
@@ -495,6 +510,7 @@ static void detonate_grenade(size_t index, struct State *st) {
 	ivec3 ipos;
 	struct Grenade nade = st->globals.grenades[index];
 
+	/* TODO: move this to the end of the func? */
 	st->f.remove_grenade(index, st);
 
 	/* TODO: what if player leaves? */
@@ -529,7 +545,7 @@ static void detonate_grenade(size_t index, struct State *st) {
 
 static size_t register_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, clk fuse, struct State *st) {
 	if (st->globals.grenadeCount == st->globals.grenadeSize && alloc_more_nades(st) == -1) {
-		LOG("Out of memory for more grenades (%lu currently allocated)", st->globals.grenadeSize);
+		LOG("Out of memory for more grenades (%"PRIuSIZET" currently allocated)", st->globals.grenadeSize);
 		return (size_t)-1;
 	}
 
@@ -611,14 +627,14 @@ static void tick(struct State *st) {
 			st->f.tick_player_physics(i, (double)st->tickrate/1000000000, st);
 
 		if (st->p[i].spawntime && now >= st->p[i].spawntime)
-			st->f.spawn_player(i, st);
+			st->f.spawn_player(i, st->f.get_spawn_position(i, st), st);
 
 		if (st->p[i].reloadtime && now >= st->p[i].reloadtime)
 			st->f.reload_player(i, st);
 
 		if (st->p[i].estfiretime && now >= st->p[i].estfiretime) {
 			if (st->p[i].tool == ToolTypeGun && st->p[i].mouseInputs & 1) {
-				st->p[i].estfiretime += fireTime[st->p[i].weapon];
+				st->p[i].estfiretime += fireTime[st->p[i].gun];
 
 				if (st->p[i].estMagAmmo != 0)
 					st->p[i].estMagAmmo--;
@@ -714,7 +730,7 @@ static float highest_point_spawn(int32_t x, int32_t y, struct State *st) {
 static fvec3 get_spawn_position(plid pid, struct State *st) {
 	fvec3 pos;
 
-	switch (st->p[pid].team) {
+	switch (st->p[pid].newteam) {
 	case 0:
 		pos.x = 96.5;
 		pos.y = 256.5;
@@ -740,25 +756,24 @@ static void restock(plid pid, struct State *st) {
 	/* TODO: how to handle voxlap and blockaction blocks? do i have to hook on_any/sane_packet for it? */
 	st->p[pid].blocks = 50;
 	st->p[pid].grenades = 3;
-	st->p[pid].reserveAmmo = initialReserveAmmo[st->p[pid].weapon];
+	st->p[pid].reserveAmmo = initialReserveAmmo[st->p[pid].gun];
 
 	/* TODO: should i bother broadcasting this? */
 	st->f.send_restock(pid, pid, st);
 }
 
 /* TODO: make this take a position arg and default it to get_spawn_position() */
-static void spawn_player(plid pid, struct State *st) {
-	fvec3 pos;
+static void spawn_player(plid pid, fvec3 pos, struct State *st) {
 	plid i;
 
 	st->p[pid].spawntime = 0;
 	st->p[pid].reloadtime = 0;
 	st->p[pid].estfiretime = 0;
 	st->p[pid].team = st->p[pid].newteam;
-	/* TODO: do i even need newweapon or just newteam? */
-	st->p[pid].weapon = st->p[pid].newweapon;
+	/* TODO: do i even need newgun or just newteam? */
+	st->p[pid].gun = st->p[pid].newgun;
 
-	st->p[pid].pos = st->f.get_spawn_position(pid, st);
+	st->p[pid].pos = pos;
 	st->p[pid].ori.x = st->p[pid].team == 0 ? 1 : -1;
 	st->p[pid].ori.y = 0;
 	st->p[pid].ori.z = 0;
@@ -777,10 +792,10 @@ static void spawn_player(plid pid, struct State *st) {
 	st->p[pid].hp = 100;
 	st->p[pid].blocks = 50;
 	st->p[pid].grenades = 3;
-	st->p[pid].estMagAmmo = initialMagAmmo[st->p[pid].weapon];
+	st->p[pid].estMagAmmo = initialMagAmmo[st->p[pid].gun];
 	/* If using shotgun (2), multiply maxMagAmmo by 8 to deal with its multiple pellets until i bother validating bullet timing too */
-	st->p[pid].maxMagAmmo = initialMagAmmo[st->p[pid].weapon] * (1 + (st->p[pid].weapon == 2)*7);
-	st->p[pid].reserveAmmo = initialReserveAmmo[st->p[pid].weapon];
+	st->p[pid].maxMagAmmo = initialMagAmmo[st->p[pid].gun] * (1 + (st->p[pid].gun == 2)*7);
+	st->p[pid].reserveAmmo = initialReserveAmmo[st->p[pid].gun];
 	st->p[pid].lastagreedpos.x = st->p[pid].pos.x;
 	st->p[pid].lastagreedpos.y = st->p[pid].pos.y;
 	st->p[pid].lastagreedpos.z = st->p[pid].pos.z;
@@ -797,14 +812,14 @@ static void spawn_player(plid pid, struct State *st) {
 			else
 				pos.z = st->p[pid].pos.z + 2;
 
-			st->f.send_spawn_player(i, pos, st->p[pid].weapon, st->p[pid].team, st->p[pid].name, pid, st);
+			st->f.send_spawn_player(i, pos, st->p[pid].gun, st->p[pid].team, st->p[pid].name, pid, st);
 		}
 	}
 }
 
 static void set_ammo(plid pid, unsigned mag, unsigned reserve, struct State *st) {
 	st->p[pid].estMagAmmo = mag;
-	st->p[pid].maxMagAmmo = mag * (1 + (st->p[pid].weapon == 2)*7);
+	st->p[pid].maxMagAmmo = mag * (1 + (st->p[pid].gun == 2)*7);
 	st->p[pid].reserveAmmo = reserve;
 
 	st->f.send_reload(pid, mag, reserve, pid, st);
@@ -812,29 +827,28 @@ static void set_ammo(plid pid, unsigned mag, unsigned reserve, struct State *st)
 
 static void reload_player(plid pid, struct State *st) {
 	unsigned ammo = st->p[pid].estMagAmmo < st->p[pid].maxMagAmmo ? st->p[pid].estMagAmmo : st->p[pid].maxMagAmmo;
-	unsigned transfer = initialMagAmmo[st->p[pid].weapon] - ammo;
+	unsigned transfer = initialMagAmmo[st->p[pid].gun] - ammo;
 
 	/* TODO: make sure you handle 0 mag/reserve ammo properly everywhere */
 	if (transfer > st->p[pid].reserveAmmo)
 		transfer = st->p[pid].reserveAmmo;
 
-	if (ammo >= initialMagAmmo[st->p[pid].weapon] || transfer == 0) {
+	if (ammo >= initialMagAmmo[st->p[pid].gun] || transfer == 0) {
 		st->p[pid].reloadtime = 0;
 		return;
 	}
 
 	/* TODO: no reloading *and* firing, except maybe with the shotgun */
-	if (st->p[pid].weapon == 2) {
+	if (st->p[pid].gun == 2) {
 		/* TODO: either that last TODO or stop reloading when mag is max */
 		transfer = 1;
-		st->p[pid].reloadtime += reloadTime[st->p[pid].weapon];
+		st->p[pid].reloadtime += reloadTime[st->p[pid].gun];
 	} else
 		st->p[pid].reloadtime = 0;
 
 	st->f.set_ammo(pid, ammo+transfer, st->p[pid].reserveAmmo-transfer, st);
 }
 
-const uint8_t ColorFilled[3] = {40, 64, 103};
 static int pvx_dump_bitmask_all(uint_fast32_t x, uint_fast32_t y, uint_fast32_t zStart, uint_fast32_t zEnd, const uint8_t *colors, int filled, PVXWriteCallback writecall, void *writeUdata, char *errbuf, void *udata) {
 	struct BitmaskUData *data = udata;
 	uint_fast32_t z;
@@ -869,10 +883,18 @@ static void prepare_map_load(struct State *st) {
 }
 
 static void finish_map_load(struct State *st) {
+	plid i;
+
 	st->globals.loadingMap = 0;
 
-	/* TODO: don't bother sending map if no players are connected, don't bother reencoding the vxl if we can reuse the loaded one, if the input vxl is zlib-compressed send it along the wire as-is */
-	st->f.send_map(PID_BROADCAST, st);
+	/* TODO: don't bother reencoding the vxl if we can reuse the loaded one */
+	/* Only send map if someone's actually connected */
+	for (i=0;i<MAX_PLAYERS;i++) {
+		if (pid_matches(PID_BROADCAST, i, st)) {
+			st->f.send_map(PID_BROADCAST, st);
+			break;
+		}
+	}
 }
 
 static int load_vxl_from_mem(const void *data, size_t len, struct State *st) {
@@ -1006,10 +1028,17 @@ static void boot_players_to_limbo(struct State *st) {
 	st->globals.teamscore[0] = 0;
 	st->globals.teamscore[1] = 0;
 	for (i=0;i<MAX_PLAYERS;i++) {
+		int wasalive = st->p[i].alive;
+
+		/* TODO: holy fragility with these timers */
 		st->p[i].joined = 0;
 		st->p[i].alive = 0;
+		st->p[i].spawntime = 0;
+		st->p[i].reloadtime = 0;
+		st->p[i].estfiretime = 0;
 
-		st->f.after_player_destroy(i, st);
+		if (wasalive)
+			st->f.after_player_destroy(i, st);
 	}
 }
 
@@ -1029,7 +1058,7 @@ static void demand_fingerprint(plid pid, struct State *st) {
 			/* TODO: maybe just send handshake once instead of every call until recieved?
 			 * i.e. use initStateSent. . . makes the function less useful though
 			 */
-			if (st->p[i].handshaked)
+			if (!st->p[i].handshaked)
 				SEND(i, hi);
 		}
 	}
@@ -1055,6 +1084,7 @@ static clk get_spawn_time(plid pid, struct State *st) {
 static void func_kill(plid pid, unsigned type, plid killer, struct State *st) {
 	clk now;
 	clk delta;
+	int wasalive = st->p[pid].alive;
 
 	st->p[pid].spawntime = st->f.get_spawn_time(pid, st);
 	st->p[pid].reloadtime = 0;
@@ -1070,10 +1100,13 @@ static void func_kill(plid pid, unsigned type, plid killer, struct State *st) {
 
 	st->f.send_kill(PID_BROADCAST, delta, type, killer, pid, st);
 
+	/* TODO: type < 4 may have inconsistent handling across clients */
 	if (type < 4 && pid != killer)
 		st->p[killer].score++;
 
-	st->f.after_player_destroy(pid, st);
+	/* Just in case someone wants to kill someone extra dead */
+	if (wasalive)
+		st->f.after_player_destroy(pid, st);
 }
 
 static void after_player_destroy(plid pid, struct State *st) {
@@ -1132,7 +1165,7 @@ static int get_hit_damage(plid pid, unsigned type, struct State *st) {
 	if (type == HitTypeLegs)
 		type = HitTypeArms;
 
-	return dmgmap[st->p[pid].weapon][type];
+	return dmgmap[st->p[pid].gun][type];
 }
 
 static void set_block_color(plid pid, color color, struct State *st) {
@@ -1164,16 +1197,26 @@ static void set_orientation(plid pid, fvec3 ori, struct State *st) {
 }
 
 static void set_jump(plid pid, struct State *st) {
-	struct PacketInput ip;
-
 	st->p[pid].inputs |= KeyStateTypeJump;
-
-	ip.packetID = PacketTypeInput;
-	ip.playerID = pid;
-	ip.keyStates = st->p[pid].inputs;
-
-	SEND(PID_BROADCAST, ip);
+	st->f.send_move_input(PID_BROADCAST, st->p[pid].inputs, pid, st);
 }
+
+static void set_tool(plid pid, unsigned tool, struct State *st) {
+	st->p[pid].tool = tool;
+	st->p[pid].reloadtime = 0;
+
+	st->f.send_set_tool(PID_BROADCAST, tool, pid, st);
+
+	if (st->p[pid].estfiretime == 0 && st->p[pid].tool == ToolTypeGun && st->p[pid].mouseInputs & 1) {
+		st->p[pid].estfiretime = get_time() + fireTime[st->p[pid].gun];
+		/* TODO: does this actually need to be here? */
+		st->p[pid].reloadtime = 0;
+
+		if (st->p[pid].estMagAmmo != 0)
+			st->p[pid].estMagAmmo--;
+	}
+}
+
 
 /* TODO: or intel_capture? */
 static void capture_intel(plid pid, int winning, struct State *st) {
@@ -1248,7 +1291,7 @@ static int intercept(ENetHost *host, ENetEvent *event) {
 		enet_socket_send(host->socket, &host->receivedAddress, &buf, 1);
 
 		/* TODO: prevent dos from slow and plentiful enet connections and from HI */
-		LOG("%s:%u says HI", host_ip(&host->receivedAddress), host->receivedAddress.port);
+		LOG("%s:%"PRIu16" says HELLO", host_ip(&host->receivedAddress), host->receivedAddress.port);
 		return 1;
 	}
 
@@ -1259,7 +1302,7 @@ static int intercept(ENetHost *host, ENetEvent *event) {
 
 		enet_socket_send(host->socket, &host->receivedAddress, &buf, 1); return 1;
 
-		LOG("%s:%u says HELLOLAN", host_ip(&host->receivedAddress), host->receivedAddress.port);
+		LOG("%s:%"PRIu16" says HELLOLAN", host_ip(&host->receivedAddress), host->receivedAddress.port);
 		return 1;
 	}
 
@@ -1306,6 +1349,7 @@ static void set_funcs(struct State *st) {
 	st->f.detonate_grenade = detonate_grenade;
 	st->f.set_block_color = set_block_color;
 	st->f.set_jump = set_jump;
+	st->f.set_tool = set_tool;
 	st->f.tick_player_physics = tick_player_physics;
 	st->f.capture_intel = capture_intel;
 	st->f.pickup_intel = pickup_intel;
@@ -1344,14 +1388,14 @@ static void set_defaults(struct State *st) {
 	st->globals.tentpos[1] = hidden;
 }
 
-const char *cfg = "config.lua";
 /* config_path is relative to root_path, root_path defaults to . */
 /* TODO: assert(config_path[0] != '/') */
-#define USAGE "usage: %s [-c config_path] [-d root_path]\n"
+#define USAGE "usage: %s [-c config_path] [-d root_path] [-p udp_port]\n"
 static void parse_args(int argc, char **argv) {
+	char *end;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "c:d:")) != -1) {switch (ch){
+	while ((ch = getopt(argc, argv, "c:d:p:")) != -1) {switch (ch){
 	case 'c':
 		cfg = optarg;
 		break;
@@ -1359,15 +1403,26 @@ static void parse_args(int argc, char **argv) {
 		if (chdir(optarg) != 0)
 			ERR("chdir");
 		break;
+	case 'p':
+		errno = 0;
+		port = strtoul(optarg, &end, 10);
+
+		if (!isdigit(optarg[0]) || port >= 65536 || end != optarg+strlen(optarg)) {
+			/* TODO: if port can be <1024 you had better setuid off of root */
+			/* TODO: 0 is reserved */
+			fputs("udp_port must be between 0 and 65535, inclusive.\n", stderr);
+			exit(EXIT_FAILURE);
+		}
+
+		break;
 	default:
 		fprintf(stderr, USAGE, argv[0]);
 		exit(EXIT_FAILURE);
 	}}
 }
 
-void hook_lua(const char *cfg, struct State *st);
+void hook_lua(const char *cfg, unsigned long port, struct State *st);
 
-static struct State *exit_st;
 static void atexit_server(void) {
 	plid i;
 
@@ -1409,7 +1464,7 @@ static struct State *st_init(void) {
 		ERR("calloc");
 
 	addr.host = ENET_HOST_ANY;
-	addr.port = 32777;
+	addr.port = port;
 
 	st->host = bringup_host(&addr);
 	if (st->host == NULL)
@@ -1438,7 +1493,6 @@ static struct State *st_init(void) {
 	return st;
 }
 
-volatile sig_atomic_t keepRunning = 1;
 static void sig_handler(int sig) {
 	(void)sig;
 	keepRunning = 0;
@@ -1468,7 +1522,7 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	hook_lua(cfg, st);
+	hook_lua(cfg, port, st);
 
 	st->f.load_initial_map(st);
 

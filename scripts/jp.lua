@@ -1,7 +1,8 @@
 -- jp.lua -- An implementation of that jetpack command
-local mod = {after={},before={}};
+local mod = init_mod();
 local bit = require("bit");
 
+-- TODO: to pid_table
 local flies = {};
 function mod.after.on_join(pid)
 	flies[pid] = nil;

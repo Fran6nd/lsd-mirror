@@ -67,22 +67,15 @@ var input = document.getElementById("input");
 var hist = [""];
 var histidx = 0;
 
-function close(event) {
-	stderr.value += "Disconnected\n";
-}
-
-function error(event) {
-	stderr.value += "Error\n";
-}
-
-function message(event) {
-	stderr.value += event.data;
+function output(str) {
+	stderr.value += str;
 	stderr.scrollTop = stderr.scrollHeight;
 }
 
-function open(event) {
-	stderr.value += "Connected\n";
-}
+function open(event) {output("Connected\n");}
+function close(event) {output("Disconnected: " + event.code + " (" + (event.wasClean ? "clean" : "unclean") + ")\n");}
+function error(event) {output("Error\n");}
+function message(event) {output(event.data);}
 
 function submit(event) {
 	event.preventDefault();

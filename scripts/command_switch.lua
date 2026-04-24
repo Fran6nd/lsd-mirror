@@ -14,13 +14,9 @@ local teammap = {["0"]=0, ["1"]=1, ["255"]=255, ["-1"]=255, spec=255, spectator=
 local cmd = {name="switch", caps="switch", fakepid=true, usage="[player] [team]", desc="Move a player (or you) to a different team."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv <= 2);
-	local who = get_arg_pid_opt("player", pid, cmd, argv[1]);
+	local who = get_arg_pid_opt("player", pid, cmd, argv[1]) or pid;
 	local team = argv[2];
 	local teamid;
-
-	if (who == nil) then
-		who = pid;
-	end
 
 	if (team) then
 		local namemap = {[string.lower(get_team_name(0))]=0, [string.lower(get_team_name(1))]=1};

@@ -114,6 +114,10 @@ int websockets_read_handshake_hdrs(const char *in, size_t size, struct WS_Header
 					hdr->gotFlags |= WS_GOTFLAG_UPGRADE;
 				if (HDRBUF_STR_EQ("Connection: Upgrade"))
 					hdr->gotFlags |= WS_GOTFLAG_CONNECTION;
+				/* My firefox-esr 140.9.1esr adds keep-alive for some reason */
+				/* TODO: might want to just strstr it */
+				if (HDRBUF_STR_EQ("Connection: keep-alive, Upgrade"))
+					hdr->gotFlags |= WS_GOTFLAG_CONNECTION;
 				if (HDRBUF_STR_PFX_EQ("Sec-WebSocket-Version: 13"))
 					hdr->gotFlags |= WS_GOTFLAG_VERSION;
 				if (HDRBUF_STR_PFX_EQ("Sec-WebSocket-Key: ")) {

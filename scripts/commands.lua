@@ -40,6 +40,7 @@ function get_player_by_str(str)
 			return -4;
 		end
 
+		-- TODO: mandate joined? alive? other things?
 		if (is_connected(found)) then
 			return found
 		end
@@ -47,8 +48,9 @@ function get_player_by_str(str)
 		return -2;
 	end
 
+	-- TODO: piditer for joined??
 	for i in piditer(PID_BROADCAST) do
-		if (string.find(string.lower(get_name(i)), string.lower(str), 1, true)) then
+		if (is_joined(i) and string.find(string.lower(get_name(i)), string.lower(str), 1, true)) then
 			if (found >= 0) then
 				-- Ambiguous
 				return -3;

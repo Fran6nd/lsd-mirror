@@ -20,6 +20,7 @@ function mod.load_map(name)
 
 		prepare_map_load();
 		status, err = pcall(script.generate, math.random());
+		math.randomseed();
 		boot_players_to_limbo();
 		finish_map_load();
 

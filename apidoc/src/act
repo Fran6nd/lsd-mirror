@@ -103,3 +103,64 @@ The tent is centered along the x and y axes. The visual bottom of the tent is <c
 Calls send_move_object().
 
 <!-- END gamemode -->
+
+void boot_players_to_limbo(void) ->
+Makes all players un-joined. Sets the score of all teams to 0.
+Only call this during or right before map load if you want things to stay consistent across the network.
+
+<!-- TODO: list get_* counterparts! -->
+void set_fog(color color) ->
+Sets the current fog color.
+
+<!-- TODO: specify a team here if you want to potentially support a non-2 number -->
+<!-- TODO: determine portability of move_intel on held intel without dropping first -->
+void capture_intel(plid pid, int winning) ->
+If <var>pid</var>'s team is SPECTATOR, invokes undefined behavior.
+Captures <var>pid</var>'s enemy team's intel.
+Increases the score of <var>pid</var>'s team by 1.
+Increases the score of <var>pid</var> by 1.
+calls send_intel_capture().
+Leaves the intel's position in an undefined state depending on client<!-- TODO: don't? / or openspades' that joined while the intel was being held -->; puts the intel back at its last position server-side.
+If <var>winning</var> is <kbd>true</kbd>, calls on_game_end().
+
+void pickup_intel(plid pid) ->
+Makes <var>pid</var> pick up the enemy team's intel.
+Calls send_intel_pickup().
+
+void drop_intel(plid pid, fvec3 pos) ->
+Makes <var>pid</var> drop the enemy team's intel at the given position.
+Calls send_intel_drop().
+
+void set_tool(plid pid, unsigned tool) ->
+Switches <var>pid</var>'s held tool.
+Switch time may vary by client.
+Calls send_set_tool().
+
+void demand_fingerprint(plid pid) ->
+Sends a HandshakeInit and VersionRequest to <var>pid</var>.
+Allows the client to call on_handshake() and on_version().
+
+void reload_player(plid pid) ->
+<!-- TODO: details? -->
+Reloads <var>pid</var>'s gun; stops any scheduled reload.
+Calls set_ammo().
+
+void spawn_player(plid pid, fvec3 pos) ->
+<!-- TODO: what if i want to spawn a player without going through on_join first -->
+Spawns <var>pid</var>.
+Calls send_spawn_player().
+
+<p>The player's orientation is team-dependent, with the first team facing <code>{x=1,y=0,z=0}</code> and the second team facing <code>{x=-1,y=0,z=0}</code>.
+
+<p>The player's HP is set to 100, blocks to 50, grenades to 3, and mag/reserve ammo to a protocol version-defined value (see send_spawn_player()).
+<!-- TODO: better way to copy constants around? -->
+
+void set_block_color(plid pid, color color) ->
+Sets <var>pid</var>'s held block color.
+Calls send_set_block_color().
+
+<!-- TODO: simulate_player_physics -- and allow looping and whatever that way too -->
+<!-- TODO: get velocity, would be fun to set it too -->
+void tick_player_physics(plid pid, float timeDelta) ->
+Moves <var>pid</var> using pyspades' player physics spaghettorithm.
+You probably want to set timeDelta to 60&nbsp;Hz.

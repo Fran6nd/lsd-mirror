@@ -124,3 +124,38 @@ void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsig
 Called by most clients (not Voxlap) in response to demand_fingerprint().
 Sets the player's <a href=#get_client_char>id char</a> and <a href=#get_client_major>major</a>, <a href=#get_client_minor>minor</a> and <a href=#get_client_patch>patch</a> version.
 Detects buggy piles of trash (BetterSpades) and works around them accordingly (except for the pyspades api implementation).
+
+void on_join(plid pid, unsigned team, unsigned gun, string name) ->
+Called when the implementation thinks a client is trying to join from limbo.
+Sets relevant state, then calls spawn_player() with the return value of get_spawn_positon() as the position.
+
+void on_switch(plid pid, unsigned team, unsigned gun) ->
+Called when the implementation thinks a client is trying to switch team or gun (or both).
+Sets the team and gun to switch to when spawn_player() is called.
+Calls kill() if the player is alive.
+If switching from spectator to non-spectator, LSd calls spawn_player() and immediately kills the player again; other implementations may differ.
+
+void tick(void) ->
+Called at a rate of TICKRATE&nbsp;Hz by the event loop (see <a rel=noreferrer href="https://66.135.15.57/lsd/tree/src/main.c#:~:text=static%20void%20do_loop("><code>src/main.c:do_loop()</code></a>).
+Handles the following by default:
+<ul>
+<li>Player physics; tick_player_physics()
+<li>Player respawning; spawn_player()
+<li>Player gun reloading; reload_player()
+<li>Player gunfire estimation (no dedicated function)
+<li>Grenade detonation; detonate_grenade() <!-- TODO: better specify that it's server-local! -->
+<li>Grenade physics (no dedicated function) <!-- TODO: dedicate function -->
+<li>Sending position/orientation to clients; send_player_update()
+</ul>
+
+void before_log(void) ->
+Called before the layer beneath the API implementation spits something out to stderr.
+Deprecated.
+
+void after_log(void) ->
+Called after the layer beneath the API implementation outputs to stderr.
+Deprecated.
+
+void after_player_destroy(plid pid) ->
+Called after <var>pid</var> is made not alive.
+Called by kill() and boot_players_to_limbo().

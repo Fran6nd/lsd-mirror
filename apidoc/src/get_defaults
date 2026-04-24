@@ -1,0 +1,20 @@
+<!-- TODO: luaawk it -->
+fvec3 get_spawn_position(plid pid) ->
+Returns the default position <var>pid</var> should respawn at.
+Usually passed as <var>pos</var> to spawn_player();
+
+clk get_spawn_time(plid pid) ->
+Returns the time when <var>pid</var> should respawn after being killed.
+<!-- TODO: shouldn't -->
+Returning 0 prevents respawn.
+
+int get_hit_damage(plid pid, unsigned type) ->
+Returns the amount of damage <var>pid</var> should do to another player given a type.
+Possible values of <var>type</var> are:
+<dl>
+<dt>0<dd>Gun, torso
+<dt>1<dd>Gun, head
+<dt>2<dd>Gun, arms
+<dt>3<dd>Gun, legs
+<dt>4<dd>Spade
+</dl>

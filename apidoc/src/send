@@ -1,0 +1,221 @@
+<!-- TODO: equalize all the <dl> orderings -->
+void send_fog(bplid pid, color color) ->
+Sets the client's fog color.
+
+void send_player_update(bplid pid) ->
+Sets the position and orientation of all other players to match the server's.
+Sent with send_packet_unreliable().
+
+void send_grenade(bplid pid, fvec3 pos, fvec3 vel, float fuse, plid from) ->
+Spawns a grenade.
+Physics out of bounds varies by client; OpenSpades treats all out-of-bounds voxels as nonsolid, Voxlap and BetterSpades handle them modulo 512 along the x and y axes.
+
+void send_reload(bplid pid, unsigned mag, unsigned reserve, plid from) ->
+When <var>from</var> is not the receiving client, signifies the start of a player's gun reload, usually with a sound effect.
+This effect is purely cosmetic; for example, the original server only sends this if the receiving player is determined to be close enough to <var>from</var>.
+When <var>from</var> <em>is</em> the receiving client, signifies the end of a gun reload (if applicable) and sets the client's ammo.
+
+void send_map_start(plid pid, unsigned size) ->
+Switches the client to its ``map transfer mode''.
+Unjoins all joined players. Removes all grenades.
+<var>size</var> is nominally the map's zlib stream's size in bytes, but in practice can (should?) be ignored.
+
+void send_map(bplid pid) ->
+Calls send_map_start() and send_packet() with lots of MapChunk packets.
+Over the wire, an ordinary zlib-compressed Voxlap5 VXL file representing the current map's contents is sent.
+<!-- /* TODO: should the iterator be moved to send_state? */ -->
+Calls send_state() for each player in the given broadcast pid.
+
+void send_state(plid pid) ->
+<strong>This one takes a regular pid, not a broadcast pid.</strong>
+Calls send_connected_players().
+Calls demand_fingerprint() if this is the first time state was sent to <var>pid</var> since connecting.
+Calls send_state_ctf().
+If this is the first time state has been sent since connecting, calls demand_fingerprint().
+Exits ``map transfer mode'' if in that mode.
+Sets what player ID the client should use.
+Sets fog color.
+Sets team colors and names.
+Sets assorted gamemode-related things.
+
+void send_existing_player(bplid pid, unsigned team, unsigned gun, unsigned tool, unsigned score, color blockColor, string name, plid from) ->
+Silently joins and spawns a player. Where exactly it spawns is uncertain<!-- and on my TODO list -->.
+
+void send_spawn_player(bplid pid, fvec3 pos, unsigned gun, unsigned team, string name, plid from) ->
+Spawns a player. If the player wasn't joined before, joins it now.
+
+<!-- TODO: actually support nil, then add another BSbug for the fun of it -->
+<p>If the player was already joined, name may be <kbd>nil</kbd> -- this leaves the name unchanged, unless you're BetterSpades, which is full of bugs.
+The original ``Voxlap'' client does not support changing name after join -- new names are ignored.
+OpenSpades treats an empty string the same as nil.
+
+<p>The player's orientation is team-dependent, with the first team facing <code>{x=1,y=0,z=0}</code> and the second team facing <code>{x=-1,y=0,z=0}</code>.
+
+<p>If <var>from</var> refers to the receiving player, that player's HP is set to 100, blocks to 50, grenades to 3, and mag/reserve ammo to a protocol version-defined constant:
+<!-- <dl><dt>0.75.015 (3)<dd><dl><dt>Rifle (0)<dd>10, 50<dt>SMG (1)<dd>30, 120<dt>Shotgun (2)<dd>6, 48</dl><dt>0.76.010 (4)<dd><dl><dt>Rifle (0)<dd>8, 48<dt>SMG (1)<dd>30, 150<dt>Shotgun (2)<dd>8, 48</dl></dl> -->
+<dl>
+<dt>0.75.015 (3)<dd><dl>
+	<dt>Rifle (0)<dd>10, 50
+	<dt>SMG (1)<dd>30, 120
+	<dt>Shotgun (2)<dd>6, 48
+</dl><dt>0.76.010 (4)<dd><dl>
+	<dt>Rifle (0)<dd>8, 48
+	<dt>SMG (1)<dd>30, 150
+	<dt>Shotgun (2)<dd>8, 48
+</dl></dl>
+
+void send_restock(bplid pid, plid from) ->
+<strong><var>from</var> is ignored</strong>.
+Sets the receiving player's reserve ammo to a version-defined value (see send_spawn_player()), HP to 100, blocks to 50, and grenades to 3. Usually plays a sound.
+
+void send_connected_players(bplid pid) ->
+For each player in PID_BROADCAST, calls send_existing_player() with <var>pid</var> as argument <var>pid</var> and the iterated player as <var>from</var> and if needed, send_move_input(), send_mouse_input() and send_kill().
+
+void send_move_input(bplid pid, unsigned inputs, plid from) ->
+Sets the movement input bitmask used by a player.
+Only jump has an effect on the receiving client.
+The bits have the following meanings:
+<!-- <dl><dt>Forward<dd>1<dt>Backward<dd>2<dt>Left<dd>4<dt>Right<dd>8<dt>Jump<dd>16<dt>Crouch<dd>32<dt>Sneak<dd>64<dt>Sprint<dd>128</dl> -->
+<dl class=num>
+<dt><kbd>1</kbd><dd>Forward
+<dt><kbd>2</kbd><dd>Backward
+<dt><kbd>4</kbd><dd>Left
+<dt><kbd>8</kbd><dd>Right
+<dt><kbd>16</kbd><dd>Jump
+<dt><kbd>32</kbd><dd>Crouch
+<dt><kbd>64</kbd><dd>Sneak
+<dt><kbd>128</kbd><dd>Sprint
+</dl>
+
+void send_mouse_input(bplid pid, unsigned inputs, plid from) ->
+Sets the mouse input bitmask used by another player.
+1 is primary; 2 is secondary.
+
+void send_kill(bplid pid, clk spawndelta, unsigned type, plid killer, plid from) ->
+Kills a player.
+<!-- TODO: should i mention all the places where things are extended beyond the bitwidth in the actual packet? -->
+<!-- TODO: is the delta not being seconds here a good thing? -->
+<var>spawndelta</var> is the reported time until respawn; it gets rounded to the nearest second.
+<var>type</var> can be one of the following:
+<!-- <dl><dt>Gun<dd>0<dt>Gun (headshot)<dd>1<dt>Spade<dd>2<dt>Grenade<dd>3<dt>Fall<dd>4<dt>Team switch<dd>5<dt>Gun switch<dd>6</dl> -->
+<dl class=num>
+<dt><kbd>0</kbd><dd>Gun
+<dt><kbd>1</kbd><dd>Gun (headshot)
+<dt><kbd>2</kbd><dd>Spade
+<dt><kbd>3</kbd><dd>Grenade
+<dt><kbd>4</kbd><dd>Fall
+<dt><kbd>5</kbd><dd>Team switch
+<dt><kbd>6</kbd><dd>Gun switch
+</dl>
+
+void send_chat(bplid pid, string msg, unsigned type, plid from) ->
+Displays a chat message.
+If type&le;<kbd>1</kbd> and <var>from</var> is joined, displays as if that player sent it; otherwise displays as if the server sent it.
+<var>type</var> can be one of the following:
+<dl class=num>
+<dt><kbd>0</kbd><dd>Global
+<dt><kbd>1</kbd><dd>Team
+<dt><kbd>2</kbd><dd>Server
+</dl>
+<p>If <var>from</var> is a non-joined player or <var>type</var>=<kbd>2</kbd>, OpenSpades matches the start of the message against a set of magic strings and changes the message's display accordingly:
+<dl>
+<dt><kbd><code>"N% "</code></kbd><dd>``Notice''
+<dt><kbd><code>"!% "</code></kbd><dd>``Error''
+<dt><kbd><code>"%% "</code></kbd><dd>``Warning''
+<dt><kbd><code>"C% "</code></kbd><dd>``Center''
+</dl>
+<p>Additionally, BetterSpades has decided to implement its own unecessary standard for <var>type</var> incompatible with all the other clients:
+<!-- TODO: rm this whenever you remember it: <dl><dt>``Big'' (center, red)<dd>3<dt>``Info'' (center, white)<dd>4<dt>``Warning'' (center, yellow)<dd>5<dt>``Error'' (center, red)<dd>6</dl> -->
+<dl class=num>
+<dt><kbd>3</kbd><dd>``Big'' (center, red)
+<dt><kbd>4</kbd><dd>``Info'' (center, white)
+<dt><kbd>5</kbd><dd>``Warning'' (center, yellow)
+<dt><kbd>6</kbd><dd>``Error'' (center, red)
+</dl>
+<p>BetterSpades has also decided to add special meaning to use of both <var>from</var>=<kbd>255</kbd> and <var>type</var>=<kbd>2</kbd> together despite their (intuitive?) use in the original server.
+These messages are not displayed in chat.
+If the client has been connected for at least 1 second, the last message meeting those criteria overrides the disconnect reason which would otherwise be derived from ENet's disconnect data integer.<!-- I think? -->
+The reason is limited to 16 octets in length (excluding NUL terminator).
+<p>OpenSpades handles the message specially when <var>from</var> is a non-joined player (<var>type</var> is ignored):
+<dl>
+<dt><kbd><code>"Game mode: Arena by Yourself"</code></kbd><dd><samp>Enabled clearCorpseOnRespawn based on a server message heuristics</samp> [sic]
+</dl>
+<p>Similarly for IV of Spades:
+<dl>
+<dt><kbd><code>"This server supports the PosUpgrade extension"</code></kbd><dd><samp>Enabled posUpgradeExtension based on a server message heuristics</samp> [sic]
+<dt><kbd><code>"PosUpgrade extension could not be detected"</code></kbd> [sic]<dd><samp>Disabled posUpgradeExtension based on a server message heuristics</samp> [sic]
+</dl>
+
+void send_disconnect(bplid pid, plid from) ->
+Unjoins a joined player. Makes no distinction between player-initiated and non-player-initiated disconnects.
+
+void send_block_action(plid pid, ivec3 pos, unsigned type, plid from) ->
+Places or removes a set of blocks centered around the given position.
+<var>type</var> can be one of the following:
+<!-- TODO: should i expose macros for these or something? -->
+<dl class=num>
+<dt><kbd>0</kbd><dd>Build 1 (block)
+<dt><kbd>1</kbd><dd>Destroy 1 (spade/gun)
+<dt><kbd>2</kbd><dd>Destroy 1x1x3 (spade)
+<dt><kbd>3</kbd><dd>Destroy 3x3x3 (grenade, silent)
+</dl>
+
+<p>If building, uses the held block color of <var>from</var>.
+OpenSpades decreases its number of available blocks by 1 if <var>type</var>=<kbd>0</kbd>. If that would bring the number below 0, don't decrease anything.
+OpenSpades increases its number of available blocks by 1 if <var>type</var>=<kbd>1</kbd>. If that would bring the number above 50, don't increase anything.
+
+<p>Block actions<!-- TODO: shitty name --> are batched per frame in an extra-flimsy manner. (E.g. sending a build then destroy that get received on the same frame will process destroy first, then build, and not process gravity at all, or something cursed like that. . .) Documenting it and working around it is on my TODO list.
+
+<!-- TODO: suspiciously similar to block_line() -->
+void send_block_line(bplid pid, ivec3 start, ivec3 end, nplid from) ->
+Places a line of blocks using pyspades' modified DDA.
+<NOLISTJOKES>
+(Not <code>pyspades.world.cast_ray()</code> -- <code>pyspades.world.cube_line()</code> instead.)
+<LISTJOKES>
+
+void send_position(bplid pid, fvec3 pos) ->
+Sets the receiving player's position.
+
+void send_orientation(bplid pid, fvec3 ori) ->
+Sets the receiving player's orientation, unless you're BetterSpades.
+
+<!-- TODO: determine portability of move_intel on held intel without dropping first -->
+void send_intel_capture(bplid pid, int winning, plid from) ->
+Captures <var>from</var>'s enemy team's intel.
+Increases the score of <var>from</var>'s team by 1.
+Increases the score of <var>from</var> by 1.
+Leaves the intel's position in an mysterious state depending on client -- on my TODO list.<!-- BetterSpades doesn't do shit with it anyway -->
+If <var>winning</var> is <kbd>true</kbd>, usually indicates that and plays a sound.
+
+void send_intel_pickup(bplid pid, plid from) ->
+Makes <var>from</var> pick up the enemy team's intel.
+
+void send_intel_drop(bplid pid, fvec3 pos, plid from) ->
+Makes <var>from</var> drop the enemy team's intel at the given position.
+
+void send_move_object(bplid pid, fvec3 pos, unsigned id, unsigned team) ->
+<!-- TODO: document voxlap fuckery which may or may not be real -->
+<!-- TODO: TC -->
+For CTF, <var>id</var> may be one of the following:
+<dl>
+<dt>0<dd>First team's intel
+<dt>1<dd>Second team's intel
+<dt>2<dd>First team's tent
+<dt>3<dd>Second team's tent
+</dl>
+
+<!-- TODO: really? -->
+<p><var>team</var> is ignored for CTF.
+
+void send_set_block_color(bplid pid, color color) ->
+Sets <var>from</var>'s held block color.
+
+void send_set_tool(bplid pid, unsigned tool) ->
+Switches <var>pid</var>'s held tool.
+Switch time may vary by client.
+Calls send_set_tool().
+
+<!-- Yuck! -->
+void send_state_ctf(bplid pid, nplid from, string teamname[2], color teamcolor[2], color fog, unsigned teamscore[2], unsigned maxscore, plid holders[2], fvec3 intelpos[2], fvec3 tentpos[2]) ->
+See send_state().
+Sets team score, max score, intel holders, tent position and intel position in addition to what's described there.

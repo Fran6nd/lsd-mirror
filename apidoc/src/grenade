@@ -1,0 +1,23 @@
+<!-- TODO: definitely make sure passing (size_t)-1 to a function can't screw things over -->
+size_t register_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, clk fuse) ->
+Creates a grenade on the server side.
+Returns <samp><code>(size_t)-1</code></samp> and doesn't create the grenade if out of memory.
+Returns the grenade's index otherwise.
+Its index is unspecified.
+
+size_t spawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, clk fuse) ->
+Creates a grenade.
+Calls register_grenade() and (if not out of memory) send_grenade().
+Returns the grenade's index, or <samp><code>(size_t)-1</code></samp> if out of memory.
+
+void remove_grenade(size_t index) ->
+Removes a grenade on the server side.
+Invokes undefined behavior if <var>index</var> does not point to an existing grenade.
+
+void detonate_grenade(size_t index) ->
+Detonates a grenade on the server side.
+Calls remove_grenade().
+<!-- TODO: how does pid work when the owner leaves or changes team or something? What if I don't want an owner? -->
+Damages all players not on the same team as the grenade's owner, less than 16 away on each axis if a ray can be cast from the grenade to that player's head.
+Does 4096&minus;distance(grenadePos, playerPos)<sup>2</sup> damage.
+Calls block_action() at the grenade's position with <var>type</var>=3 and <var>pid</var> equal to the grenade's owner.

@@ -1,0 +1,91 @@
+<NOAUTOLINK>
+boolean is_connected(plid pid) ->
+Returns <samp>true</samp> if the player is connected. The player does not need to be joined to be considered connected.
+
+boolean is_joined(plid pid) ->
+Returns <samp>true</samp> if the player is joined and connected.
+
+boolean is_alive(plid pid) ->
+Returns <samp>true</samp> if the player is alive, joined and connected.
+SPECTATORs are not alive.
+<AUTOLINK>
+
+boolean is_airborne(plid pid) ->
+Returns <samp>true</samp> if the player was not on the ground last time tick_player_physics() was called.
+Return value is unspecified if the player was not alive at the time of the physics tick.
+
+fvec3 get_position(plid pid) ->
+Reutrns the player's current position.
+Players that are not alive return an implementation-defined value.
+
+fvec3 get_orientation(plid pid) ->
+Returns the player's current direction vector.
+The length of the vector may or may not alter physics if it's non-1. <!-- TODO: move to set_orientation? -->
+
+<!-- TODO: s:\(input\)s:\1: -->
+integer get_mouse_inputs(plid pid) ->
+Returns a bitmask of the player's current mouse inputs.
+Extract bits with <a href=https://bitop.luajit.org/api.html#bor><code>bit.band()</code></a> if you want.
+1 is primary; 2 is secondary.
+
+<!-- TODO: this one's name is even more nonconforming than the last -->
+<!-- TODO: unbitmask these two and merge? -->
+integer get_inputs(plid pid) ->
+Returns a bitmask of the player's current movement inputs.
+Extract bits with <a href=https://bitop.luajit.org/api.html#bor><code>bit.band()</code></a>.
+See send_move_input() for bitmask values.
+
+string get_name(plid pid) ->
+Returns the player's name, encoded in UTF-8.
+
+<!-- TODO: upgrade to number? -->
+integer get_hp(plid pid) ->
+Returns the player's current HP.
+Players that are not alive return an implementation-defined value.
+
+integer get_tool(plid pid) ->
+Returns the player's currently held tool.
+Players that are not alive return an implementation-defined value.
+
+integer get_gun(plid pid) ->
+Returns the player's selected gun. For sane implementations (i.e., not pyspades) this value is only updated every spawn_player(), with the value of get_next_gun().
+
+integer get_team(plid pid) ->
+Returns the player's team. If you aren't pyspades, this value is only updated every spawn_player() with the value of get_next_team().
+
+integer get_next_gun(plid pid) ->
+Returns the gun the player will switch to on next spawn_player().
+
+integer get_next_team(plid pid) ->
+Returns the team the player will switch to on next spawn_player().
+
+color get_block_color(plid pid) ->
+Returns the current color of the player's block tool.
+Players that are not alive return an implementation-defined value.
+
+<!-- TODO: handle v6, unspec? -->
+integer get_ipaddr(plid pid) ->
+Returns the player's IPv4 address as an integer, converted to host endianess with <a rel=noreferrer href=https://man.openbsd.org/ntohl.3><code>ntohl(3)</code></a>.
+
+number get_round_trip_time(plid pid) ->
+Returns the player's estimated round-trip time (more popularly referred to as ping).
+
+<!-- TODO: get -> is? -->
+boolean get_client_handshaked(plid pid) ->
+Returns <samp>true</samp> if the player's client recognized and responded to a HandshakeInit packet sent through demand_fingerprint() with a valid HandshakeReturn.
+
+nil|integer get_client_char(plid pid) ->
+Returns the client's reported ID char (e.g. <samp>&apos;o&apos;</samp> for OpenSpades, <samp>&apos;B&apos;</samp> for BetterSpades) if the player's client recognized and responded to a VersionRequest packet sent through demand_fingerprint() with a valid VersionResponse.
+It may be run through <a rel=noreferrer href=https://www.lua.org/manual/5.1/manual.html#pdf-string.char><code>string.char()</code></a> if you take care to sanitize it first. <!-- You will, won't you? -->
+Some clients (mine) may lie about this since depending on an arbitrary char to determine supported features doesn't work out too well.
+Returns <samp>nil</samp> otherwise.
+
+<!-- TODO: better to return a table? */ -->
+integer get_client_major(plid pid) ->
+Returns the client's reported major version. In circumstances where get_client_char() would return nil, return value is unspecified.
+
+integer get_client_minor(plid pid) ->
+Behaves like get_client_major() but for minor version.
+
+integer get_client_patch(plid pid) ->
+Behaves like get_client_major() but for patch version.

@@ -1,0 +1,126 @@
+void on_block_action(plid pid, ivec3 pos, unsigned type) ->
+Called by the client when it wants to place/destroy a block (or 3).
+
+<p>Voxlap and BetterSpades decrease their number of available blocks by 1 if <var>type</var>=<samp>0</samp>.
+Voxlap and BetterSpades increase their number of available blocks by 1 if <var>type</var>=<samp>1</samp>.
+In either case, the range is clamped to 0--50.
+OpenSpades doesn't change its number of available blocks until send_block_action() (through block_action()) is called.
+
+<p>Calls block_action().
+See send_block_action() for values of <var>type</var>.
+
+
+void on_block_line(plid pid, ivec3 start, ivec3 end) ->
+Called by the client when it tries to place a line of blocks.
+
+<p>The client will only call this when it has at least as many blocks available
+as the number of blocks in the line.
+<!-- TODO: the wikipedia article kind've sucks -->
+The line is normally interpolated with a modified DDA; this makes the amount of blocks in it always equal to <code>1+abs(<var>end</var>.x-<var>start</var>.x)+abs(<var>end</var>.y-<var>start</var>.y)+abs(<var>end</var>.z-<var>start</var>.z)</code>.
+
+<p>Calls block_line().
+
+
+void on_chat(plid pid, string msg, unsigned type) ->
+Called by the client when it tries to send a chat message.
+For values of <var>type</var>, see send_chat().
+<!-- TODO: should it? -->
+Calls send_chat().
+
+
+void on_color_change(plid pid, color color) ->
+Called by the client when it changes its held block color.
+Sets the player's block color.
+Calls send_set_block_color().
+
+
+void on_game_end(void) ->
+Called by capture_intel() when <var>winning</var> is <kbd>true</kbd>.
+There is no default behavior.
+May be called to explicitly end a game.
+
+
+void on_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse) ->
+Called by the client after it throws a grenade.
+Calls register_grenade(), then send_grenade() with <code><a href=#PID_BROADCAST_EXCEPT>PID_BROADCAST_EXCEPT</a>(<var>pid</var>)</code> as <var>pid</var>.
+
+
+void on_handshake(plid pid) ->
+Called by most clients (not Voxlap) in response to demand_fingerprint().
+Marks the player as <a href=#get_client_handshaked>handshaked</a>.
+
+
+void on_hit(plid pid, unsigned type, plid hitPlayer) ->
+Called by the client when it tries to hit another player (<var>hitPlayer</var>).
+See send_hit() for values of <var>type</var>.
+
+<p>Calls get_hit_damage() and set_hp_directional(), then kill() if the player's HP is 0 after that.
+
+
+void on_mouse_input(plid pid, unsigned bitmask) ->
+Called when the client changes its currently-active mouse inputs.
+<strong>This is not actually a one-to-one mapping for mouse input</strong> (except for BetterSpades, which sux<!-- TODO -->).
+That is, no ``mouse'' inputs are ever reported when sprinting, or during toolswitch delay.
+See send_mouse_input() for values of <var>bitmask</var>.
+
+<p>Sets the player's mouse inputs.
+Calls send_mouse_input() with <code><a href=#PID_BROADCAST_EXCEPT>PID_BROADCAST_EXCEPT</a>(<var>pid</var>)</code> as <var>pid</var>.
+
+
+void on_move_input(plid pid, unsigned bitmask) ->
+Called when the client changes its currently-active movement inputs.
+Jump is never active when airborne. <!-- TODO: change that? both for lag-reduction and literally -->
+Crouch is forced active when the player doesn't have enough vertical space to uncrouch. <!-- TODO: you're going to need to store both effective and client bitmasks. . . -->
+<!-- TODO: determine and mention per-client sprint/sneak/crouch precedences -->
+See send_move_input() for values of <var>bitmask</var>.
+
+<p>Sets the player's movement inputs.
+Calls send_move_input() with <code><a href=#PID_BROADCAST_EXCEPT>PID_BROADCAST_EXCEPT</a>(<var>pid</var>)</code> as <var>pid</var>.
+
+
+void on_orientation(plid pid, fvec3 pos) ->
+Called by the client with its current direction vector at an unspecified frequency.
+Sets the player's direction vector.
+
+
+void on_position(plid pid, fvec3 pos) ->
+Called by the client with its current position at an unspecified frequency.
+Traditionally, this is called at a rate of 1&nbsp;Hz.
+Don't depend on that (unless you're <em>really</em> sure it'll be called at 1&nbsp;Hz) or I'll fill your house with red mud.
+Sets the player's position.
+
+
+void on_reload(plid pid) ->
+Called by the client when it tries to reload its gun.
+Calls send_reload() an unspecified number of times, with the target players including at least all spectators and excluding <var>pid</var>.
+<!-- TODO: some reliable method for overriding the scheduled reload -->
+<!-- TODO: openspades fuckery -->
+<!-- TODO: move most of this into reload_player()? -->
+<p>Schedules a reload (via reload_player()) for a protocol version-defined time in the future.
+The scheduled reload is canceled by spawn_player(),
+reload_player() (when all possible ammunition has been transferred from reserve to mag),
+<!-- TODO: after_player_destroy() instead????? -->
+kill(), boot_players_to_limbo(), on_tool_change(),
+on_mouse_input() (only when a bullet is fired because of it<!-- TODO: why only when a bullet is fired? -->).
+reload_player() may schedule another reload at the same time offset in the future if the player is using a shotgun.
+
+
+<!-- TODO: how would pyspades deal with this? -->
+void on_shutdown(void) ->
+Called <a rel=noreferrer href=https://man.openbsd.org/atexit.3><code>atexit(3)</code></a>, just before the server is torn down.
+<code>core.lua</code> unregisters all modules here.
+
+
+void on_tool_change(plid pid, unsigned tool) ->
+<!-- TODO: impossible task of validating that tools have enough ammo/blocks/nades/. . . -->
+Called when the client changes its currently-held tool.
+Sets the player's held tool.
+Calls send_set_tool().
+<!-- TODO: mention reload effects? -->
+
+
+<!-- TODO: wonder how on_crap_packet() overridden by lua works with all the random vars in the state that are normally set -->
+void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch) ->
+Called by most clients (not Voxlap) in response to demand_fingerprint().
+Sets the player's <a href=#get_client_char>id char</a> and <a href=#get_client_major>major</a>, <a href=#get_client_minor>minor</a> and <a href=#get_client_patch>patch</a> version.
+Detects buggy piles of trash (BetterSpades) and works around them accordingly (except for the pyspades api implementation).

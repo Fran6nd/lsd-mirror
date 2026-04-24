@@ -1,0 +1,19 @@
+boolean is_solid(ivec3 pos) ->
+Returns true if the given position contains a solid voxel.
+Out of bounds positions invoke undefined behavior.
+
+color get_map_block_color(ivec3 pos) ->
+Returns the color of the voxel at the given position.
+If the voxel is not <a href=#is_solid>solid</a>, return value is implementation-defined.
+Out of bounds positions invoke undefined behavior.
+
+<!-- TODO: nuke as non-essential? -->
+ivec3|nil raycast(fvec3 start, fvec3 end, boolean last) ->
+Casts a ray from <var>start</var> to <var>end</var>.
+The raycast is guaranteed to use a correctly-implemented DDA.
+(See also <a rel=noreferrer href=https://www.eecs.yorku.ca/~amana/research/grid.pdf>that paper about it</a>.)
+In particular this rules out the default pyspades implementation, which is broken as usual.
+If the ray didn't intersect any voxels, returns <samp>nil</samp>.
+<!-- TODO: true is defined as (x ~= nil and x ~= false), not as (x == true) -->
+If the ray did intersect a voxel and <var>last</var> is <kbd>true</kbd>, returns the position of that voxel.
+If the ray did intersect a voxel and <var>last</var> is <kbd>false</kbd>, returns the position of the voxel traversed just before the intersected voxel.

@@ -1,0 +1,54 @@
+<!-- TODO: move -->
+void load_initial_map(void) ->
+Called when the server is started.
+Calls load_map() with an implementation-defined default map.
+
+void clear_map(void) ->
+Makes every voxel in the map nonsolid.
+Does not synchronize over the network on its own -- you should only call this during map load.
+
+void prepare_map_load(void) ->
+Begins loading a map.
+Calls clear_map(). <!-- TODO: should it? -->
+<!-- TODO: send a MapStart here and pipeline shit directly to clients as data comes in -->
+
+void finish_map_load(void) ->
+Finishes loading a map.
+Calls send_map() for each pid in PID_BROADCAST.
+
+int load_vxl_from_mem(string data) ->
+Loads a Voxlap5 VXL file from the given buffer.
+Does not clear preexisting voxels on its own; use prepare_map_load() or clear_map() to do that.
+<!-- TODO: actual error handling -->
+If the file is invalid, logs an error and either returns &gt;0 or calls <a rel=noreferrer href=https://man.openbsd.org/exit.3><code>exit(3)</code></a>.
+Otherwise, returns <samp>0</samp>.
+Use between an invocation of prepare_map_load() and finish_map_load().
+
+int load_vxl_from_file(string path) ->
+Loads a Voxlap5 VXL file from the given regular file.
+If the file cannot be <a rel=noreferrer href=https://man.openbsd.org/mmap.2>memory-mapped</a>, returns &lt;0.
+Otherwise, calls load_vxl_from_mem() with the file contents and returns its return value.
+Use between an invocation of prepare_map_load() and finish_map_load().
+
+int begin_load_vxl_from_file(string path) ->
+Loads a Voxlap5 VXL file from the given regular file.
+If the file cannot be <a rel=noreferrer href=https://man.openbsd.org/mmap.2>memory-mapped</a>, returns &lt;0.
+Otherwise, calls prepare_map_load() and load_vxl_from_mem() with the file contents and returns its return value.
+Make sure to call finish_map_load().
+
+int load_map(string name) ->
+Calls prepare_map_load().
+Loads a set of implementation-defined map file paths (probably, but not necessarily of Voxlap5 VXL type) based on the given name.
+Calls finish_map_load().
+
+<p>The LSd implementation checks the following paths, ordered by precedence:
+<ul>
+<li><code><var>name</var></code>
+<li><code>maps/<var>name</var>.vxl</code>
+</ul>
+
+<p>If one of those paths was valid, also loads one of the following if possible, and serves it directly to clients until the loaded map is modified:
+<ul>
+<li><code><var>name</var>.zlib</code>
+<li><code>maps/<var>name</var>.vxl.zlib</code>
+</ul>

@@ -1,0 +1,15 @@
+SPECTATOR ->
+Implementation-defined signed integer value for the spectator team.
+
+PID_BROADCAST ->
+Implementation-defined signed integer broadcast pid that refers to all connected players.
+
+PID_COLOR_ANONYMOUS ->
+Deprecated.
+
+MAX_PLAYERS ->
+The most player IDs the implementation and protocol can handle at once. I.e., usually 32.
+Valid player IDs are integers in the range of 0 to MAX_PLAYERS&minus;1 inclusive.
+
+ENET_PORT ->
+UDP port the server is listening for <a rel=noreferrer href=http://sauerbraten.org/enet/>ENet</a> connections on.

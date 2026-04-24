@@ -1,0 +1,39 @@
+function piditer(bplid pid) ->
+Iterates on every pid in the broadcast pid <var>pid</var>, ordered from 0 to MAX_PLAYERS&minus;1 inclusive.
+Regular pid's are a subset of broadcast pid's.
+
+number get_time(void) ->
+Returns the monotonic time in seconds elapsed since an unspecified epoch.
+
+bplid PID_BROADCAST_TEAM(teamid team) ->
+Returns a broadcast pid referring to all connected players on the given team.
+
+bplid PID_BROADCAST_EXCEPT(plid pid) ->
+Returns a broadcast pid referring to all connected players except for <var>pid</var>.
+
+bplid PID_BROADCAST_EXCEPT_TEAM(teamid team) ->
+Returns a broadcast pid referring to all connected players except for ones currently on <var>team</var>; see get_team().
+
+bplid PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(teamid team, plid pid) ->
+Returns a broadcast pid referring to all connected players except for ones currently on <var>team</var> (see get_team()) and except for <var>pid</var>.
+
+<!-- TODO: move to C? -- TODO: BSBug the reason code -->
+void disconnect(plid pid, integer reason) ->
+Tells the client's ENet peer to disconnect (see <a rel=noreferrer href=http://sauerbraten.org/enet/group__peer.html#ga0e807704b6ecace5004c2cdcfbf813c2><!-- What the fuck is that id? -->enet_peer_disconnect()</a>) and presumably does that eventually. on_disconnect() is called when that happens.
+Valid reasons are screwed up beyond all repair thanks to notafile/piqueserver/BetterSpades.
+<BLAME piqueserver 3b037a042b34738a99bbec43f3db3f193eef6c90>
+
+void disconnect_now(plid pid, integer reason) ->
+Disconnects the client's ENet peer immediately (see <a rel=noreferrer href=http://sauerbraten.org/enet/group__peer.html#ga0e807704b6ecace5004c2cdcfbf813c2>enet_peer_disconnect_now()</a>). on_disconnect() is not called.
+
+color get_fog(void) ->
+Returns the current fog color.
+
+table{number=nil|fvec3} get_intelloc(void) ->
+Returns the locations of all intels. The table key is teamid+1 for some reason. If any intel is hidden, its value is <samp>nil</samp>.
+
+table{number=nil|fvec3} get_tentloc(void) ->
+Returns the locations of all tents. The table key is teamid+1. If any tent is hidden, its value is <samp>nil</samp>.
+
+boolean input_on_stdin(void) ->
+Deprecated.

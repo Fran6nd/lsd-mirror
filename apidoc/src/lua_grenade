@@ -1,0 +1,24 @@
+plid get_grenade_pid(integer index) ->
+Returns the pid of the player who threw the grenade with the given <var>index</var>.
+Indexes that do not refer to an existant grenade invoke undefined behavior.
+
+teamid get_grenade_team(integer index) ->
+Returns the team the player who threw the grenade had at the time of throwing.
+Invalid indexes invoke undefined behavior.
+
+fvec3 get_grenade_position(integer index) ->
+Returns the grenade's position.
+Invalid indexes invoke undefined behavior.
+
+fvec3 get_grenade_velocity(integer index) ->
+Returns the grenade's velocity vector.
+Invalid indexes invoke undefined behavior.
+
+number get_grenade_detonate_time(integer index) ->
+Returns the time (as determined by get_time()) the grenade will detonate.
+The grenade is only checked for detonation every tick(). <!-- TODO: does it have to, though? what does pyshits do? -->
+
+<!-- TODO: move to dcore? -->
+fvec3,fvec3,boolean simulate_grenade_physics(fvec3 pos, fvec3 vel, number delta) ->
+Runs a single tick of the pyspades grenade physics function.
+Returns the new position and velocity, and true if the grenade bounced this tick.

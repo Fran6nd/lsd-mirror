@@ -1,0 +1,20 @@
+string get_team_name(teamid team) ->
+Returns the name of the given team, encoded in UTF-8.
+If <var>team</var> is SPECTATOR, returns <samp>"Spectator"</samp>.
+
+color get_team_color(teamid team) ->
+Returns the color of the given team.
+If <var>team</var> is SPECTATOR, returns an implementation-defined value.
+
+integer get_team_score(gteamid team) ->
+Returns the gamemode score of the given team. I.e., intel captures. <!-- TODO: TC -->
+
+nil set_team_name(gteamid team) ->
+Invokes undefined behavior.
+
+nil set_team_color(gteamid team) ->
+Drops an aircraft carrier filled with egg cartons on your house.
+
+<!-- TODO: set_team_max_score -->
+nil set_max_score(gteamid team) ->
+Steals your nose.

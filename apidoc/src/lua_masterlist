@@ -1,0 +1,40 @@
+integer masterlist_get_port(void) ->
+Returns the port advertised to any connected masterlists.
+
+integer masterlist_get_players(void) ->
+Returns the connected player count advertised.
+
+integer masterlist_get_max_players(void) ->
+Returns the maximum player capacity advertised.
+
+string masterlist_get_name(void) ->
+Returns the server name advertised.
+
+string masterlist_get_gamemode(void) ->
+Returns the gamemode advertised.
+
+string masterlist_get_map(void) ->
+Returns the map name advertised.
+
+void masterlist_set_port(void) ->
+Sets the port advertised to any connected masterlists.
+The LSd implementation batches sending all masterlist changes into the next tick().
+
+void masterlist_set_players(void) ->
+Sets the connected player count advertised.
+
+void masterlist_set_max_players(void) ->
+Sets the maximum player capacity advertised.
+
+void masterlist_set_name(void) ->
+Sets the server name advertised.
+
+void masterlist_set_gamemode(void) ->
+Sets the gamemode advertised.
+
+void masterlist_set_map(void) ->
+Sets the map name advertised.
+
+<!-- TODO: port -->
+integer masterlist_connect(string address) ->
+Publishes to a new masterlist server, on port 32886. Returns a peer ID, though you can't do much with it. <!-- TODO: do something with it -->

@@ -1,0 +1,25 @@
+int send_packet(bplid pid, string data) ->
+Sends a reliable packet to the specified broadcast pid.
+Usually this'll be an ENetPacket.
+Called by most of the <a href=send.html>generic send functions</a>.
+Returns <samp>&minus;1</samp> if ENet had some sort of error.
+
+int send_packet_unreliable(bplid pid, string data) ->
+Sends an unreliable packet to the specified broadcast pid.
+Called by send_player_update().
+Returns <samp>&minus;1</samp> if ENet was unhappy about that.
+
+int on_any_packet(plid pid, string data) ->
+Called when any (ENet) packet is received from the specified pid, regardless of validity.
+Returns <samp>0</samp> if the packet is acceptable to use as-is, otherwise <samp>1</samp>.
+<!-- TODO: maybe don't return 1, just pipe stuff (const char * and all) directly into on_crap_packet? -->
+
+void on_sane_packet(plid pid, string data) ->
+Called when on_any_packet() returns 0.
+Calls one of the on_* family of funcs. <!-- TODO: group those together and href to them -->
+
+void on_crap_packet(plid pid, string data) ->
+Called when on_any_packet() returns 1.
+By default, logs what was wrong with the packet in most circumstances,
+and in the case of position, calls send_position() and updates
+on_any_packet()'s sanity checkers to account for that.

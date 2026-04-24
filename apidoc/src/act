@@ -1,0 +1,105 @@
+void server_msg(bplid pid, string msg) ->
+Sends a chat message to <var>pid</var>, displayed as from the server.
+Calls send_chat().
+
+<!-- TODO: should these ones be able to take bplids? -->
+void restock(plid pid) ->
+Sets the player's reserve ammo to a version-defined value (see send_spawn_player()), HP to 100, blocks to 50, and grenades to 3. Usually plays a sound on <var>pid</var>'s client.
+Calls send_restock().
+
+<!-- TODO: make integer/int/unsigned consistent, impose real limits -->
+void set_hp(plid pid, integer hp) ->
+Sets the player's HP.
+<var>hp</var> can range from &minus;2<sup>31</sup> to 2<sup>31</sup>&minus;1 (on most sensible build targets<!-- TODO: use a (u)int64_t or something? -->).
+Most clients only support a range of 0--255 (and 0 is handled strangely by OpenSpades); the HP will be visually (not on the server's end!) truncated to that range in this case.
+
+void set_hp_directional(plid pid, integer hp, fvec3 pos) ->
+Sets the player's HP, indicating a positional source of damage.
+If <var>pos</var> is <code>{x=0,y=0,z=0}</code>, OpenSpades does not consider it directional. <!-- TODO: hammer this out and move to send_set_hp_directional -->
+See set_hp() for behavior.
+
+void set_ammo(plid pid, unsigned mag, unsigned reserve) ->
+Sets the player's magazine and reserve ammo.
+<!-- TODO: actually work around openspades for this and set_hp -->
+<!-- TODO: you cannot *simply* truncate mag ammo. you can simply truncate reserve though. -->
+Calls send_reload().
+
+void set_position(plid pid, fvec3 pos) ->
+Sets the player's position.
+<!-- TODO: define how it works for dead people -->
+Calls send_position().
+
+void set_orientation(plid pid, fvec3 pos) ->
+Sets the player's direction vector.
+The length of the vector may or may not alter physics if it's non-1.
+BetterSpades is too buggy to do anything with this.
+Calls send_orientation().
+
+<!-- TODO: s/set_// -->
+void set_jump(plid pid) ->
+Makes the player jump.
+The player can jump while airborne.
+Calls send_move_input().
+
+uint32_t block_action_rm(ivec3 pos, unsigned type, plid from) ->
+<var>type</var>=0 invokes undefined behvaior.
+Destroys a set of blocks in bulk. Call this multiple times, followed by block_action_cull() given the return value of each call to this as <var>mask</var>, followed by finish_cull().
+
+<p>The solidity of any given voxel on the map is unspecified between a call to this and finish_cull().
+Calling any function that modifies the map between a call to this and the next instance of either block_action_cull() or finish_cull() invokes undefined behavior.
+If block_action_cull() is not called with the return value of this function before the next call to finish_cull(), invokes undefined behavior.
+
+<p>Calls send_block_action() if the map isn't currently loading.
+See send_block_action() for values of <var>type</var>.
+
+void block_action_cull(ivec3 pos, uint32_t mask) ->
+Call this between a series of calls to block_action_rm() and finish_cull() with the return value of block_action_rm() as <var>mask</var>, and with the same <var>pos</var>.
+Otherwise, your local dinosaur sets off a nuclear chain reaction.
+
+void finish_cull(void) ->
+Cleans up after block_action_rm() and block_action_cull().
+
+void block_action(ivec3 pos, unsigned type, plid from) ->
+Places or destroys a set of blocks.
+Calls send_block_action() if <var>type</var>=<kbd>0</kbd> and the map isn't currently loading. <!-- TODO: a lot more than this'll need to be unsent during mapload -->
+<!-- TODO: need to get AoT zlibbing to work with this too. . . -->
+If <var>type</var>&ne;<kbd>0</kbd>, calls block_action_rm(), block_action_cull() and finish_cull().
+See send_block_action() for values of <var>type</var>.
+
+<!-- TODO: that arg ordering is ugly -->
+void block_line(ivec3 start, ivec3 end, plid from) ->
+Places a line of blocks using pyspades' modified DDA.
+<NOLISTJOKES>
+(Not the broken pile of trash <code>pyspades.world.cast_ray()</code> -- <code>pyspades.world.cube_line()</code> instead.)
+<LISTJOKES>
+Calls send_block_line() if the map isn't currently loading.
+
+void kill(plid pid, unsigned type, plid killer) ->
+Kills <var>pid</var>; makes <var>pid</var> not alive.
+If <var>pid</var> was already dead, kills <var>pid</var> extra dead.
+
+<!-- TODO: should it call get_spawn_time? -->
+<p>Calls get_spawn_time().
+<!-- TODO: ==0 return time is not correct, set it to (uint64_t)-1 or something ridiculous -->
+Schedules a respawn for the time returned. If the returned time is equal to 0, does not schedule a respawn.
+Calls send_kill().
+Increases <var>killer</var>'s score by 1 if <var>killer</var> is not <var>pid</var> and <var>type</var>&lt;4.
+Calls after_player_destroy() if the player wasn't dead already.
+
+<!-- BEGIN gamemode -->
+
+<!-- TODO: tc -->
+void move_intel(gteamid team, fvec3 pos) ->
+Moves the given team's intel to the given position.
+The intel is centered along the x and y axes. The visual bottom of the intel is <code><var>pos</var>.z</code>.
+(Of course pyspades screws this up.)
+If a player was holding the intel, that player isn't anymore.
+Calls send_move_object().
+
+void move_tent(gteamid team, fvec3 pos) ->
+Moves the given team's tent to the given position.
+The tent is centered along the x and y axes. The visual bottom of the tent is <code><var>pos</var>.z</code>.
+<!-- TODO: support nil value -->
+Calls send_move_object().
+
+<!-- END gamemode -->

@@ -1,0 +1,15 @@
+void on_any_connect(plid pid) ->
+Called when a client attempts to connect to the server.
+The connection may be denied by calling disconnect_now() and returning.
+The pid may be out of range; in this case, default behavior is to deny the connection.
+Otherwise, on_successful_connect() is called.
+
+void on_successful_connect(plid pid) ->
+Called by on_any_connect() if the client is allowed to fully ``connect''.
+Calls send_map().
+
+void on_disconnect(plid pid) ->
+Called when a player disconnects for any reason.
+Calls send_disconnect() if the player is joined.
+Clears some bits of player state; don't depend on it clearing everything, just the important things (i.e., this makes the player considered not connected and not alive).
+If alive, ``destroys'' the player; calls after_player_destroy().

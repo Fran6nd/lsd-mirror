@@ -5,7 +5,7 @@ AWK=awk
 CFLAGS=-Wall -Wextra -s -O3 -flto -fuse-ld=lld
 CFLAGSNATIVE=-Wall -Wextra -s -O3 -flto -march=native -fuse-ld=lld
 CFLAGSG=-Wall -Wextra -g -fsanitize=undefined
-LIBS=-lenet -lisal -lluajit-5.1 -lm -lseccomp
+LIBS=-lenet -lisal -lluajit-5.1 -lm "$$(test "x$$(uname -s)" = "xLinux" && printf '%s\n' '-lseccomp')"
 LDFLAGS=$(LIBS)
 
 server: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
@@ -18,6 +18,9 @@ server: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src
 serverstatic: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
 	$(CC) $(CFLAGS) -o serverstatic src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o \
 		-Wl,-Bstatic -static-libgcc $(LDFLAGS) -Wl,-Bdynamic '-Wl,--export-dynamic-symbol=lua_*' '-Wl,--export-dynamic-symbol=luaL_*' -fvisibility=hidden
+serverstatic-crust: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
+	$(CC) $(CFLAGS) -DNO_DEFAULT_SANDBOX -DWITH_LIBSECCOMP -o serverstatic src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o \
+		-Wl,-Bstatic -static-libgcc $(LDFLAGS) -Wl,-Bdynamic '-Wl,--export-dynamic-symbol=lua_*' '-Wl,--export-dynamic-symbol=luaL_*' -fvisibility=hidden
 servernative: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
 	$(CC) $(CFLAGSNATIVE) -o servernative src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o $(LDFLAGS)
 serverg: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
@@ -29,6 +32,7 @@ exec/libunixsock.so: src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/ex
 	$(CC) $(CFLAGS) --shared -o exec/libunixsock.so src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c -Wl,--exclude-libs,ALL
 
 dist.tar.gz: serverstatic aloha.lua exec scripts maps dirty
+	rm -fR dist/
 	mkdir -p dist/exec dist/scripts dist/maps
 	cp serverstatic dist/server
 	cp /lib/ld-musl-x86_64.so.1 dist/
@@ -37,7 +41,7 @@ dist.tar.gz: serverstatic aloha.lua exec scripts maps dirty
 	ln aloha.lua dist/babel.lua
 	ln exec/* dist/exec/
 	ln scripts/* dist/scripts/
-	ln maps/* dist/maps/
+	find maps -maxdepth 1 -type f -exec ln {} dist/maps/ \;
 	bsdtar cf - dist | libdeflate-gzip -c12 - > dist.tar.gz
 	rm -fR dist
 

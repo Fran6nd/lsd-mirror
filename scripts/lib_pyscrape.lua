@@ -3,18 +3,50 @@ local mod = {};
 
 -- TODO: should i use .* as the string instead of [^"']* and just search until the end?
 -- TODO: handle escapes, specifically \'
-local function getstr(str, name)
+function mod.getstr(str, name)
 	return string.match(str, "[\r\n]"..name.."%s*=%s*[\"']([^\"']*)[\"']");
 end
 
-local function getfog(str, name)
+function mod.get_ext(str, name)
+	return string.match(str, "[\r\n]%s*[\"']"..name.."[\"']%s*:%s*([^\r\n]-)%s*,?%s*[\r\n]");
+end
+
+function mod.parse_str(str)
+	return string.match(str, "[\"']([^\"']*)[\"']");
+end
+
+function mod.parse_bool(str)
+	if (str == "False" or str == "None" or str == "0") then
+		return false;
+	end
+
+	return true;
+end
+
+function mod.split_tuple(str)
+	str = string.match(str, "%((.*)%)");
+	if (not string.match(str, ",%s*$")) then
+		str = str..",";
+	end
+	return string.gmatch(str, "%s*(.-)%s*,");
+end
+
+function mod.split_tupletuple(str)
+        str = string.match(str, "%((.*)%)");
+        if (not string.match(str, ",%s*$")) then
+                str = str..",";
+        end
+        return string.gmatch(str, "%s*(%b())%s*,");
+end
+
+function mod.getfog(str, name)
 	local r, g, b = string.match(str, "[\r\n]"..name.."%s*=%s*%(%s*(%d+)%s*,%s*(%d+)%s*,%s*(%d+)%s*,?%s*%)");
 	if (r) then
 		return {r=tonumber(r), g=tonumber(g), b=tonumber(b)};
 	end
 end
 
-local function scrape_spawn_locations(str, name)
+function mod.scrape_spawn_locations(str, name)
 	-- TODO: should the other ones match with a %b too?
 	local start, endoff = string.find(str, "[\r\n]"..name.."%s*=%s*%b[]");
 	local locs = {};
@@ -31,6 +63,9 @@ local function scrape_spawn_locations(str, name)
 	return locs;
 end
 
+function pyscrape_ext(mod, str, meta)end
+server.pyscrape_ext = pyscrape_ext;
+
 -- You may find this fun:
 -- cut -c 1- aosParty/*.txt | grep = | cut -d = -f 1 | sed '/^[ \t#]/d' | tr -d ' ' | sort | uniq
 function mod.grep(str)
@@ -40,16 +75,18 @@ function mod.grep(str)
 	str = "\n"..str.."\n";
 
 	-- "nname" is a more popular mistake than you'd think
-	meta.name = getstr(str, "n?[Nn]?ame");
-	meta.version = getstr(str, "[Vv]ersion");
-	meta.author = getstr(str, "[Aa]uthor");
-	meta.description = getstr(str, "[Dd]escription");
+	meta.name = mod.getstr(str, "n?[Nn]?ame");
+	meta.version = mod.getstr(str, "[Vv]ersion");
+	meta.author = mod.getstr(str, "[Aa]uthor");
+	meta.description = mod.getstr(str, "[Dd]escription");
 	if (meta.description == nil) then
-		meta.description = getstr(str, "[Dd]esc");
+		meta.description = mod.getstr(str, "[Dd]esc");
 	end
-	meta.fog = getfog(str, "[Ff]og");
-	meta.spawn_locations_blue = scrape_spawn_locations(str, "spawn_locations_blue");
-	meta.spawn_locations_green = scrape_spawn_locations(str, "spawn_locations_green");
+	meta.fog = mod.getfog(str, "[Ff]og");
+	meta.spawn_locations_blue = mod.scrape_spawn_locations(str, "spawn_locations_blue");
+	meta.spawn_locations_green = mod.scrape_spawn_locations(str, "spawn_locations_green");
+
+	pyscrape_ext(mod, str, meta);
 
 	-- TODO: authors array?
 

@@ -18,6 +18,10 @@ function mod.on_load()
 	meta = {};
 end
 
+function get_map_meta()
+	return meta;
+end
+
 -- TODO: /load of this here "before" doesn't quite unregister the old one
 -- TODO: plumb metadata into core masterlist
 function mod.before.load_map(name)
@@ -70,7 +74,9 @@ end
 -- TODO: don't depend on fmtval for this
 local cmd = {name={"mapinfo", "mapname"}, fakepid=true, desc="Dump the current map's metadata."};
 function cmd.func(pid)
-	server_msg(pid, fmtval(meta));
+	for x in string.gmatch(fmtval(meta), "[^\n]+") do
+		server_msg(pid, x);
+	end
 end
 register_command(cmd);
 

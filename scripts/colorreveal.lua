@@ -41,6 +41,7 @@ function mod.block_action_rm(pos, type, from)
 		};
 	elseif (type == 2) then
 		neighbors = {
+			{x=pos.x  , y=pos.y  , z=pos.z-2},
 			{x=pos.x-1, y=pos.y  , z=pos.z-1},
 			{x=pos.x+1, y=pos.y  , z=pos.z-1},
 			{x=pos.x  , y=pos.y-1, z=pos.z-1},
@@ -53,7 +54,6 @@ function mod.block_action_rm(pos, type, from)
 			{x=pos.x+1, y=pos.y  , z=pos.z+1},
 			{x=pos.x  , y=pos.y-1, z=pos.z+1},
 			{x=pos.x  , y=pos.y+1, z=pos.z+1},
-			{x=pos.x  , y=pos.y  , z=pos.z-2},
 			{x=pos.x  , y=pos.y  , z=pos.z+2}
 		};
 	elseif (type == 3) then

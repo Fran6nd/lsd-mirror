@@ -33,7 +33,6 @@ clean:
 	rm -fR index out
 
 apicov: index
-	#sed '/s:\\(\[/d;s/[^^]*^//;s/[:(].*//' index | sort > apicovtmp_impl
 	sed '/^s:<a href=#/!d;s/^s:<a href=#//;s/>.*//' index | sort > apicovtmp_impl
 	sed '/^#define LUA_CALLS /!d;s/[^{]*{/{/;s/{"\([^"]*\)",[^,]*,/\1\n/g;s/\n$$//' ../src/luaawk.h | sort > apicovtmp_c
 	sed '/^\t{"/!{/lua_setglobal(l, "/!d};s/[^"]*"//;s/".*//' ../src/lua.c | sort > apicovtmp_lua

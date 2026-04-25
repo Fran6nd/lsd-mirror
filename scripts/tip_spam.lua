@@ -5,17 +5,17 @@ local tip_spam_idx = 1;
 -- TODO: randomly pick tips? (maybe with that shuffle method tetris uses)
 -- TODO: comma/dot ordering
 -- TODO: make wall scaling less annoying -- maybe depend on lastagreed and physics pos to be in a block? 
-getcfg("tips", [[
-Press the L key to change team/weapon (but sometimes it's the comma or dot key)
-Block color won't change? Try the arrow keys and E.
-Use the right mouse button to place multiple blocks at a time.
-Use /shutuptips if you're tired of getting tips. TODO: implement that and /tutor and maybe make /help an alias or associated
-Use /cmds to list commands.
-Build and Shoot is the name of the primary serverlist used for the game Ace of Spades as of writing this tip.
-You can scale walls faster by placing a block 3 blocks off the ground while midair and crouching.
-I hear gamebanana has some weapon skins -- just look for ones compatible with your client.
-There are 3-ish popular clients: original ("Voxlap", sometimes incorrectly referred to as "buildandshoot"), OpenSpades, and BetterSpades.
-]]);
+getcfg("tips", {
+	"Press the L key to change team/weapon (but sometimes it's the comma or dot key)",
+	"Block color won't change? Try the arrow keys and E.",
+	"Use the right mouse button to place multiple blocks at a time.",
+	"Use /shutuptips if you're tired of getting tips. TODO: implement that and /tutor and maybe make /help an alias or associated",
+	"Use /cmds to list commands.",
+	"Build and Shoot is the name of the primary serverlist used for the game Ace of Spades as of writing this tip.",
+	"You can scale walls faster by placing a block 3 blocks off the ground while midair and crouching.",
+	"I hear gamebanana has some weapon skins -- just look for ones compatible with your client.",
+	"There are 3-ish popular clients: original (\"Voxlap\", sometimes incorrectly referred to as \"buildandshoot\"), OpenSpades, and BetterSpades."
+});
 
 function mod.after.tick()
 	if (next_tip_spam == nil) then

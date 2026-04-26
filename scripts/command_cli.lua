@@ -17,10 +17,20 @@ local cli_nohandshake_msg = {
 	en="%(name): (no handshake) '%(char)' v%(major).%(minor).%(patch): %(msg)"
 }
 
-local cmd = {name={"client", "cli", "clin", "client_info"}, usage="[player]", desc="Print whatever a player's client claims to be."};
+local cli_fakepid_msg = {
+	en="%(name): fakepid"
+}
+
+local cmd = {name={"client", "cli", "clin", "client_info"}, fakepid=true, usage="[player]", desc="Print whatever a player's client claims to be."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv <= 1);
 	local player = get_arg_pid_opt("player", pid, cmd, argv[1]) or pid;
+
+	if (is_fakepid(player)) then
+		-- Chances are player can only be a fakepid if player refers to pid and argv[1] is nil
+		l10n_send_chat(pid, cli_fakepid_msg, {name=get_name(player)});
+		return;
+	end
 
 	local char = get_client_char(player);
 	if (char ~= nil) then

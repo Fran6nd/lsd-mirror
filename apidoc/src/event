@@ -52,7 +52,7 @@ Marks the player as <a href=#get_client_handshaked>handshaked</a>.
 
 void on_hit(plid pid, unsigned type, plid hitPlayer) ->
 Called by the client when it tries to hit another player (<var>hitPlayer</var>).
-See send_hit() for values of <var>type</var>.
+See get_hit_damage() for values of <var>type</var>.
 
 <p>Calls get_hit_damage() and set_hp_directional(), then kill() if the player's HP is 0 after that.
 

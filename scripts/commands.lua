@@ -329,10 +329,6 @@ function handle_command(pid, msg, nolog)
 	local i = 0;
 	local argv = unquote_to_table(msg);
 
-	for i=0,#argv do
-		log("<%s>", argv[i]);
-	end
-
 	if (not nolog) then
 		server_msg(pid, "> /"..msg);
 		log("%s: /%s", get_name(pid), msg);

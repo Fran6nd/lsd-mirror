@@ -23,8 +23,6 @@ out/singlepage.html: pages
 out/index.html: index
 	mkdir -p out
 	$(AWK) -f toc.awk index | sed -f index > out/index.html
-	$(GZIP) -kf out/index.html
-	$(BROTLI) -kf out/index.html
 
 index: dirty
 	cd src; { for x in *; do printf 'FILE\t%s\n' "$$x" | cat - "$$x"; done; } | sed -f ../index.sed > ../index

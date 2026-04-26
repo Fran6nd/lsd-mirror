@@ -1,5 +1,6 @@
 -- commands.lua -- Handles chat messages beginning with a / as commands
 require "lib_l10n";
+local buffer = require("string.buffer");
 local mod = {};
 -- TODO: do we really want to clear all the commands on load?
 commands = {};
@@ -272,16 +273,64 @@ local not_in_game_msg = {
 	en="This command can only be run while in-game."
 };
 
+-- fun read, my adaptation is probably not as good: https://nullprogram.com/blog/2021/12/04/
+local quottable = {[0]={}, [1]={}};
+for i=0,255 do
+	local chr = string.char(i);
+	quottable[0][i] = chr;
+	quottable[1][i] = chr;
+end
+
+-- isspace(3), C locale
+quottable[0][0x09] = nil;
+quottable[0][0x0a] = nil;
+quottable[0][0x0b] = nil;
+quottable[0][0x0c] = nil;
+quottable[0][0x0d] = nil;
+quottable[0][0x20] = nil;
+
+function unquote_to_table(msg)
+	local buf = buffer.new(#msg);
+	local state = 0;
+	local exclstate = 1;
+	local argv = {};
+	local argc = 0;
+
+	for i=1,#msg do
+		local inchr = string.byte(string.sub(msg, i, i));
+		local outchr = quottable[state][inchr];
+
+		-- 0x22 is '"'
+		state = bit.bxor(state, inchr == 0x22 and 1 or 0);
+		exclstate = bit.bor(bit.bxor(exclstate, 1), inchr ~= 0x22 and 1 or 0);
+
+		if (outchr) then
+			if (exclstate ~= 0) then
+				buf:put(outchr);
+			end
+		else
+			argv[argc] = buf:get();
+			argc = argc + 1;
+		end
+	end
+
+	if (#buf) then
+		argv[argc] = buf:get();
+		argc = argc + 1;
+	end
+
+	return argv;
+end
+
 -- TODO: log
 -- TODO: /mute
 -- TODO: redact certain args?
 function handle_command(pid, msg, nolog)
 	local i = 0;
-	local argv = {};
+	local argv = unquote_to_table(msg);
 
-	for x in string.gmatch(msg, "%S+") do
-		argv[i] = x;
-		i = i + 1;
+	for i=0,#argv do
+		log("<%s>", argv[i]);
 	end
 
 	if (not nolog) then

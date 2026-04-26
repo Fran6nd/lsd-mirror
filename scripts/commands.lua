@@ -297,7 +297,7 @@ function unquote_to_table(msg)
 	local argc = 0;
 
 	for i=1,#msg do
-		local inchr = string.byte(string.sub(msg, i, i));
+		local inchr = string.byte(msg, i);
 		local outchr = quottable[state][inchr];
 
 		-- 0x22 is '"'

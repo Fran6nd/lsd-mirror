@@ -1,5 +1,5 @@
 -- noclip.lua -- when i'm feeling tired i can just... fly around
-local mod = {after={}};
+local mod = init_mod();
 local bit = require("bit");
 
 local clips = pid_joined_table(nil);

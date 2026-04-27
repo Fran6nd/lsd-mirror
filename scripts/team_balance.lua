@@ -14,10 +14,15 @@ local unbalanced_switch_msg = {
 };
 
 local function count_players_on_teams(pid, team)
-	local players = {[0]=0, [1]=0};
+	-- SPECTATOR is in here despite being unused
+	-- to avoid adding 1 to nil, which is an error
+	local players = {[0]=0, [1]=0, [SPECTATOR]=0};
+
 	for i in piditer(PID_BROADCAST) do
-		local pteam = i == pid and team or get_team(i);
-		players[pteam] = players[pteam] + 1;
+		if (i == pid or is_joined(i)) then
+			local pteam = i == pid and team or get_team(i);
+			players[pteam] = players[pteam] + 1;
+		end
 	end
 
 	return players;

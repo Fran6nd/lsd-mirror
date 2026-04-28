@@ -350,7 +350,7 @@ function try_run_command(cmd, pid, argv, msg)
 	local status, err = pcall(cmd.func, pid, argv, msg);
 	if (not status and err ~= stexec) then
 		l10n_send_chat(pid, cmd_err_msg);
-		error(err);
+		error(err, 2);
 	end
 end
 server.try_run_command = try_run_command;

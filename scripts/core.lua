@@ -24,7 +24,7 @@ local function append_callchain(key, val)
 		callchain[key] = {server[key]};
 	end
 	table.insert(callchain[key], val);
-	_G[key] = function(...) local status, err = pcall(val, ...); if (not status and err ~= stexec) then error(err); end return err; end;
+	_G[key] = function(...) local status, err = pcall(val, ...); if (not status and err ~= stexec) then error(err, 2); end return err; end;
 end
 
 -- local
@@ -68,7 +68,7 @@ function register(module)
 		if (not status) then
 			unregister(module);
 			log("on_load failed, unregistered module");
-			error(err);
+			error(err, 2);
 		end
 	end
 end
@@ -104,9 +104,14 @@ function unregister(module, norm)
 		for k, v in ipairs(callchain[key]) do
 			if v == val then
 				table.remove(callchain[key], k);
-				--_G[key] = function(...) status, err = pcall(callchain[key][#callchain[key]], ...); if (not status and err ~= stexec) then error(err); end end;
-				_G[key] = function(...) local status, err = pcall(callchain[key][#callchain[key]], ...); if (not status and err ~= stexec) then error(err); end return err; end;
-				--_G[key] = callchain[key][#callchain[key]];
+				_G[key] = function(...)
+					local status, err = pcall(callchain[key][#callchain[key]], ...);
+					if (not status and err ~= stexec) then
+						error(err, 2);
+					end
+					return err;
+				end;
+
 				break;
 			end
 		end
@@ -117,7 +122,7 @@ function unregister(module, norm)
 
 	-- If module.unload threw an error, throw it again after it's unregistered
 	if (not status) then
-		error(err);
+		error(err, 2);
 	end
 end
 

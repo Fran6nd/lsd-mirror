@@ -54,11 +54,11 @@ local function get_fall_damage(height)
 end
 
 local function do_fall_damage(pid, height)
-	local hp = get_fall_damage(math.abs(height));
-	local newhp = get_hp(pid) - hp;
+	local damage = get_fall_damage(math.abs(height));
+	local newhp = get_hp(pid) - damage;
 
 	-- TODO: func to set hp AND kill?
-	if (hp > 0) then
+	if (damage > 0) then
 		set_hp(pid, newhp);
 	end
 

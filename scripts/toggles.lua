@@ -11,7 +11,6 @@ local removed_msg = {
 	en="Removed %(cap) from %(name)"
 };
 
--- TODO: block line, also in babel
 function mod.on_block_action(pid, pos, type)
 	if (has_cap(pid, "badcap:nobuild")) then
 		-- TODO: deal with stop_exec's funkiness
@@ -19,6 +18,13 @@ function mod.on_block_action(pid, pos, type)
 		return;
 	end
 	next_call("on_block_action", mod.on_block_action)(pid, pos, type);
+end
+
+function mod.on_block_line(pid, pstart, pend)
+	if (has_cap(pid, "badcap:nobuild")) then
+		return;
+	end
+	next_call("on_block_line", mod.on_block_line)(pid, pstart, pend);
 end
 
 -- TODO: use ... for args i don't care about? (and extension args?)

@@ -148,6 +148,8 @@ function mod.on_block_action(pid, pos, type)
 	next_call("on_block_action", mod.on_block_action)(pid, pos, type);
 end
 
+-- TODO: block_line iterator func so i can hook on_block_line. . .
+
 local function length2(vec)
 	return math.sqrt(vec.x*vec.x + vec.y*vec.y);
 end

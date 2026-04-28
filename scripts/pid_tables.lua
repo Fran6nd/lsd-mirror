@@ -80,8 +80,12 @@ function mod.after.disconnect_now(pid)
 	clear_pid_table(pid, clear_disconnect);
 end
 
-function mod.after.boot_players_to_limbo(pid)
-	clear_pid_table(pid, clear_joined2);
+function mod.before.boot_players_to_limbo()
+	for i in piditer(PID_BROADCAST) do
+		if (is_joined(i)) then
+			clear_pid_table(i, clear_joined2);
+		end
+	end
 end
 
 function mod.before.on_join(pid)

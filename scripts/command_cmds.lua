@@ -74,8 +74,27 @@ function cmd.func(pid, argv)
 
 	table.sort(sorted);
 
-	-- TODO: limit line length
-	server_msg(pid, table.concat(sorted, ", "));
+	local line = "";
+	local pfx = "";
+
+	-- Limit line length to 80-ish chars
+	for i,cmd in ipairs(sorted) do
+		line = line..pfx..cmd;
+		pfx = ", ";
+
+		if (#line >= 75) then
+			if (i ~= #sorted) then
+				line = line..",";
+			end
+
+			server_msg(pid, line);
+
+			line = "";
+			pfx = "";
+		end
+	end
+
+	server_msg(pid, line);
 end
 register_command(cmd);
 

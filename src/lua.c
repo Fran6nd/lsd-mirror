@@ -801,6 +801,12 @@ static int get_ipaddr(lua_State *l) {
 	return 1;
 }
 
+static int get_udp_port(lua_State *l) {
+	plid pid = check_plid(l, 1);
+	lua_pushnumber(l, st->host->peers[pid].address.port);
+	return 1;
+}
+
 /* More popularly referred to as "ping" */
 static int get_round_trip_time(lua_State *l) {
 	plid pid = check_plid(l, 1);
@@ -1111,6 +1117,7 @@ static const struct luaL_Reg funcs[] = {
 	{"get_fog", get_fog},
 	{"get_hp", get_hp},
 	{"get_ipaddr", get_ipaddr},
+	{"get_udp_port", get_udp_port},
 	{"get_round_trip_time", get_round_trip_time},
 	{"get_tentloc", get_tentloc},
 	{"get_intelloc", get_intelloc},

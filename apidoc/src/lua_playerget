@@ -67,6 +67,9 @@ Players that are not alive return an implementation-defined value.
 integer get_ipaddr(plid pid) ->
 Returns the player's IPv4 address as an integer, converted to host endianess with <a rel=noreferrer href=https://man.openbsd.org/ntohl.3><code>ntohl(3)</code></a>.
 
+integer get_udp_port(plid pid) ->
+Returns the player's UDP port as an integer.
+
 number get_round_trip_time(plid pid) ->
 Returns the player's estimated round-trip time (more popularly referred to as ping).
 

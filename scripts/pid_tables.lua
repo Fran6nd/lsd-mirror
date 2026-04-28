@@ -52,9 +52,9 @@ function pid_spawn_table(...)
 	return init_pid_table(clear_spawn, ...);
 end
 
-local function clear_pid_table(pid, tbl)
+local function clear_pid_table(pid, tbl, no_onclear)
 	for _,ptbl in pairs(tbl) do
-		if (ptbl.onclear) then
+		if (not no_onclear and ptbl.onclear) then
 			ptbl.onclear(pid, ptbl);
 		end
 
@@ -64,6 +64,11 @@ local function clear_pid_table(pid, tbl)
 			ptbl[pid] = ptbl.default;
 		end
 	end
+end
+
+function mod.before.on_fakepid_connect(pid)
+	clear_pid_table(pid, clear_disconnect, true);
+	clear_pid_table(pid, clear_joined2, true);
 end
 
 function clear_fakepid_table(pid)

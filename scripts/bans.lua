@@ -83,7 +83,7 @@ local function ban(startaddr, endaddr, bantime, expires, name, comment, bannedby
 	for i in piditer(PID_BROADCAST) do
 		if (is_connected(i)) then
 			local addr = get_ipaddr(i);
-			if(startaddr <= addr and endaddr >= addr and addr ~= 2130706433) then
+			if(startaddr <= addr and endaddr >= addr) then
 				setup_badcap_exp(i, expires);
 				for x in string.gmatch(flags, "%S+") do
 					grant_cap(i, "badcap:"..x);
@@ -211,7 +211,7 @@ function mod.on_any_connect(pid)
 	if (has_cap(pid, "badcap:ban")) then
 		-- TODO: pretty-print the ipaddr
 		-- TODO: which port
-		log("%s:%u (#%u) attempted to connect but is banned", get_ipaddr(pid), 42069, pid);
+		log("%s:%u (#%u) attempted to connect but is banned", get_ipaddr(pid), get_udp_port(pid), pid);
 		disconnect_now(pid, 1);
 		return;
 	end

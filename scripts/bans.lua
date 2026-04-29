@@ -1,6 +1,5 @@
 -- bans.lua -- Ban IP address ranges retrieved from an sqlite3 database
-require "lib_l10n";
-local mod = {after={}};
+local mod = init_mod();
 local sql = require "lsqlite3";
 local db;
 local stmt = {};
@@ -215,7 +214,7 @@ function mod.on_any_connect(pid)
 		disconnect_now(pid, 1);
 		return;
 	end
-	next_call("on_any_connect", mod.on_any_connect)(pid);
+	mod.next.on_any_connect(pid);
 end
 
 local function verifystmt(name, code)

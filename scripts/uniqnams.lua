@@ -33,7 +33,7 @@ function mod.on_join(pid, team, weapon, name)
 		newname = iter_dup_name(pid, deuce_id(pid, "Deuce"))
 	end
 
-	next_call("on_join", mod.on_join)(pid, team, weapon, newname);
+	mod.next.on_join(pid, team, weapon, newname);
 end
 
 return mod;

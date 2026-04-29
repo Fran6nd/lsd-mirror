@@ -1,5 +1,4 @@
 -- command_kick.lua -- Remove a silly player.
-require "lib_l10n";
 
 local kicked_msg = {
 	en="%(name) was kicked"

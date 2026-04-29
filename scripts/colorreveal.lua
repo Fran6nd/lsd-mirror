@@ -83,7 +83,7 @@ function mod.block_action_rm(pos, type, from)
 		p.hidden = is_hidden(p);
 	end
 
-	ret = next_call("block_action_rm", mod.block_action_rm)(pos, type, from);
+	ret = mod.next.block_action_rm(pos, type, from);
 
 	for _,p in ipairs(neighbors) do
 		if (p.hidden) then

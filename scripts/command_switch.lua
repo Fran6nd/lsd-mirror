@@ -1,5 +1,4 @@
 -- command_switch.lua -- Shuffle other players' teams around
-require "lib_l10n";
 
 local invalid_team_msg = {
 	en="team should be one of 0, 1, 255, -1, spec, spectator, %(firstteam), %(secondteam)."

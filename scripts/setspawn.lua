@@ -1,7 +1,6 @@
 -- setspawn.lua -- Command that sets your spawn position
 local mod = init_mod();
 local spawnpos = pid_joined_table(nil);
-require "lib_l10n";
 -- TODO: add defaultdefault cap, make default cap point to that, . . . this seems complicated
 
 local nospawn_msg = {
@@ -33,13 +32,12 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
--- TODO: next_call("xyz", mod.xyz) -> next_call(mod, "xyz")? maybe shorten "next_call" to nc (maybe not that short) or something too
 function mod.on_player_spawn(pid)
 	if (spawnpos[pid]) then
 		return spawnpos[pid];
 	end
 
-	return next_call("on_player_spawn", mod.on_player_spawn)(pid);
+	return mod.next.on_player_spawn(pid);
 end
 
 return mod;

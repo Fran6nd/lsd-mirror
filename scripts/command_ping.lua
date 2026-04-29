@@ -1,5 +1,4 @@
 -- command_ping.lua -- Check to see just how laggy you are
-require "lib_l10n";
 
 local ping_msg = {
 	en="%(name)'s round-trip time is %(rtt) ms."

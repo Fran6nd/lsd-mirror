@@ -63,6 +63,7 @@ function mod.scrape_spawn_locations(str, name)
 	return locs;
 end
 
+-- TODO: migrate to real module
 function pyscrape_ext(mod, str, meta)end
 server.pyscrape_ext = pyscrape_ext;
 

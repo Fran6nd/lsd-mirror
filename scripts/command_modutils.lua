@@ -26,17 +26,7 @@ local cmd = {name="lsmod", caps="modutils", fakepid=true, desc="Crusty listing o
 function cmd.func(pid)
 	for x,y in ipairs(modules) do
 		server_msg(pid, tostring(y.name or y));
-		--print("mod", y);
-		--for x,y in pairs(y) do
-		--print(x, y);
-		--end
 	end
-	-- for x,y in pairs(callchain) do
-	-- 	print(x,y);
-	-- 	for z,w in ipairs(y) do
-	-- 		print(z, w);
-	-- 	end
-	-- end
 end
 register_command(cmd);
 

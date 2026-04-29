@@ -23,13 +23,13 @@ register_command(cmd);
 -- TODO: port mute to use send_chat?
 function mod.send_chat(pid, msg, type, from)
 	if (type == 2 or from < 0 or from >= MAX_PLAYERS) then
-		next_call("send_chat", mod.send_chat)(pid, msg, type, from);
+		mod.next.send_chat(pid, msg, type, from);
 		return;
 	end
 
 	for i in piditer(pid) do
 		if (cmd_ignore_ignored[i] == nil or not cmd_ignore_ignored[i][from]) then
-			next_call("send_chat", mod.send_chat)(i, msg, type, from);
+			mod.next.send_chat(i, msg, type, from);
 		end
 	end
 end

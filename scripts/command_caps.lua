@@ -1,5 +1,4 @@
 -- command_caps.lua -- Grant and revoke arbitrary caps
-require "lib_l10n";
 
 local cmd = {name="grantcap", caps="caps", fakepid=true, usage="player caps...", desc="Give a player arbitrary caps."};
 function cmd.func(pid, argv)

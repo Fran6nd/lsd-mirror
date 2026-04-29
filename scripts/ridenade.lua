@@ -5,7 +5,7 @@ local whichnade = pid_spawn_table(nil);
 
 -- TODO: pass ret to mod.after.func?
 function mod.register_grenade(pid, team, pos, vel, fuse)
-	whichnade[pid] = next_call("register_grenade", mod.register_grenade)(pid, team, pos, vel, fuse);
+	whichnade[pid] = mod.next.register_grenade(pid, team, pos, vel, fuse);
 	return whichnade[pid];
 end
 

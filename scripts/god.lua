@@ -11,13 +11,13 @@ register_command(cmd);
 
 function mod.set_hp(pid, hp)
 	if (not god[pid]) then
-		return next_call("set_hp", mod.set_hp)(pid, hp);
+		return mod.next.set_hp(pid, hp);
 	end
 end
 
 function mod.set_hp_directional(pid, hp, pos)
 	if (not god[pid]) then
-		return next_call("set_hp", mod.set_hp)(pid, hp, pos);
+		return mod.next.set_hp(pid, hp, pos);
 	end
 end
 

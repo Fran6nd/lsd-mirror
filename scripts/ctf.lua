@@ -1,5 +1,4 @@
 -- ctf.lua -- Everyone's favorite gamemode
-require "lib_l10n";
 local mod = init_mod();
 local drop_timeout = 0;
 

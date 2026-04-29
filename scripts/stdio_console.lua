@@ -117,10 +117,10 @@ end
 function mod.log(...)
 	if (editing) then
 		ln.linenoiseHide(ls);
-		next_call("log", mod.log)(...);
+		mod.next.log(...);
 		ln.linenoiseShow(ls);
 	else
-		next_call("log", mod.log)(...);
+		mod.next.log(...);
 	end
 end
 
@@ -129,7 +129,7 @@ function mod.send_chat(pid, msg, type, from)
 		io.stderr:write(msg.."\n");
 		return;
 	end
-	next_call("send_chat", mod.send_chat)(pid, msg, type, from);
+	mod.next.send_chat(pid, msg, type, from);
 end
 
 function mod.get_name(pid)
@@ -137,7 +137,7 @@ function mod.get_name(pid)
 		-- TODO: should this be configurable? should i make lots of random trash configurable?
 		return stdio_console_name;
 	end
-	return next_call("get_name", mod.get_name)(pid);
+	return mod.next.get_name(pid);
 end
 
 local function handle_line(line)

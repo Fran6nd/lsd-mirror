@@ -1,6 +1,5 @@
 -- medkit.lua -- Use /m for morphine
-require "lib_l10n";
-local mod = {after={}};
+local mod = init_mod();
 local kits = {};
 getcfg("medkit_heal", 40);
 getcfg("medkit_quantity", 1);

@@ -1,5 +1,5 @@
 -- dd.lua -- The Dumbass Detector for servers
-local mod = {after={}};
+local mod = init_mod();
 
 local function length(vec)
 	return math.sqrt(vec.x*vec.x + vec.y*vec.y + vec.z*vec.z);

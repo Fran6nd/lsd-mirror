@@ -1,6 +1,6 @@
 -- purgatory.lua -- Send banned players to the shadow realm
 -- TODO: extract old work on this + sed4chat from stick2
-local mod = {after={}};
+local mod = init_mod();
 -- TODO: a lot
 
 getcfg("purgatory_msg", [[
@@ -19,14 +19,13 @@ end
 
 local sendanyway = false;
 -- TODO: iterator
--- TODO: allow next_call to automatically determine which func called it, for more reusable funcs?
 -- TODO: make unreliable a flag instead of func?
 -- TODO: should the number be removed from send_packet
 function mod.send_packet(pid, data)
 	-- TODO: set banned AFTER connect and packet-sending?
 	for i in piditer(pid) do
 		if (sendanyway or not has_cap(i, "badcap:purgatory")) then
-			next_call("send_packet", mod.send_packet)(i, data);
+			mod.next.send_packet(i, data);
 		end
 	end
 	return 0;
@@ -36,7 +35,7 @@ end
 function mod.send_packet_unreliable(pid, data)
 	for i in piditer(pid) do
 		if (sendanyway or not has_cap(i, "badcap:purgatory")) then
-			next_call("send_packet_unreliable", mod.send_packet_unreliable)(i, data);
+			mod.next.send_packet_unreliable(i, data);
 		end
 	end
 	return 0;
@@ -67,7 +66,7 @@ function mod.after.on_cap_grant(pid, cap)
 end
 
 -- function mod.send_packet(...)
--- 	return next_call("send_packet", mod.send_packet)(...);
+-- 	return mod.next.send_packet(...);
 -- end
 
 -- TODO: overridable is_connected which makes all functions, even send_packet, pretend the player isn't there?
@@ -87,7 +86,7 @@ function mod.on_any_connect(pid)
 			end
 		end
 
-		next_call("on_any_connect", mod.on_any_connect)(pid);
+		mod.next.on_any_connect(pid);
 		return;
 	end
 
@@ -95,7 +94,7 @@ function mod.on_any_connect(pid)
 	-- TODO: this doesn't actually work if pid == MAX_PLAYERS, definitely should handle nicer
 	-- TODO: what about players who get purgatoried mid-game? they don't get kicked
 	if (pid >= MAX_PLAYERS) then
-		server.on_any_connect(pid);
+		callchain_impl.on_any_connect[#callchain_impl.on_any_connect](pid);
 		return;
 	end
 end
@@ -109,7 +108,7 @@ function mod.on_any_packet(pid, data)
 		return 1;
 	end
 
-	return next_call("on_any_packet", mod.on_any_packet)(pid, data);
+	return mod.next.on_any_packet(pid, data);
 end
 
 return mod;

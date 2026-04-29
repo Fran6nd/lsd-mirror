@@ -199,19 +199,18 @@ end
 -- TODO: determine l10n language
 -- TODO: l10n language set func
 
-function mod.log(fmt, ...)
+function mod.early.log(fmt, ...)
 	for pid,con in pairs(sock.cons) do
 		-- TODO: extend viewlog to regular players? (optionally?)
 		if (has_cap(pid, "viewlog")) then
 			websock_send_con(con, string.format(fmt.."\n", ...));
 		end
 	end
-	next_call("log", mod.log)(fmt, ...);
+	mod.early.next.log(fmt, ...);
 end
 
--- TODO: *really* need to be able to specify early/late callchain positioning
 -- TODO: if something decides to piditer over PID_BROADCAST before this, what happens?
-function mod.send_chat(pid, msg, type, from)
+function mod.early.send_chat(pid, msg, type, from)
 	-- TODO: one conpid per connection? OPTIONAL?
 	if (sock.cons[pid]) then
 		websock_send_con(sock.cons[pid], msg.."\n");
@@ -229,10 +228,10 @@ function mod.send_chat(pid, msg, type, from)
 		end
 	end
 
-	next_call("send_chat", mod.send_chat)(pid, msg, type, from);
+	mod.early.next.send_chat(pid, msg, type, from);
 end
 
-function mod.get_name(pid)
+function mod.early.get_name(pid)
 	if (sock.cons[pid]) then
 		if (auth_users and auth_users[pid]) then
 			return "@"..auth_users[pid];
@@ -241,7 +240,7 @@ function mod.get_name(pid)
 		-- TODO: should this be configurable? should i make lots of random trash configurable?
 		return "@Deuce";
 	end
-	return next_call("get_name", mod.get_name)(pid);
+	return mod.early.next.get_name(pid);
 end
 
 return mod;

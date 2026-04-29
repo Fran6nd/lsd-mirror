@@ -1,8 +1,6 @@
 -- command_fog.lua -- Change the fog color
 -- TODO: should it change config or just set_fog?
-require "lib_l10n";
 
--- TODO: you need to login to set the fog color?
 local need_cap_msg = {
 	en="You need the %(cap) capability to set the fog color."
 };

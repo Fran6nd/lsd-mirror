@@ -1,6 +1,7 @@
 -- command_cmds.lua -- List available commands
 -- TODO: /apropos
-require "lib_l10n";
+local mod = init_mod();
+
 getcfg("cmds_pagesize", 5);
 
 -- TODO: should "Unknown command" from commands.lua be merged with this?
@@ -28,11 +29,9 @@ local function print_cmd(cmd)
 	return name;
 end
 
--- TODO: this definitely needs to be forced as the first
-function can_see_command(pid, cmd)
+function mod.impl.can_see_command(pid, cmd)
 	return not is_fakepid(pid) or cmd.fakepid;
 end
-server.can_see_command = can_see_command;
 
 local cmd = {name={"cmds", "commands"}, fakepid=true, usage="[page]", desc="Print an alphabetically ordered list of all commands."};
 function cmd.func(pid, argv)
@@ -116,4 +115,4 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-return {};
+return mod;

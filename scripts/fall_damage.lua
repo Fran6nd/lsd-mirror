@@ -1,5 +1,5 @@
 -- fall_damage.lua -- Like pyspades fall damage if it sucked less and also wasn't bad
-local mod = {after={}};
+local mod = init_mod();
 local apex = {};
 
 -- TODO: do i still need this after doing tickery?
@@ -82,7 +82,7 @@ function mod.tick()
 		end
 	end
 
-	next_call("tick", mod.tick)();
+	mod.next.tick();
 
 	for i in piditer(PID_BROADCAST) do
 		if (is_alive(i)) then

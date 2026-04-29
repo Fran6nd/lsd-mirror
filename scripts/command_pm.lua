@@ -1,6 +1,5 @@
 -- command_pm.lua -- Pseudoprivately harass someone with mean messages
 local mod = init_mod();
-require "lib_l10n";
 
 -- IVspades depends on the message being prefixed with "PM from "
 -- Do with that information what you will.

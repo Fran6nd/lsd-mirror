@@ -1,5 +1,5 @@
 -- map_queue.lua -- Pops the next map from a queue, and if the queue is empty picks a map from a different queue
-local mod = {};
+local mod = init_mod();
 local nextqueue = {};
 -- TODO: list dirs in lua?
 -- TODO: hook into initial map load

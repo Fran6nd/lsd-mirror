@@ -1,5 +1,4 @@
 -- command_cli.lua -- Fingerprint random people!
-require "lib_l10n";
 
 local no_cli_msg = {
 	en="%(name): not reported"

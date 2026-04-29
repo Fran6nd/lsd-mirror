@@ -1,5 +1,4 @@
 -- command_kill.lua -- Death by grenade with extra steps
-require "lib_l10n";
 
 local no_killing_ghosts_msg = {
 	en="You can't kill yourself unless you're in-game."

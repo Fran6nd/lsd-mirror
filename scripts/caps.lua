@@ -5,7 +5,6 @@
 -- TODO: special: prefix, so root doesn't get it? but how would that work with i.e. login? make a user and login cap? would it be easier to use a real table?
 -- TODO: you probably DO want to keep the =, for things like limiting ban time (TODO: how would you validate that the cap is formatted correcty?), but should defer user to auth.lua
 -- TODO: auth uses caps="login" a lot, how should that be handled?
-require "lib_l10n";
 local mod = init_mod();
 getcfg("cap_groups", {
 	default = {
@@ -52,12 +51,10 @@ local groups = pid_connected_table(function() return {} end);
 local caps = pid_connected_table(function() return {} end);
 
 -- TODO: wonder how "all" would be handled here; should the cap be kept a secret and users be forced to check every grant/drop?
-function on_cap_grant(pid, cap)end
-server.on_cap_grant = on_cap_grant;
+function mod.impl.on_cap_grant(pid, cap)end
 
 -- TODO: cap drop is even more of a mystery with subcaps
-function on_cap_drop(pid, cap)end
-server.on_cap_drop = on_cap_drop;
+function mod.impl.on_cap_drop(pid, cap)end
 
 local function parse_cap_val(str)
 	local cap, val = string.match(str, "(.-)=?(.*)");
@@ -190,11 +187,11 @@ function mod.try_run_command(cmd, pid, argv, msg)
 		return;
 	end
 
-	next_call("try_run_command", mod.try_run_command)(cmd, pid, argv, msg);
+	mod.next.try_run_command(cmd, pid, argv, msg);
 end
 
 function mod.can_see_command(pid, cmd)
-	if (not next_call("can_see_command", mod.can_see_command)(pid, cmd)) then
+	if (not mod.next.can_see_command(pid, cmd)) then
 		return false;
 	end
 

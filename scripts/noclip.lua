@@ -77,7 +77,7 @@ end
 -- TODO: on_crap_packet silencing for scripts?
 function mod.on_position(pid, delta)
 	if (not clips[pid]) then
-		next_call("on_position", mod.on_position)(pid, delta);
+		mod.next.on_position(pid, delta);
 	end
 end
 
@@ -89,7 +89,7 @@ function mod.tick_player_physics(pid, delta)
 		return;
 	end
 
-	next_call("tick_player_physics", mod.tick_player_physics)(pid, delta);
+	mod.next.tick_player_physics(pid, delta);
 end
 
 -- TODO: double-tap V to noclip

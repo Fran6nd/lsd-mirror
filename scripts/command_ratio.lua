@@ -3,7 +3,6 @@ local mod = init_mod();
 -- TODO: use joined_table?
 -- kills is the number of players killed by this one; deaths is the number of times this one died
 local ratio = pid_connected_table(function() return {kills=0, deaths=0} end);
-require "lib_l10n"
 
 local spooky_ratio_msg = {
 	en="You haven't even made one kill. No deaths though."

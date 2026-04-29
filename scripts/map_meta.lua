@@ -1,7 +1,6 @@
 -- map_meta.lua -- Extract metadata from maps without executing arbitrary code
 -- TODO: optional arbitrary code execution?
-local mod = {before={},after={}};
-require "lib_l10n";
+local mod = init_mod();
 local scraper = require "lib_pyscrape";
 local meta = {};
 

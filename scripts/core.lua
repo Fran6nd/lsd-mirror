@@ -4,8 +4,6 @@ package.cpath = "./exec/?.so"
 
 math.randomseed();
 
--- TODO: make next_call work like pcall -- give it varargs
--- TODO: also maybe require the module to call a function to get its dedicated version of next_call, which already knows the module to look for
 function log(fmt, ...)
 	io.stderr:write(string.format(fmt.."\n", ...));
 end
@@ -17,51 +15,117 @@ function getcfg(key, default)
 	end
 end
 
-local stexec = {};
-local function append_callchain(key, val)
-	if callchain[key] == nil then
-		-- TODO: does this need to reach into server, or will _G do fine?
-		callchain[key] = {server[key]};
+callchain_impl = {};
+callchain_late = {};
+callchain_std = {};
+callchain_early = {};
+
+modules = {};
+
+local function process_before_after(tbl)
+	if (tbl.before ~= nil) then
+		for x,y in pairs(tbl.before) do
+			if (tbl.after ~= nil and tbl.after[x] ~= nil) then
+				local z = tbl.after[x];
+				tbl[x] = function(...) y(...); local ret = tbl.next[x](...); z(...); return ret; end
+				tbl.after[x] = nil;
+			else
+				tbl[x] = function(...) y(...); return tbl.next[x](...); end
+			end
+		end
 	end
-	table.insert(callchain[key], val);
-	_G[key] = function(...) local status, err = pcall(val, ...); if (not status and err ~= stexec) then error(err, 2); end return err; end;
+
+	if (tbl.after ~= nil) then
+		for x,y in pairs(tbl.after) do
+			tbl[x] = function(...) local ret = tbl.next[x](...); y(...); return ret; end
+		end
+	end
+
+	tbl.before = nil;
+	tbl.after = nil;
 end
 
--- local
-callchain = {};
--- TODO: names?
-modules = {};
+local function init_chains(name)
+	-- TODO: hook callchain boundaries into core?
+	callchain_impl[name] = {server[name]};
+	callchain_late[name] = {function(...) return callchain_impl[name][#callchain_impl[name]](...); end};
+	callchain_std[name] = {function(...) return callchain_late[name][#callchain_late[name]](...); end};
+	callchain_early[name] = {function(...) return callchain_std[name][#callchain_std[name]](...); end};
+
+	_G[name] = function(...)
+		local status, err = pcall(callchain_early[name][#callchain_early[name]], ...);
+
+		if (not status) then
+			error(err, 2);
+		end
+
+		return err;
+	end
+end
+
+local function add_cat(chain, tbl)
+	if (tbl == nil) then
+		return;
+	end
+
+	process_before_after(tbl);
+
+	for name,func in pairs(tbl) do
+		if (type(func) == "function") then
+			if (chain[name] == nil) then
+				init_chains(name);
+			end
+
+			tbl.next[name] = chain[name][#chain[name]];
+			table.insert(chain[name], func);
+		end
+	end
+end
+
+local function get_func_owner(func, funcname, chainname)
+	for _,mod in ipairs(modules) do
+		local tbl = chainname and mod[chainname] or mod;
+
+		if (tbl[funcname] == func) then
+			return mod;
+		end
+	end
+end
+
+local function destroy_cat(chain, tbl, chainname)
+	if (tbl == nil) then
+		return;
+	end
+
+	-- Highly-nested code improves egg-laying performance
+	for name,func in pairs(tbl) do
+	if (type(func) == "function") then
+	for i,chfunc in ipairs(chain[name]) do
+	if (chfunc == func) then
+		table.remove(chain[name], i);
+		if (chain[name][i] ~= nil) then
+			if (chainname) then
+				get_func_owner(chain[name][i], name, chainname)[chainname].next[name] = chain[name][i-1];
+			else
+				get_func_owner(chain[name][i], name).next[name] = chain[name][i-1];
+			end
+		end
+	end
+	end
+	end
+	end
+end
+
 function register(module)
 	-- TODO: force modules to return tables
 	log("Loaded %s", module.name or module);
+
 	table.insert(modules, module);
-	if (module.before ~= nil) then
-		for x,y in pairs(module.before) do
-			local patch;
-			if (module.after ~= nil and module.after[x] ~= nil) then
-				local z = module.after[x];
-				patch = function(...) y(...); local ret = next_call(x, patch)(...); z(...); return ret; end
-				module.after[x] = nil;
-			else
-				patch = function(...) y(...); return next_call(x, patch)(...); end
-			end
-			-- TODO: do you think overwriting things in the module will screw things up?
-			-- TODO: especially if one mod registers both a before and an after
-			module[x] = patch;
-		end
-	end
-	if (module.after ~= nil) then
-		for x,y in pairs(module.after) do
-			local patch;
-			patch = function(...) local ret = next_call(x, patch)(...); y(...); return ret; end
-			module[x] = patch;
-		end
-	end
-	module.before = nil;
-	module.after = nil;
-	for key, val in pairs(module) do
-		append_callchain(key, val);
-	end
+
+	add_cat(callchain_impl, module.impl);
+	add_cat(callchain_late, module.late);
+	add_cat(callchain_std, module);
+	add_cat(callchain_early, module.early);
 
 	if (module.on_load ~= nil) then
 		local status, err = pcall(module.on_load);
@@ -73,7 +137,7 @@ function register(module)
 	end
 end
 
-function unregister(module, norm)
+function unregister(module, no_rm)
 	local found = false;
 	local status = true, err;
 
@@ -83,11 +147,13 @@ function unregister(module, norm)
 	end
 
 	for key, val in ipairs(modules) do
-		if val == module then
+		if (val == module) then
 			found = true;
-			if (not norm) then
+
+			if (not no_rm) then
 				table.remove(modules, key);
 			end
+
 			break;
 		end
 	end
@@ -97,26 +163,10 @@ function unregister(module, norm)
 		return;
 	end
 
-	for key, val in pairs(module) do
-		if (key == "before" or key == "after") then
-			goto continue;
-		end
-		for k, v in ipairs(callchain[key]) do
-			if v == val then
-				table.remove(callchain[key], k);
-				_G[key] = function(...)
-					local status, err = pcall(callchain[key][#callchain[key]], ...);
-					if (not status and err ~= stexec) then
-						error(err, 2);
-					end
-					return err;
-				end;
-
-				break;
-			end
-		end
-		::continue::
-	end
+	destroy_cat(callchain_impl, module.impl, "impl");
+	destroy_cat(callchain_late, module.late, "late");
+	destroy_cat(callchain_std, module);
+	destroy_cat(callchain_early, module.early, "early");
 
 	log("Unloaded %s", module.name or module);
 
@@ -124,26 +174,6 @@ function unregister(module, norm)
 	if (not status) then
 		error(err, 2);
 	end
-end
-
-function next_call(funcname, func)
-	local arr;
-	for key, val in pairs(callchain) do
-		if (key == funcname) then
-			arr = val;
-			break;
-		end
-	end
-
-	for key, val in ipairs(arr) do
-		if (val == func) then
-			return arr[key-1];
-		end
-	end
-end
-
-function stop_exec()
-	error(stexec);
 end
 
 -- TODO: remove dependency on require
@@ -157,7 +187,7 @@ end
 
 -- Just sets boilerplate
 function init_mod()
-	return {before={},after={}};
+	return {impl={next={}}, late={before={}, after={}, next={}}, early={before={}, after={}, next={}}, before={}, after={}, next={}};
 end
 
 -- Unregister everything on_shutdown -- most importantly this calls on_unload

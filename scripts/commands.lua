@@ -1,7 +1,6 @@
 -- commands.lua -- Handles chat messages beginning with a / as commands
-require "lib_l10n";
 local buffer = require("string.buffer");
-local mod = {};
+local mod = init_mod();
 -- TODO: do we really want to clear all the commands on load?
 commands = {};
 
@@ -92,9 +91,8 @@ function mod.on_unload()
 end
 
 -- TODO: just use on_successful_connect?
-function on_fakepid_connect(pid)
+function mod.impl.on_fakepid_connect(pid)
 end
-server.on_fakepid_connect = on_fakepid_connect;
 
 function new_fakepid()
 	local pid = #takenfakepid+1;
@@ -342,7 +340,7 @@ function handle_command(pid, msg, nolog)
 	try_run_command(commands[string.lower(argv[0])], pid, argv, msg);
 end
 
-function try_run_command(cmd, pid, argv, msg)
+function mod.impl.try_run_command(cmd, pid, argv, msg)
 	if (is_fakepid(pid) and not cmd.fakepid) then
 		l10n_send_chat(pid, not_in_game_msg);
 		return;
@@ -353,7 +351,6 @@ function try_run_command(cmd, pid, argv, msg)
 		error(err, 2);
 	end
 end
-server.try_run_command = try_run_command;
 
 function send_usage(pid, cmd)
 	local name = "usage: "..(cmd.name[1] or cmd.name);
@@ -367,13 +364,13 @@ function send_usage(pid, cmd)
 end
 
 if (commands_hook_chat) then
-function mod.on_chat(pid, msg, type)
+function mod.early.on_chat(pid, msg, type)
 	if (string.sub(msg, 1, 1) == "/") then
 		handle_command(pid, string.sub(msg, 2, -1));
 		return;
 	end
 
-	next_call("on_chat", mod.on_chat)(pid, msg, type);
+	mod.next.on_chat(pid, msg, type);
 end
 end
 

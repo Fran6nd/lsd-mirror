@@ -1,6 +1,5 @@
 -- babel.lua -- The gamemode where nobody can cooperate
-require "lib_l10n";
-local mod = {after={},before={}};
+local mod = init_mod();
 local drop_timeout = 0;
 local platform_rebuild_time;
 
@@ -118,7 +117,7 @@ end
 -- Prevent most block actions from tearing down the platform
 function mod.block_action_rm(pos, type, from)
 	if (legal_pos(pos, type)) then
-		return next_call("block_action_rm", mod.block_action_rm)(pos, type, from);
+		return mod.next.block_action_rm(pos, type, from);
 	end
 	return 0;
 end
@@ -136,16 +135,13 @@ function mod.after.finish_cull()
 	end
 end
 
--- TODO: don't do this stop_exec thing, hook into some cannot_do_this thing
--- TODO: i definitely agree with this, use something crap_packet-style (maybe use different return values to mean different things)
-function mod.on_block_action(pid, pos, type)
+function mod.early.on_block_action(pid, pos, type)
 	if (not legal_pos(pos, type)) then
 		l10n_send_chat(pid, no_build_msg);
-		stop_exec();
+		return;
 	end
 
-	-- else?
-	next_call("on_block_action", mod.on_block_action)(pid, pos, type);
+	mod.early.next.on_block_action(pid, pos, type);
 end
 
 -- TODO: block_line iterator func so i can hook on_block_line. . .

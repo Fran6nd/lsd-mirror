@@ -1,5 +1,5 @@
 -- railgun.lua -- Blast holes in things.
-local mod = {after={}};
+local mod = init_mod();
 local bit = require("bit");
 require "lib_bulk_destroy";
 
@@ -106,7 +106,7 @@ register_command(cmd);
 -- TODO: better combined before/after?
 function mod.on_mouse_input(pid, bitmask)
 	local oldinp = get_mouse_inputs(pid);
-	next_call("on_mouse_input", mod.on_mouse_input)(pid, bitmask);
+	mod.next.on_mouse_input(pid, bitmask);
 
 	if (get_tool(pid) ~= 3 or bit.band(oldinp, 2) == 2 or bit.band(bitmask, 2) ~= 2) then
 		return;

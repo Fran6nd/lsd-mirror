@@ -1,5 +1,5 @@
 -- mapscripts.lua -- Execute arbitrary code and hopefully get a map out of it
-local mod = {};
+local mod = init_mod();
 
 -- TODO: allow loading vxl with .lua ext? remove maps/?.lua req and just allow ?
 function mod.load_map(name)
@@ -34,7 +34,7 @@ function mod.load_map(name)
 		return 0;
 	end
 
-	return next_call("load_map", mod.load_map)(name);
+	return mod.next.load_map(name);
 end
 
 return mod;

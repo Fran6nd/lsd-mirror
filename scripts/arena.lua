@@ -1,5 +1,4 @@
 -- arena.lua -- Not CTF
-require "lib_l10n";
 local mod = init_mod();
 local gates = {};
 local gatesdone = {};
@@ -40,7 +39,7 @@ function mod.get_spawn_position(pid)
 	end
 
 	-- hopefully just SPECTATOR
-	return next_call("get_spawn_position", mod.get_spawn_position)(pid);
+	return mod.next.get_spawn_position(pid);
 end
 
 function mod.get_spawn_time(pid)

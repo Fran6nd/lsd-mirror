@@ -1,7 +1,6 @@
 -- apoc.lua -- Use /apoc to remove eardrums
-require "lib_l10n";
 require "lib_bulk_destroy";
-local mod = {after={}};
+local mod = init_mod();
 local white = {r=255, g=255, b=255};
 local white2 = {r=232, g=232, b=255};
 local black = {r=32, g=24, b=16};

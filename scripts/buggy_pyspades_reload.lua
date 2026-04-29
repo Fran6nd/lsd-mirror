@@ -10,7 +10,7 @@ function mod.set_tool(pid, tool)
 	local rltime = get_reload_time(pid);
 	fired = nil;
 
-	next_call("set_tool", mod.set_tool)(pid, tool);
+	mod.next.set_tool(pid, tool);
 
 	if (not fired) then
 		set_reload_time(pid, rltime);
@@ -22,7 +22,7 @@ function mod.on_tool_change(pid, tool)
 	local rltime = get_reload_time(pid);
 	fired = nil;
 
-	next_call("on_tool_change", mod.on_tool_change)(pid, tool);
+	mod.next.on_tool_change(pid, tool);
 
 	if (not fired) then
 		set_reload_time(pid, rltime);

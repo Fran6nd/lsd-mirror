@@ -1,6 +1,5 @@
 -- toggles.lua -- Toggle building, killing, talking, moving, etc.
-require "lib_l10n";
-local mod = {};
+local mod = init_mod();
 -- TODO: automute based on regexp, muted player only knows after he's sent a few messages but normal players never see anything
 
 local added_msg = {
@@ -11,36 +10,35 @@ local removed_msg = {
 	en="Removed %(cap) from %(name)"
 };
 
-function mod.on_block_action(pid, pos, type)
+-- TODO: infinite_blocks with voxlap?
+function mod.early.on_block_action(pid, pos, type)
 	if (has_cap(pid, "badcap:nobuild")) then
-		-- TODO: deal with stop_exec's funkiness
-		--stop_exec();
 		return;
 	end
-	next_call("on_block_action", mod.on_block_action)(pid, pos, type);
+	mod.early.next.on_block_action(pid, pos, type);
 end
 
-function mod.on_block_line(pid, pstart, pend)
+function mod.early.on_block_line(pid, pstart, pend)
 	if (has_cap(pid, "badcap:nobuild")) then
 		return;
 	end
-	next_call("on_block_line", mod.on_block_line)(pid, pstart, pend);
+	mod.early.next.on_block_line(pid, pstart, pend);
 end
 
 -- TODO: use ... for args i don't care about? (and extension args?)
-function mod.on_hit(pid, type, hitPlayer)
+function mod.early.on_hit(pid, type, hitPlayer)
 	if (has_cap(pid, "badcap:nodamage")) then
 		return;
 	end
-	next_call("on_hit", mod.on_hit)(pid, type, hitPlayer);
+	mod.early.next.on_hit(pid, type, hitPlayer);
 end
 
--- TODO: make this loaded later than commands
+-- TODO: need a level after early?
 function mod.on_chat(pid, msg, type)
 	if (has_cap(pid, "badcap:mute")) then
 		return;
 	end
-	next_call("on_chat", mod.on_chat)(pid, msg, type);
+	mod.next.on_chat(pid, msg, type);
 end
 
 local function toggle(pid, cmd, argv, cap)

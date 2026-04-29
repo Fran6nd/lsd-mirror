@@ -1,5 +1,5 @@
 -- motd.lua -- Send a blob of text to players when they join
-local mod = {after={}};
+local mod = init_mod();
 getcfg("motd", "Server owner forgot to set the motd, oh no");
 
 local function send_motd(pid)

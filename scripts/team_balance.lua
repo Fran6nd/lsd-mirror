@@ -1,6 +1,4 @@
 -- team_balance.lua -- Attempt to balance quantity but fail to balance quality
-require("lib_l10n");
-
 local mod = init_mod();
 
 getcfg("team_balance_max_diff", 2);
@@ -38,7 +36,7 @@ function mod.on_join(pid, team, gun, name)
 		end
 	end
 
-	return next_call("on_join", mod.on_join)(pid, team, gun, name);
+	return mod.next.on_join(pid, team, gun, name);
 end
 
 function mod.on_switch(pid, team, gun)
@@ -56,7 +54,7 @@ function mod.on_switch(pid, team, gun)
 		end
 	end
 
-	return next_call("on_switch", mod.on_switch)(pid, team, gun);
+	return mod.next.on_switch(pid, team, gun);
 end
 
 return mod;

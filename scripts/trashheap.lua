@@ -41,7 +41,7 @@ end
 function ticker.tick()
 	local now = get_time();
 
-	next_call("tick", ticker.tick)();
+	ticker.next.tick();
 	
 	if true then
 		--log("time: %f", now);
@@ -63,7 +63,7 @@ end
 function ticker2.tick()
 	local now = get_time();
 
-	next_call("tick", ticker2.tick)();
+	ticker2.next.tick();
 	
 	if false then
 		server_msg(PID_BROADCAST, string.format("N%% %f", now - before2 - 0.01666666666666666666));
@@ -76,7 +76,7 @@ end
 
 whereami = {};
 function whereami.tick()
-	next_call("tick", whereami.tick)();
+	whereami.next.tick();
 	
 	local pos = get_position(0);
 	server_msg(0, string.format("N%% pos: {%.3f, %.3f, %.3f}", pos.x, pos.y, pos.z));
@@ -122,7 +122,7 @@ maptime = init_mod();
 function maptime.send_map(pid)
 	local start = get_time();
 	log("send-start");
-	next_call("send_map", maptime.send_map)(pid);
+	maptime.next.send_map(pid);
 	log("send-delta: %.2f ms", (get_time()-start)*1000);
 end
 

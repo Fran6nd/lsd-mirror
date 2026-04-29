@@ -1,9 +1,9 @@
 -- command_ups.lua -- Configure your WorldUpdate receive rate
 -- TODO: autoconfigure based on RTT?
+
 local mod = init_mod();
 local rate = pid_connected_table(1);
 local ctr = 0;
-require "lib_l10n";
 
 local freq_msg = {
 	en="%(arg) should be one of {%(freqs)} (Hz)"
@@ -31,7 +31,7 @@ register_command(cmd);
 function mod.send_player_update(pid)
 	for i in piditer(pid) do
 		if (ctr % rate[i] == 0) then
-			next_call("send_player_update", mod.send_player_update)(i);
+			mod.next.send_player_update(i);
 		end
 	end
 

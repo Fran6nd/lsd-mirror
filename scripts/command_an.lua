@@ -1,6 +1,4 @@
 -- command_an.lua -- That hit packet dumper with extra steps
-require "lib_l10n";
-
 local mod = init_mod();
 
 local targets;

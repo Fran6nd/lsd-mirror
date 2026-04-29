@@ -1,5 +1,4 @@
 -- auth.lua -- Leak your passwords to the world with /login
-require "lib_l10n";
 local mod = init_mod();
 local sql = require "lsqlite3";
 local sodium = require "luasodium";
@@ -98,7 +97,7 @@ function mod.try_run_command(cmd, pid, argv, msg)
 		l10n_send_chat(pid, login_first_msg);
 		return;
 	end
-	next_call("try_run_command", mod.try_run_command)(cmd, pid, argv, msg);
+	mod.next.try_run_command(cmd, pid, argv, msg);
 end
 
 -- TODO: should i rewrite half of this stuff in C and use sodium's secure memory functions?

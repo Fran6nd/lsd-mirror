@@ -7,7 +7,7 @@ getcfg("dbljump_jumps", 1);
 function mod.on_move_input(pid, bitmask)
 	local oldinp = get_inputs(pid);
 
-	next_call("on_move_input", mod.on_move_input)(pid, bitmask);
+	mod.next.on_move_input(pid, bitmask);
 
 	-- TODO: might like to be able to just pass it through to the underlying function instead of calling set_jump. . .
 	-- TODO: should it check for is_airborne first or not?

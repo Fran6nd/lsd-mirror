@@ -37,3 +37,7 @@ Returns the locations of all tents. The table key is teamid+1. If any tent is hi
 
 boolean input_on_stdin(void) ->
 Deprecated.
+
+void set_reload_time(plid pid, clk time) ->
+Schedules reload_player() to be called for <var>pid</var> at <var>time</var>.
+Unschedules instead if <var>time</var>=<kbd>0</kbd>.

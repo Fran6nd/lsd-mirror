@@ -778,16 +778,6 @@ static int get_fog(lua_State *l) {
 	return 1;
 }
 
-/* TODO: ammunition estimation */
-#if 0
-static int get_ammo(lua_State *l) {
-	plid pid = check_plid(l, 1);
-	lua_pushnumber(l, st->p[pid].magAmmo);
-	lua_pushnumber(l, st->p[pid].reserveAmmo);
-	return 1;
-}
-#endif
-
 static int get_hp(lua_State *l) {
 	plid pid = check_plid(l, 1);
 	lua_pushnumber(l, st->p[pid].hp);
@@ -909,6 +899,48 @@ static int get_inputs(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
 	lua_pushnumber(l, st->p[pid].inputs);
+	return 1;
+}
+
+static int set_reload_time(lua_State *l) {
+	plid pid = check_plid(l, 1);
+	st->p[pid].reloadtime = check_clk(l, 2);
+
+	return 0;
+}
+
+static int get_reload_time(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, to_s_double(st->p[pid].reloadtime));
+	return 1;
+}
+
+static int get_estimated_mag_ammo(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].estMagAmmo);
+	return 1;
+}
+
+static int get_max_mag_ammo(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].maxMagAmmo);
+	return 1;
+}
+
+static int get_mag_ammo(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].estMagAmmo < st->p[pid].maxMagAmmo ? st->p[pid].estMagAmmo : st->p[pid].maxMagAmmo);
+	return 1;
+}
+
+static int get_reserve_ammo(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].reserveAmmo);
 	return 1;
 }
 
@@ -1130,6 +1162,12 @@ static const struct luaL_Reg funcs[] = {
 	{"get_next_gun", get_next_gun},
 	{"get_tool", get_tool},
 	{"get_inputs", get_inputs},
+	{"set_reload_time", set_reload_time},
+	{"get_reload_time", get_reload_time},
+	{"get_estimated_mag_ammo", get_estimated_mag_ammo},
+	{"get_max_mag_ammo", get_max_mag_ammo},
+	{"get_mag_ammo", get_mag_ammo},
+	{"get_reserve_ammo", get_reserve_ammo},
 	/* TODO: unfortunate naming */
 	{"get_block_color", get_block_color},
 	{"get_map_block_color", get_map_block_color},

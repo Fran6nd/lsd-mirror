@@ -636,6 +636,7 @@ static void tick(struct State *st) {
 			if (st->p[i].tool == ToolTypeGun && st->p[i].mouseInputs & 1) {
 				st->p[i].estfiretime += fireTime[st->p[i].gun];
 
+				st->f.before_estimated_fire(i, st);
 				if (st->p[i].estMagAmmo != 0)
 					st->p[i].estMagAmmo--;
 			} else
@@ -1114,6 +1115,11 @@ static void after_player_destroy(plid pid, struct State *st) {
 	(void)st;
 	return;
 }
+static void before_estimated_fire(plid pid, struct State *st) {
+	(void)pid;
+	(void)st;
+	return;
+}
 
 static void set_hp(plid pid, int hp, struct State *st) {
 	struct PacketSetHP sh;
@@ -1207,11 +1213,13 @@ static void set_tool(plid pid, unsigned tool, struct State *st) {
 
 	st->f.send_set_tool(PID_BROADCAST, tool, pid, st);
 
+	/* TODO: set mouseInputs to 0? (and account for buggyshits) */
 	if (st->p[pid].estfiretime == 0 && st->p[pid].tool == ToolTypeGun && st->p[pid].mouseInputs & 1) {
 		st->p[pid].estfiretime = get_time() + fireTime[st->p[pid].gun];
 		/* TODO: does this actually need to be here? */
 		st->p[pid].reloadtime = 0;
 
+		st->f.before_estimated_fire(pid, st);
 		if (st->p[pid].estMagAmmo != 0)
 			st->p[pid].estMagAmmo--;
 	}
@@ -1357,6 +1365,7 @@ static void set_funcs(struct State *st) {
 	st->f.restock = restock;
 	st->f.move_intel = move_intel;
 	st->f.after_player_destroy = after_player_destroy;
+	st->f.before_estimated_fire = before_estimated_fire;
 	st->f.boot_players_to_limbo = boot_players_to_limbo;
 	st->f.demand_fingerprint = demand_fingerprint;
 	st->f.move_tent = move_tent;

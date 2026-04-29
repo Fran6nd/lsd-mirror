@@ -132,6 +132,7 @@ static void on_tool_change(plid pid, unsigned tool, struct State *st) {
 		/* TODO: does this actually need to be here? */
 		st->p[pid].reloadtime = 0;
 
+		st->f.before_estimated_fire(pid, st);
 		if (st->p[pid].estMagAmmo != 0)
 			st->p[pid].estMagAmmo--;
 	}
@@ -183,6 +184,7 @@ static void on_mouse_input(plid pid, unsigned bitmask, struct State *st) {
 		st->p[pid].estfiretime = get_time() + fireTime[st->p[pid].gun];
 		st->p[pid].reloadtime = 0;
 
+		st->f.before_estimated_fire(pid, st);
 		if (st->p[pid].estMagAmmo != 0)
 			st->p[pid].estMagAmmo--;
 	}

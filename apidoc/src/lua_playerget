@@ -92,3 +92,20 @@ Behaves like get_client_major() but for minor version.
 
 integer get_client_patch(plid pid) ->
 Behaves like get_client_major() but for patch version.
+
+integer get_estimated_mag_ammo(plid pid) ->
+<strong>May return greater than get_max_mag_ammo()</strong>; you probably want to use get_mag_ammo().
+Returns <var>pid</var>'s estimated magazine ammo.
+Prone to desync.
+
+integer get_max_mag_ammo(plid pid) ->
+Returns <var>pid</var>'s best-case magazine ammo given worst-case lag.
+
+integer get_mag_ammo(plid pid) ->
+Returns the minimum of get_estimated_mag_ammo() and get_max_mag_ammo().
+
+integer get_reserve_ammo(plid pid) ->
+Returns <var>pid</var>'s current ``reserve'' ammo.
+
+clk get_reload_time(plid pid) ->
+Returns the scheduled time reload_player() will be called for <var>pid</var>, or <samp>0</samp> if not scheduled.

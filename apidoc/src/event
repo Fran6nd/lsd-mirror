@@ -159,3 +159,9 @@ Deprecated.
 void after_player_destroy(plid pid) ->
 Called after <var>pid</var> is made not alive.
 Called by kill() and boot_players_to_limbo().
+
+void before_estimated_fire(plid pid) ->
+<!-- TODO: factor in worst-case ammo/buggershits at least -->
+<strong>May be called even if get_estimated_mag_ammo() is <samp>0</samp>; check ammo yourself if it's relevant.</strong>
+Called immediately before <var>pid</var> is roughly determined to have fired a shot.
+Prone to desync.

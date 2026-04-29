@@ -63,6 +63,13 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
+local cmd = {name={"setmapqueue", "map"}, caps="map_queue", fakepid=true, usage="path...", desc="Override the temporary map queue. Later maps get played first."};
+function cmd.func(pid, argv)
+	argv[0] = nil;
+	nextqueue = argv;
+end
+register_command(cmd);
+
 -- TODO: on_game_end -> end_game?
 local cmd = {name="advance", caps="map_queue", fakepid=true, desc="Load the next queued map."};
 function cmd.func(pid, argv)

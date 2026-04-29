@@ -370,7 +370,7 @@ function mod.early.on_chat(pid, msg, type)
 		return;
 	end
 
-	mod.next.on_chat(pid, msg, type);
+	mod.early.next.on_chat(pid, msg, type);
 end
 end
 

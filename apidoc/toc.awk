@@ -4,7 +4,7 @@ BEGIN {
 }
 
 /^# / {
-	split($0, args, "[ \t]");
+	split($0, args, "[ ~]");
 	sub(".html$", "", args[3]);
 	sect = args[3];
 	funct = args[2];

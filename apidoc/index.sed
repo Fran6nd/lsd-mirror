@@ -1,9 +1,9 @@
 #n at the beginning of a sed script is equivalent to passing -n to sed.
 
-# The start of a new filename is denoted by lines beginning with "FILE\t".
-/^FILE\t/ {
-	# Strip away the "FILE\t" at the beginning to leave just the filename.
-	s|^FILE\t||
+# The start of a new filename is denoted by lines beginning with "<FILE>".
+/^<FILE>/ {
+	# Strip away the "<FILE>" at the beginning to leave just the filename.
+	s|^<FILE>||
 	# Append ".html" to the filename.
 	s|$|.html|
 	# Store it in the hold space.
@@ -24,9 +24,9 @@
 		# Print a comment line for easy consumption by toc.awk
 		s|^|# |
 		s|\n|()&|
-		y|\n|\t|
+		y|\n|~|
 		p
-		y|\t|\n|
+		y|~|\n|
 		s|()\(\n\)|\1|
 		s|^# ||
 
@@ -46,9 +46,9 @@
 
 		# Print a comment line for easy consumption by toc.awk
 		s|^|# |
-		y|\n|\t|
+		y|\n|~|
 		p
-		y|\t|\n|
+		y|~|\n|
 		s|^# ||
 
 		# Assemble the monster, but this time without matching for a pair of parentheses

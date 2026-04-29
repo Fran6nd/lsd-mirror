@@ -18,14 +18,14 @@ pages: out/index.html index
 out/singlepage.html: pages
 	# TODO: strip out old pages that haven't been make clean'd
 	# TODO: tr -d doesn't play nicely with <pre>
-	printf '%s\n' out/lua_misc.html out/index.html out/*.html | sed '2!{/\/index.html$$/d};/\/singlepage.html$$/d' | xargs sed '1!s|.*<main>||;1s|<title>.*</title>|<title>LSd Lua Api – single-page</title>|;1s|<main>.*|<main>|;1s|<style>|&h1{text-align:center}|;$$!s|<footer>.*|</article>|;s|<a href=[a-z_]*\.html|<a href=|g;s|<a href=>\([^<]*\)</a>|\1|g' | tr -d '\n' > out/singlepage.html
+	printf '%s\n' out/lua_misc.html out/index.html out/*.html | sed '2!{/\/index.html$$/d;};/\/singlepage.html$$/d' | xargs sed '1!s|.*<main>||;1s|<title>.*</title>|<title>LSd Lua Api – single-page</title>|;1s|<main>.*|<main>|;1s|<style>|&h1{text-align:center}|;$$!s|<footer>.*|</article>|;s|<a href=[a-z_]*\.html|<a href=|g;s|<a href=>\([^<]*\)</a>|\1|g' | tr -d '\n' > out/singlepage.html
 
 out/index.html: index
 	mkdir -p out
 	$(AWK) -f toc.awk index | sed -f index > out/index.html
 
 index: dirty
-	cd src; { for x in *; do printf 'FILE\t%s\n' "$$x" | cat - "$$x"; done; } | sed -f ../index.sed > ../index
+	cd src; { for x in *; do printf '<FILE>%s\n' "$$x" | cat - "$$x"; done; } | sed -f ../index.sed > ../index
 
 clean:
 	rm -fR index out

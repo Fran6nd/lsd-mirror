@@ -71,7 +71,7 @@ end
 register_command(cmd);
 
 -- TODO: on_game_end -> end_game?
-local cmd = {name="advance", caps="map_queue", fakepid=true, desc="Load the next queued map."};
+local cmd = {name={"advance", "advancemap"}, caps="map_queue", fakepid=true, desc="Load the next queued map."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
 	on_game_end();

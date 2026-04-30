@@ -169,7 +169,7 @@ function mod.after.tick()
 			end
 			if (not status) then
 				-- TODO: need to show, hide on error
-				error(err);
+				error(err, 2);
 			end
 		end
 	end

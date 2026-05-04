@@ -196,6 +196,7 @@ Makes <var>from</var> drop the enemy team's intel at the given position.
 void send_move_object(bplid pid, fvec3 pos, unsigned id, unsigned team) ->
 <!-- TODO: document voxlap fuckery which may or may not be real -->
 <!-- TODO: TC -->
+Sets <var>id</var>'s position.
 For CTF, <var>id</var> may be one of the following:
 <dl>
 <dt>0<dd>First team's intel

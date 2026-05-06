@@ -33,7 +33,7 @@ function cmd.func(pid, argv)
 	end
 
 	-- TODO: make dedicated switch func which is called by on_switch, and use that here
-	on_switch(who, teamid, get_next_weapon(who));
+	on_switch(who, teamid, get_next_gun(who));
 end
 register_command(cmd);
 

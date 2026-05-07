@@ -7,8 +7,8 @@ BEGIN {
 }
 
 END {
-	printf("\nstatic void register_luaawk(lua_State *l, struct State *st) {(void)l;%s}\n", lua_reg);
-	printf("\n#define LUA_CALLS %s\n#endif\n", lua_calls);
+	printf("\nstatic void register_luaawk(lua_State *l, struct State *st) {\n\t(void)l;\n%s}\n", lua_reg);
+	printf("\n#define LUA_CALLS%s\n\n#endif\n", lua_calls);
 }
 
 function extract_name(arg) {
@@ -82,8 +82,8 @@ function do_func(ret, type) {
 	args = substr($0, RSTART+2, RLENGTH-3);
 	argc = split(args, argv, ", ");
 
-	lua_calls = lua_calls sprintf("{\"%s\",l%s},", name, name);
-	lua_reg = lua_reg sprintf("st->f.%s=c%s;", name, name);
+	lua_calls = lua_calls sprintf(" \\\n\t{\"%s\", l%s},", name, name);
+	lua_reg = lua_reg sprintf("\tst->f.%s = c%s;\n", name, name);
 
 	printf(pad"static int l%s(lua_State *l) {\n", name);
 	largs(argv);

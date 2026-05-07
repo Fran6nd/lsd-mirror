@@ -9,6 +9,10 @@ local unknown_cmd_msg = {
 	en="Command not found."
 };
 
+local help_cmds_msg = {
+	en="Were you looking for /commands?"
+};
+
 local function sort_cmds(x, y)
 	return (x.name[1] or x.name) < (y.name[1] or y.name);
 end
@@ -111,6 +115,10 @@ function cmd.func(pid, argv)
 		server_msg(pid, print_cmd(val));
 	else
 		l10n_send_chat(pid, unknown_cmd_msg);
+	end
+
+	if (#argv == 0) then
+		l10n_send_chat(pid, help_cmds_msg);
 	end
 end
 register_command(cmd);

@@ -64,7 +64,7 @@ local function do_fall_damage(pid, height)
 
 	-- get_hp is called here in case set_hp is overridden
 	if (get_hp(pid) == 0) then
-		kill(pid, 4, 4);
+		kill(pid, 4, pid);
 	end
 end
 

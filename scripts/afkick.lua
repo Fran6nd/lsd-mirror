@@ -1,0 +1,157 @@
+-- afkick.lua -- Automatically prune abandoned players
+local mod = init_mod();
+
+local kicked_msg = {
+	en="%(name) was kicked: AFK"
+}
+
+local warn_msg = {
+	en="You will be automatically AFK-kicked in %(time) s"
+}
+
+getcfg("afkick_time_kick", 30*60);
+getcfg("afkick_time_warn", 29*60);
+getcfg("afkick_time_limbo", 2*60);
+
+local afktm = {};
+local nextpid = {kick=nil, warn=nil, limbo=nil};
+
+local function bumpnext(timer, pid)
+	local next = nextpid[timer] or pid;
+
+	if (afktm[next] == nil or afktm[next].next ~= timer) then
+		next = nil;
+
+		for i in piditer(PID_BROADCAST) do
+			if (afktm[i].next == timer) then
+				next = i;
+				pid = next;
+				goto diffpid;
+			end
+		end
+
+		goto endfunc;
+	end
+
+	::diffpid::
+	if (next == pid) then
+		for i in piditer(PID_BROADCAST) do
+			if (afktm[i].next == timer and afktm[i].tm < afktm[next].tm) then
+				next = i;
+			end
+		end
+	end
+
+	::endfunc::
+	nextpid[timer] = next;
+end
+
+local function bump_nextafkpid(pid)
+	bumpnext("warn", pid);
+	bumpnext("kick", pid);
+	bumpnext("limbo", pid);
+end
+
+local function bump_afktm(pid, timer)
+	afktm[pid] = afktm[pid] or {};
+	afktm[pid].tm = get_time();
+	afktm[pid].next = timer or "warn";
+
+	bump_nextafkpid(pid);
+end
+
+-- TODO: don't trust ENet disconnect to handle the big tickloop robustly
+local function handle_timer(timer, pid)
+	if (timer == "warn") then
+		afktm[pid].next = "kick";
+		-- TODO: integrate next-set into this func
+		bump_nextafkpid();
+		if (afkick_time_warn < afkick_time_kick) then
+			l10n_send_chat(pid, warn_msg, {time=afkick_time_kick-afkick_time_warn});
+			return;
+		end
+	end
+
+	if (timer ~= "limbo") then
+		l10n_send_chat(PID_BROADCAST, kicked_msg, {name=get_name(pid)});
+	end
+
+	disconnect(pid, 2);
+end
+
+function mod.after.tick()
+	local now = get_time();
+
+	for timer, next in pairs(nextpid) do
+		local time = _G["afkick_time_"..timer];
+		if (next and now >= afktm[next].tm + time) then
+			for i in piditer(PID_BROADCAST) do
+				if (afktm[i].next == timer and now >= afktm[i].tm + time) then
+					handle_timer(timer, i);
+				end
+			end
+		end
+	end
+end
+
+function mod.on_load()
+	for i in piditer(PID_BROADCAST) do
+		bump_afktm(i, is_joined(i) and "warn" or "limbo");
+	end
+end
+
+-- on_orientation isn't hooked here since SDL2 (non-compat) openspades users on X have their mouse movement stolen
+
+function mod.after.on_successful_connect(pid)
+	bump_afktm(pid, "limbo");
+end
+
+function mod.after.boot_players_to_limbo()
+	for i in piditer(PID_BROADCAST) do
+		bump_afktm(pid, "limbo");
+	end
+end
+
+-- TODO: can i pass the same function ptr to all of these?
+function mod.after.on_chat(pid)
+	bump_afktm(pid);
+end
+
+function mod.after.on_reload(pid)
+	bump_afktm(pid);
+end
+
+function mod.after.on_color_change(pid)
+	bump_afktm(pid);
+end
+
+function mod.after.on_mouse_input(pid)
+	bump_afktm(pid);
+end
+
+function mod.before.on_move_input(pid, bitmask)
+	-- In some cases betterspades can steal the shift key
+	if (bit.band(bit.bxor(get_inputs(pid), bitmask), 127) ~= 0) then
+		bump_afktm(pid);
+	end
+end
+
+function mod.after.on_join(pid)
+	bump_afktm(pid);
+end
+
+function mod.after.on_switch(pid)
+	bump_afktm(pid);
+end
+
+function mod.after.on_disconnect(pid)
+	bump_nextafkpid(pid);
+
+	for x,y in pairs(nextpid) do
+		if (y == pid) then
+			nextpid[x] = nil;
+		end
+	end
+end
+
+return mod;

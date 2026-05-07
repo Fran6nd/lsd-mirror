@@ -153,6 +153,7 @@ function do_func(ret, type) {
 	if (match($0, /ENetPacket/)) next;
 	if (match($0, /send_packet/)) next;
 	if (match($0, /on_[a-z]*_packet/)) next;
+	if (match($0, /on_version/)) next;
 	if (match($0, /_from_mem/)) next;
 	# TODO: automate typing
 	if (match($0, /void \(\*/)) do_func(0, "void");

@@ -52,11 +52,12 @@ typedef fvec3p fvec3;
 /* Work around buggerspades bugs */
 #define BS_BUG_INFLOOR 1
 #define BS_BUG_NOSHORTPLAYER 2
+/* TODO: I think this one spread to IV spades too */
+#define BS_BUG_SCREWED_DISCONNECT_DATA 4
 /* TODO: BS_BUG_NODEADNADE */
 /* TODO: BS_BUG_BORKEDRELOAD */
 /* TODO: BS_BUG_MOUSEINPUTISFUCKED */
 /* TODO: BS_BUG_INCOMPATIBLE_CHAT_STANDARD */
-/* TODO: BS_BUG_PIQUESHIT_DISCONNECT_DATA -- I think this one spread to IV spades too */
 /* TODO: wonder how to handle sprintcrouching */
 
 /* TODO: consider the version stuff an ext too? */
@@ -141,6 +142,7 @@ struct Player {
 	/* TODO: assert(idChar != 0) */
 	uint8_t verMinor;
 	uint8_t verPatch;
+	char verMsg[256];
 };
 
 struct State;
@@ -177,7 +179,7 @@ struct Functions {
 	void (*on_grenade)(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st);
 	void (*on_reload)(plid pid, struct State *st);
 	void (*on_handshake)(plid pid, struct State *st);
-	void (*on_version)(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, struct State *st);
+	void (*on_version)(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, const char *msg, size_t msglen, struct State *st);
 
 	fvec3 (*get_spawn_position)(plid pid, struct State *st);
 	clk (*get_spawn_time)(plid pid, struct State *st);

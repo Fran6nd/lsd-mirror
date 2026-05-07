@@ -521,6 +521,33 @@ static fvec3 cget_spawn_position(plid pid, struct State *st) {
 
 	return ret;
 }
+static int lon_version(lua_State *l) {
+	size_t msglen;
+	plid pid = check_plid(l, 1);
+	unsigned idChar = luaL_checknumber(l, 2);
+	unsigned major = luaL_checknumber(l, 3);
+	unsigned minor = luaL_checknumber(l, 4);
+	unsigned patch = luaL_checknumber(l, 5);
+	const char *msg = luaL_checklstring(l, 6, &msglen);
+
+	f.on_version(pid, idChar, major, minor, patch, msg, msglen, st);
+	return 0;
+}
+
+static void con_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, const char *msg, size_t msglen, struct State *st) {
+	(void)st;
+	lua_getglobal(l, "on_version");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, idChar);
+	lua_pushnumber(l, major);
+	lua_pushnumber(l, minor);
+	lua_pushnumber(l, patch);
+	lua_pushlstring(l, msg, msglen);
+
+	if (lua_pcall(l, 6, 0, 0) != 0)
+		CBAIL("on_version: %s", luaL_checkstring(l, -1));
+}
 
 /* NOTE: Try not to touch pid_matches' conditions too much while iterating */
 int pid_matches(plid broadcast, plid pid, struct State *st);
@@ -661,6 +688,10 @@ static int raycast(lua_State *l) {
 static int disconnect(lua_State *l) {
 	plid pid = check_plid(l, 1);
 	unsigned reason = luaL_checknumber(l, 2);
+
+	if (reason == 2 && st->p[pid].bugMask & BS_BUG_SCREWED_DISCONNECT_DATA)
+		reason = 10;
+
 	enet_peer_disconnect(st->host->peers+pid, reason);
 	return 0;
 }
@@ -668,6 +699,10 @@ static int disconnect(lua_State *l) {
 static int disconnect_now(lua_State *l) {
 	plid pid = check_plid(l, 1);
 	unsigned reason = luaL_checknumber(l, 2);
+
+	if (reason == 2 && st->p[pid].bugMask & BS_BUG_SCREWED_DISCONNECT_DATA)
+		reason = 10;
+
 	enet_peer_disconnect_now(st->host->peers+pid, reason);
 	return 0;
 }
@@ -1035,6 +1070,13 @@ static int get_client_patch(lua_State *l) {
 	return 1;
 }
 
+static int get_client_msg(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushstring(l, st->p[pid].verMsg);
+	return 1;
+}
+
 static int get_team_name(lua_State *l) {
 	unsigned team = check_teamid(l, 1);
 	/* TODO: support -1 too? */
@@ -1107,6 +1149,7 @@ static const struct luaL_Reg funcs[] = {
 	{"on_sane_packet", lon_sane_packet},
 	{"on_crap_packet", lon_crap_packet},
 	{"get_spawn_position", lget_spawn_position},
+	{"on_version", lon_version},
 
 	/* TODO: these two are not like the rest */
 	{"disconnect", disconnect},
@@ -1181,6 +1224,7 @@ static const struct luaL_Reg funcs[] = {
 	{"get_client_major", get_client_major},
 	{"get_client_minor", get_client_minor},
 	{"get_client_patch", get_client_patch},
+	{"get_client_msg", get_client_msg},
 	{"get_team_name", get_team_name},
 	{"get_team_color", get_team_color},
 	{"get_team_score", get_team_score},
@@ -1212,6 +1256,7 @@ void register_functions(lua_State *l, struct State *st) {
 	st->f.on_sane_packet = con_sane_packet;
 	st->f.on_crap_packet = con_crap_packet;
 	st->f.get_spawn_position = cget_spawn_position;
+	st->f.on_version = con_version;
 	register_luaawk(l, st);
 }
 

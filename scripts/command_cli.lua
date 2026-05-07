@@ -47,7 +47,7 @@ function cmd.func(pid, argv)
 			msg = cli_msg;
 		end
 
-		l10n_send_chat(pid, msg, {name=get_name(player), char=char, major=get_client_major(player), minor=get_client_minor(player), patch=get_client_patch(player)});
+		l10n_send_chat(pid, msg, {name=get_name(player), char=char, major=get_client_major(player), minor=get_client_minor(player), patch=get_client_patch(player), msg=get_client_msg(player)});
 	else
 		if (get_client_handshaked(player)) then
 			l10n_send_chat(pid, cli_handshake_only_msg, {name=get_name(player)});

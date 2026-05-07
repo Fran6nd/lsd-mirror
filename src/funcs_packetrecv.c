@@ -410,10 +410,8 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 #undef PCKT
 #define PCKT VersionResponse
 		SCASEANY
-		SRANGE(5, 5+256);
-		/* Not NUL terminated for some reason (I think anyway) --
-		 * That's why I decided to use +256 instead of +255 for the size
-		 */
+		/* Not NUL terminated for some reason */
+		SRANGE(5, 5+255);
 
 		/* TODO: dig into the datagrams if you feel like denying fingerprint sooner than join */
 		SBAD(!st->p[pid].wantFingerprint);
@@ -430,8 +428,6 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 
 /* TODO: nuke the useless Data from everything, maybe rename WorldUpdate, un-action Kill, annihilate the british, *gun* reload, . . . */
 static void on_sane_packet(plid pid, const void *data, size_t length, struct State *st) {
-	(void)length;
-
 	switch (((uint8_t *)data)[0]) {
 #undef PCKT
 #define PCKT PositionData
@@ -528,8 +524,7 @@ static void on_sane_packet(plid pid, const void *data, size_t length, struct Sta
 #undef PCKT
 #define PCKT VersionResponse
 		PCASE
-		/* TODO: string */
-		st->f.on_version(pid, PACKET.client, PACKET.versionMajor, PACKET.versionMinor, PACKET.versionRevision, st);
+		st->f.on_version(pid, PACKET.client, PACKET.versionMajor, PACKET.versionMinor, PACKET.versionRevision, PACKET.operatingSystemInfo, length-5, st);
 		break;
 	}
 }

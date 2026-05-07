@@ -67,6 +67,7 @@ static void on_disconnect(plid pid, struct State *st) {
 	st->p[pid].verMajor = 0;
 	st->p[pid].verMinor = 0;
 	st->p[pid].verPatch = 0;
+	st->p[pid].verMsg[0] = '\0';
 
 	if (wasalive)
 		st->f.after_player_destroy(pid, st);
@@ -220,16 +221,28 @@ void on_handshake(plid pid, struct State *st) {
 	st->p[pid].handshaked = 1;
 }
 
-void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, struct State *st) {
+void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, const char *msg, size_t msglen, struct State *st) {
 	st->p[pid].wantFingerprint = 0;
 	st->p[pid].idChar = idChar;
 	st->p[pid].verMajor = major;
 	st->p[pid].verMinor = minor;
 	st->p[pid].verPatch = patch;
-	if (st->p[pid].idChar == 'B')
-		st->p[pid].bugMask = (uint32_t)-1;
 
-	LOG("%s:%"PRIu16" (#%"PRIiPID") got version: '%c' (%"PRIu8") v%"PRIu8".%"PRIu8".%"PRIu8, IP(pid), PORT(pid), pid, idChar < 0x20 || idChar >= 0x7f ? '?' : idChar, idChar, major, minor, patch);
+	memcpy(st->p[pid].verMsg, msg, msglen);
+	st->p[pid].verMsg[msglen] = '\0';
+
+	switch (st->p[pid].idChar) {
+	case 'B':
+		st->p[pid].bugMask = (uint32_t)-1;
+		break;
+	case 'o':
+		if (strstr(st->p[pid].verMsg, "ZeroSpades") || strstr(st->p[pid].verMsg, "IV of Spades"))
+			st->p[pid].bugMask |= BS_BUG_SCREWED_DISCONNECT_DATA;
+		break;
+	}
+
+	/* TODO: still have to sanitize/reencode (maybe not reencode this specific one) strings */
+	LOG("%s:%"PRIu16" (#%"PRIiPID") got version: '%c' (%"PRIu8") v%"PRIu8".%"PRIu8".%"PRIu8": %s", IP(pid), PORT(pid), pid, idChar < 0x20 || idChar >= 0x7f ? '?' : idChar, idChar, major, minor, patch, st->p[pid].verMsg);
 }
 
 void set_funcs_event(struct State *st) {

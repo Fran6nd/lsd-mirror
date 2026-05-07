@@ -93,6 +93,10 @@ Behaves like get_client_major() but for minor version.
 integer get_client_patch(plid pid) ->
 Behaves like get_client_major() but for patch version.
 
+integer get_client_msg(plid pid) ->
+Returns the client's reported version message; usually this has the client's underlying kernel/operating system in it, sometimes other junk.
+If get_client_char() would return nil, return value is unspecified.
+
 integer get_estimated_mag_ammo(plid pid) ->
 <strong>May return greater than get_max_mag_ammo()</strong>; you probably want to use get_mag_ammo().
 Returns <var>pid</var>'s estimated magazine ammo.

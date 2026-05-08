@@ -19,11 +19,11 @@ local nextpid = {kick=nil, warn=nil, limbo=nil};
 local function bumpnext(timer, pid)
 	local next = nextpid[timer] or pid;
 
-	if (afktm[next] == nil or afktm[next].next ~= timer) then
+	if (afktm[next].timer ~= timer) then
 		next = nil;
 
 		for i in piditer(PID_BROADCAST) do
-			if (afktm[i].next == timer) then
+			if (afktm[i].timer == timer) then
 				next = i;
 				pid = next;
 				goto diffpid;
@@ -36,7 +36,7 @@ local function bumpnext(timer, pid)
 	::diffpid::
 	if (next == pid) then
 		for i in piditer(PID_BROADCAST) do
-			if (afktm[i].next == timer and afktm[i].tm < afktm[next].tm) then
+			if (afktm[i].timer == timer and afktm[i].tm < afktm[next].tm) then
 				next = i;
 			end
 		end
@@ -46,7 +46,8 @@ local function bumpnext(timer, pid)
 	nextpid[timer] = next;
 end
 
-local function bump_nextafkpid(pid)
+local function bump_timer(pid, timer)
+	afktm[pid].timer = timer or "warn";
 	bumpnext("warn", pid);
 	bumpnext("kick", pid);
 	bumpnext("limbo", pid);
@@ -55,17 +56,14 @@ end
 local function bump_afktm(pid, timer)
 	afktm[pid] = afktm[pid] or {};
 	afktm[pid].tm = get_time();
-	afktm[pid].next = timer or "warn";
-
-	bump_nextafkpid(pid);
+	bump_timer(pid, timer or "warn");
 end
 
 -- TODO: don't trust ENet disconnect to handle the big tickloop robustly
 local function handle_timer(timer, pid)
 	if (timer == "warn") then
-		afktm[pid].next = "kick";
-		-- TODO: integrate next-set into this func
-		bump_nextafkpid();
+		bump_timer(pid, "kick");
+
 		if (afkick_time_warn < afkick_time_kick) then
 			l10n_send_chat(pid, warn_msg, {time=afkick_time_kick-afkick_time_warn});
 			return;
@@ -86,7 +84,7 @@ function mod.after.tick()
 		local time = _G["afkick_time_"..timer];
 		if (next and now >= afktm[next].tm + time) then
 			for i in piditer(PID_BROADCAST) do
-				if (afktm[i].next == timer and now >= afktm[i].tm + time) then
+				if (afktm[i].timer == timer and now >= afktm[i].tm + time) then
 					handle_timer(timer, i);
 				end
 			end
@@ -145,8 +143,11 @@ function mod.after.on_switch(pid)
 end
 
 function mod.after.on_disconnect(pid)
-	bump_nextafkpid(pid);
+	bump_timer(pid, afktm[pid].timer);
 
+	-- If pid is the nextpid for any timer *after* bumping them,
+	-- that means pid is the only pid for that timer and therefore
+	-- we can just set that timer's nextpid to nil.
 	for x,y in pairs(nextpid) do
 		if (y == pid) then
 			nextpid[x] = nil;

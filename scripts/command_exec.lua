@@ -2,7 +2,7 @@
 
 local cmd = {name="exec", caps="exec", fakepid=true, usage="lua", desc="Execute arbitrary lua. Does not parse arguments."};
 function cmd.func(pid, argv, msg)
-	local func, err = loadstring(string.sub(msg, 6, -1));
+	local func, err = loadstring(string.sub(msg, 6));
 
 	if (func == nil) then
 		server_msg(pid, "loadstring: "..tostring(err));

@@ -52,5 +52,5 @@ dist.tar.gz: serverstatic aloha.lua exec scripts maps dirty
 dirty:
 .PHONY: dirty
 
-src/luaawk.h: generate_lua_api_binding.awk src/state.h
-	$(AWK) -f ./generate_lua_api_binding.awk src/state.h > src/luaawk.h
+src/luaawk.h: gen_lua_binding.awk src/state.h
+	$(AWK) -f ./gen_lua_binding.awk src/state.h > src/luaawk.h

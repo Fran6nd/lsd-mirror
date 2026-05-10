@@ -2,17 +2,19 @@
 #include <math.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include <luajit-2.1/lua.h>
-#include <luajit-2.1/lauxlib.h>
-#include <luajit-2.1/lualib.h>
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
 #include "state.h"
 #include "demoncore.h"
 #include <poll.h>
+#include <setjmp.h>
 
 clk get_time(void);
 double to_s_double(clk ts);
 clk from_s_double(double ts);
 
+#define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
 #define LOG(x, ...) fprintf(stderr, x"\n", __VA_ARGS__)
 #define LOG1(x) fputs(x"\n", stderr);
 #define LERR luaL_error
@@ -1237,16 +1239,24 @@ static const struct luaL_Reg funcs[] = {
 };
 
 void register_functions(lua_State *l, struct State *st) {
-	const struct luaL_Reg *func = funcs;
+#if (LUA_VERSION_NUM >= 502)
+	lua_pushinteger(l, LUA_RIDX_GLOBALS);
+	lua_gettable(l, LUA_REGISTRYINDEX);
+	luaL_setfuncs(l, funcs, 0);
+#else
+	lua_pushvalue(l, LUA_GLOBALSINDEX);
+	luaL_register(l, NULL, funcs);
+#endif
+	lua_pop(l, 1);
 
-	while (func->name != NULL) {
-		lua_pushcfunction(l, func->func);
-		lua_setglobal(l, func->name);
-
-		func++;
-	}
-
-	luaL_openlib(l, "server", funcs, 0);
+#if (LUA_VERSION_NUM >= 502)
+	lua_createtable(l, 0, sizeof(funcs)/sizeof(*funcs)-1);
+	luaL_setfuncs(l, funcs, 0);
+	lua_setglobal(l, "server");
+#else
+	luaL_register(l, "server", funcs);
+	lua_pop(l, 1);
+#endif
 
 	f = st->f;
 	st->f.send_state_ctf = csend_state_ctf;
@@ -1260,8 +1270,17 @@ void register_functions(lua_State *l, struct State *st) {
 	register_luaawk(l, st);
 }
 
+jmp_buf lua_panicenv;
+static lua_CFunction panicf;
+static int panic(lua_State *l) {
+	panicf(l);
+	longjmp(lua_panicenv, 1);
+}
+
 void hook_lua(const char *cfg, unsigned long port, struct State *st2) {
-	l = lua_open();
+	l = luaL_newstate();
+	if (l == NULL)
+		ERR("luaL_newstate");
 
 	st = st2;
 
@@ -1291,4 +1310,12 @@ void hook_lua(const char *cfg, unsigned long port, struct State *st2) {
 		LERR(l, "Can't load %s: %s", cfg, lua_tostring(l, -1));
 
 	read_config_values(l, st);
+}
+
+void setpanic_lua(void) {
+	panicf = lua_atpanic(l, panic);
+}
+
+void close_lua(void) {
+	lua_close(l);
 }

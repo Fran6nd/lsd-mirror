@@ -1,7 +1,9 @@
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
+#include <setjmp.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -10,6 +12,7 @@
 
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -31,6 +34,21 @@
 /* Tick rate in Hz. Every tick physics and such is calculated. */
 #define TICKRATE 60
 
+void before_log(struct State *st) {(void)st;return;}
+void after_log(struct State *st) {(void)st;return;}
+
+/* TODO: integrate logging with lua better */
+#define SEND(pid, data) st->f.send_packet(pid, &(data), sizeof(data), st)
+#define LOG(x, ...) do {st->f.before_log(st); fprintf(stderr, x"\n", __VA_ARGS__); st->f.after_log(st);} while (0)
+#define LOG1(x) do {st->f.before_log(st); fputs(x"\n", stderr); st->f.after_log(st);} while (0)
+
+#define SOFTERR(func) LOG(func": %s", strerror(errno))
+/* st might not exist here so we use perror instead of SOFTERR */
+#define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
+
+/* strcpy for string literals -- shuts up OpenBSD warnings */
+#define LITCPY(dest, src) memcpy(dest, src, sizeof(src))
+
 struct ColumnStack stack;
 struct ColumnStack *stackData = &stack;
 uint64_t *rememberedSolidity;
@@ -39,16 +57,58 @@ uint64_t *keepSolid;
 const uint8_t ColorFilled[3] = {40, 64, 103};
 
 static const char *cfg = "config.lua";
+static const char *root_path = NULL;
 /* TODO: allow changing port from cfg? and maybe allow
  * unsharing/pledging different crap in a special cfg file too */
+static unsigned long memlimit = 0;
 static unsigned long port = 32887;
 
 static volatile sig_atomic_t keepRunning = 1;
 static struct State *exit_st;
 
+static int cat_strl(char **out, ...) {
+        va_list args, args2;
+        size_t i, len, outLen = 0, totalSize = 0;
+
+        va_start(args, out);
+        va_copy(args2, args);
+
+        for (i=0;;i++) {
+                const char *arg = va_arg(args, const char *);
+                if (arg == NULL)
+                        break;
+                totalSize += strlen(arg);
+        }
+        va_end(args);
+        len = i;
+
+        *out = malloc(totalSize+1);
+        if (*out == NULL)
+		return -1;
+
+        for (i=0;i<len;i++) {
+                const char *arg = va_arg(args2, const char *);
+                size_t inLen = strlen(arg);
+                memcpy(*out+outLen, arg, inLen);
+                outLen += inLen;
+        }
+        (*out)[outLen] = 0;
+
+        va_end(args2);
+	return 0;
+}
+
+static void enet_nomem(void) {
+	perror("libENet");
+	return;
+}
+
 static ENetHost *bringup_host(ENetAddress *addr) {
 	ENetHost *host;
+	ENetCallbacks callbacks = {0};
+	callbacks.no_memory = enet_nomem;
 
+	enet_initialize_with_callbacks(ENET_VERSION, &callbacks);
 	/* +1 to allow the 33st player connecting (assuming max is 32) to be sent a disconnect with "server full" as reason */
 	host = enet_host_create(addr, MAX_PLAYERS+1, 1, 0, 0);
 
@@ -124,8 +184,17 @@ static void handle_event(ENetEvent *event, struct State *st) {
 	}
 }
 
+extern jmp_buf lua_panicenv;
+void hook_lua(const char *cfg, unsigned long port, struct State *st);
+void setpanic_lua(void);
+void close_lua(void);
+
+#define PANICJMP_LUA() setjmp(lua_panicenv);
+
 static void do_loop(struct State *st) {
 	ENetEvent event;
+
+	PANICJMP_LUA();
 
 	/* TODO: service main host and masterlist host simultaniously? */
 	while (enet_host_service(st->host, &event, to_ms(time_until(st->nextTickTime))) > 0) {
@@ -160,14 +229,6 @@ extern int pid_matches(plid broadcast, plid pid, struct State *st) {
 		return broadcast == pid;
 	}
 }
-
-void before_log(struct State *st) {(void)st;return;}
-void after_log(struct State *st) {(void)st;return;}
-
-/* TODO: integrate logging with lua better */
-#define SEND(pid, data) st->f.send_packet(pid, &(data), sizeof(data), st)
-#define LOG(x, ...) do {st->f.before_log(st); fprintf(stderr, x"\n", __VA_ARGS__); st->f.after_log(st);} while (0)
-#define LOG1(x) do {st->f.before_log(st); fputs(x"\n", stderr); st->f.after_log(st);} while (0)
 
 static void set_fog(color color, struct State *st) {
 	st->globals.fog[0] = color[0];
@@ -659,8 +720,6 @@ static void tick(struct State *st) {
 	st->f.send_player_update(PID_BROADCAST, st);
 }
 
-#define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
-#define SOFTERR(func) LOG(func": %s", strerror(errno))
 static ssize_t get_fd_size(int fildes, struct State *st) {
 	struct stat sb;
 
@@ -902,7 +961,7 @@ static int load_vxl_from_mem(const void *data, size_t len, struct State *st) {
 	struct PVX_VXLStreamConfig config;
 	char err[PVX_ERRBUF_SIZE];
 
-	strcpy(err, "no error message provided");
+	LITCPY(err, "no error message provided");
 
 	config.outformat = PVX_FormatCustom;
 	config.errbuf = err;
@@ -957,21 +1016,16 @@ static int begin_load_vxl_from_file(const char *path, struct State *st) {
 /* TODO: decompress zlib instead of using its associated .vxl friend */
 static int load_map(const char *name, struct State *st) {
 	void *buf;
+	char *strbuf;
 	ssize_t size;
 
 	if (st->f.begin_load_vxl_from_file(name, st) < 0) {
 		int err;
 
-		/* TODO: copy my str cat implementation in here? */
-		void *strbuf = malloc(strlen("maps/")+strlen(name)+strlen(".vxl")+1);
-
-		/* That'd be annoying. */
-		if (strbuf == NULL)
+		if (cat_strl(&strbuf, "maps/", name, ".vxl", NULL) == -1) {
+			SOFTERR("malloc");
 			return -1;
-
-		strcpy(strbuf, "maps/");
-		strcat(strbuf, name);
-		strcat(strbuf, ".vxl");
+		}
 
 		err = st->f.begin_load_vxl_from_file(strbuf, st);
 		free(strbuf);
@@ -984,26 +1038,20 @@ static int load_map(const char *name, struct State *st) {
 	}
 
 	do {
-		void *strbuf = malloc(strlen(name)+strlen(".zlib")+1);
-		if (strbuf == NULL) {
+		if (cat_strl(&strbuf, name, ".zlib", NULL) == -1) {
+			SOFTERR("malloc");
 			buf = NULL;
 			break;
 		}
-
-		strcpy(strbuf, name);
-		strcat(strbuf, ".zlib");
 
 		buf = map_file(strbuf, &size, st);
 		free(strbuf);
 
 		if (buf == NULL || buf == MAP_FILE_ENOENT) {
-			strbuf = malloc(strlen("maps/")+strlen(name)+strlen(".vxl.zlib")+1);
-			if (strbuf == NULL)
+			if (cat_strl(&strbuf, "maps/", name, ".vxl.zlib", NULL) == -1) {
+				SOFTERR("malloc");
 				break;
-
-			strcpy(strbuf, "maps/");
-			strcat(strbuf, name);
-			strcat(strbuf, ".vxl.zlib");
+			}
 
 			buf = map_file(strbuf, &size, st);
 			free(strbuf);
@@ -1382,8 +1430,8 @@ static void set_defaults(struct State *st) {
 	st->globals.fog[1] = 232;
 	st->globals.fog[2] = 128;
 
-	strcpy(st->globals.teamname[0], "Blue");
-	strcpy(st->globals.teamname[1], "Green");
+	LITCPY(st->globals.teamname[0], "Blue");
+	LITCPY(st->globals.teamname[1], "Green");
 
 	st->globals.teamcolor[0][0] = 196;
 	st->globals.teamcolor[1][1] = 196;
@@ -1397,32 +1445,36 @@ static void set_defaults(struct State *st) {
 	st->globals.tentpos[1] = hidden;
 }
 
+#define ARG_GET_UL(name, max) \
+	errno = 0; \
+	name = strtoul(optarg, &end, 10); \
+\
+	if (!isdigit(optarg[0]) || name >= max || end != optarg+strlen(optarg)) { \
+		fprintf(stderr, #name" must be between 0 and %lu, inclusive.\n", (unsigned long)(max)); \
+		exit(EXIT_FAILURE); \
+	} \
+
 /* config_path is relative to root_path, root_path defaults to . */
 /* TODO: assert(config_path[0] != '/') */
-#define USAGE "usage: %s [-c config_path] [-d root_path] [-p udp_port]\n"
+#define USAGE "usage: %s [-c config_path] [-d root_path] [-m mem_limit] [-p udp_port]\n"
 static void parse_args(int argc, char **argv) {
 	char *end;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "c:d:p:")) != -1) {switch (ch){
+	while ((ch = getopt(argc, argv, "c:d:m:p:")) != -1) {switch (ch){
 	case 'c':
 		cfg = optarg;
 		break;
 	case 'd':
-		if (chdir(optarg) != 0)
-			ERR("chdir");
+		root_path = optarg;
+		break;
+	case 'm':
+		ARG_GET_UL(memlimit, RLIM_INFINITY);
 		break;
 	case 'p':
-		errno = 0;
-		port = strtoul(optarg, &end, 10);
-
-		if (!isdigit(optarg[0]) || port >= 65536 || end != optarg+strlen(optarg)) {
-			/* TODO: if port can be <1024 you had better setuid off of root */
-			/* TODO: 0 is reserved */
-			fputs("udp_port must be between 0 and 65535, inclusive.\n", stderr);
-			exit(EXIT_FAILURE);
-		}
-
+		/* TODO: if port can be <1024 you had better setuid off of root */
+		/* TODO: 0 is reserved */
+		ARG_GET_UL(port, 65535);
 		break;
 	default:
 		fprintf(stderr, USAGE, argv[0]);
@@ -1430,17 +1482,8 @@ static void parse_args(int argc, char **argv) {
 	}}
 }
 
-void hook_lua(const char *cfg, unsigned long port, struct State *st);
-
 static void atexit_server(void) {
 	plid i;
-
-	exit_st->f.on_shutdown(exit_st);
-
-	for (i=0;i<MAX_PLAYERS;i++) {
-		if (exit_st->host->peers[i].state == ENET_PEER_STATE_CONNECTED)
-			enet_peer_disconnect_now(exit_st->host->peers+i, 5); /* "Server shutdown" to betterspades and maybe iv of spades */
-	}
 
 	for (i=0;i<MASTERLIST_MAX_PEERS;i++) {
 		if (exit_st->ms.host->peers[i].state == ENET_PEER_STATE_CONNECTED)
@@ -1448,6 +1491,14 @@ static void atexit_server(void) {
 	}
 
 	masterlist_deinit(&exit_st->ms);
+
+	exit_st->f.on_shutdown(exit_st);
+	close_lua();
+
+	for (i=0;i<MAX_PLAYERS;i++) {
+		if (exit_st->host->peers[i].state == ENET_PEER_STATE_CONNECTED)
+			enet_peer_disconnect_now(exit_st->host->peers+i, 5); /* "Server shutdown" to betterspades and maybe iv of spades */
+	}
 
 	free(keepSolid);
 	free(rememberedSolidity);
@@ -1488,10 +1539,8 @@ static struct State *st_init(void) {
 	set_funcs(st);
 	set_defaults(st);
 
-	if (pvx_create_bitmask(&st->globals.map, 512, 512, 64) != 0) {
-		fputs("can't create bitmask, check your memory\n", stderr);
-		exit(EXIT_FAILURE);
-	}
+	if (pvx_create_bitmask(&st->globals.map, 512, 512, 64) != 0)
+		ERR("pvx_create_bitmask");
 
 	if (masterlist_init(&st->ms) != 0)
 		ERR("masterlist_init");
@@ -1500,6 +1549,14 @@ static struct State *st_init(void) {
 	st->ms.maxplayers = MAX_PLAYERS;
 
 	return st;
+}
+
+static void limit_mem(rlim_t bytes) {
+	struct rlimit rl;
+	rl.rlim_cur = bytes;
+	rl.rlim_max = bytes;
+
+	setrlimit(RLIMIT_DATA, &rl);
 }
 
 static void sig_handler(int sig) {
@@ -1514,6 +1571,12 @@ int main(int argc, char **argv) {
 	signal(SIGTERM, sig_handler);
 
 	parse_args(argc, argv);
+
+	if (root_path && chdir(root_path) != 0)
+		ERR("chdir");
+	if (memlimit)
+		limit_mem(memlimit);
+
 	sandbox();
 
 	st = st_init();
@@ -1535,6 +1598,7 @@ int main(int argc, char **argv) {
 
 	st->f.load_initial_map(st);
 
+	setpanic_lua();
 	while (keepRunning)
 		do_loop(st);
 

@@ -20,7 +20,7 @@ callchain_early = {};
 
 modules = {};
 
-local status, err = pcall(function() math.randomseed(); end);
+local status, err = pcall(math.randomseed);
 if not status then
 	log("Can't seed math.randomseed() with system entropy; are you sure this is what you want?");
 	log("HINT: you're probably running regular Lua instead of LuaJIT");

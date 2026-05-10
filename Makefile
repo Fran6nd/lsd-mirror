@@ -2,10 +2,14 @@
 
 CC=clang
 AWK=awk
-CFLAGS=-Wall -Wextra -s -O3 -flto -fuse-ld=lld
-CFLAGSNATIVE=-Wall -Wextra -s -O3 -flto -march=native -fuse-ld=lld
-CFLAGSG=-Wall -Wextra -g -fsanitize=undefined
-LIBS=-lenet -lisal -lluajit-5.1 -lm "$$(test "x$$(uname -s)" = "xLinux" && printf '%s\n' '-lseccomp')"
+
+PKGCONF_MODULES=luajit libenet libisal "$$(test "x$$(uname -s)" = "xLinux" && printf '%s\n' 'libseccomp')"
+LIBS=`pkg-config --libs $(PKGCONF_MODULES)` -lm
+CPPFLAGS=`pkg-config --cflags $(PKGCONF_MODULES)`
+
+CFLAGS=-Wall -Wextra -s -O3 -flto -fuse-ld=lld $(CPPFLAGS)
+CFLAGSNATIVE=-Wall -Wextra -s -O3 -flto -march=native -fuse-ld=lld $(CPPFLAGS)
+CFLAGSG=-Wall -Wextra -g $(CPPFLAGS)
 LDFLAGS=$(LIBS)
 
 server: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so

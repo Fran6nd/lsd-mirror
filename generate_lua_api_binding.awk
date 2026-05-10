@@ -78,7 +78,7 @@ function do_func(ret, type) {
 	match($0, /\(\*[a-z_]*\)/);
 	name = substr($0, RSTART+2, RLENGTH-3);
 
-	match($0, /\)\([_a-zA-Z0-9, \*\[\]]*\)/);
+	match($0, /\)\([][_a-zA-Z0-9, *]*\)/);
 	args = substr($0, RSTART+2, RLENGTH-3);
 	argc = split(args, argv, ", ");
 

@@ -1,5 +1,6 @@
 -- commands.lua -- Handles chat messages beginning with a / as commands
 local buffer = require("string.buffer");
+local bit = require("bit");
 local mod = init_mod();
 -- TODO: do we really want to clear all the commands on load?
 commands = {};
@@ -173,15 +174,23 @@ function get_arg_num_nonfinite(argname, pid, cmd, arg)
 	return num;
 end
 
-function get_arg_num_range(argname, pid, cmd, arg, start, endval)
-	local num = tonumber(arg);
-	if (num == nil) then
-		send_usage(pid, cmd);
-		cmd_exit();
+function get_arg_num_range_opt(argname, pid, cmd, arg, start, endval)
+	if (arg == nil) then
+		return nil;
 	end
-	if (not (num >= start and num <= endval)) then
+	local num = tonumber(arg);
+	if (num == nil or not (num >= start and num <= endval)) then
 		send_usage(pid, cmd);
 		l10n_send_chat(pid, range_msg, {arg=argname, min=start, max=endval});
+		cmd_exit();
+	end
+	return num;
+end
+
+function get_arg_num_range(argname, pid, cmd, arg, start, endval)
+	local num = get_arg_num_range_opt(argname, pid, cmd, arg, start, endval);
+	if (num == nil) then
+		send_usage(pid, cmd);
 		cmd_exit();
 	end
 	return num;

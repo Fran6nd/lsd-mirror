@@ -821,6 +821,12 @@ static int get_hp(lua_State *l) {
 	return 1;
 }
 
+static int get_score(lua_State *l) {
+	plid pid = check_plid(l, 1);
+	lua_pushnumber(l, st->p[pid].score);
+	return 1;
+}
+
 /* In host byte order */
 static int get_ipaddr(lua_State *l) {
 	plid pid = check_plid(l, 1);
@@ -1193,6 +1199,7 @@ static const struct luaL_Reg funcs[] = {
 	{"is_solid", is_solid},
 	{"get_fog", get_fog},
 	{"get_hp", get_hp},
+	{"get_score", get_score},
 	{"get_ipaddr", get_ipaddr},
 	{"get_udp_port", get_udp_port},
 	{"get_round_trip_time", get_round_trip_time},

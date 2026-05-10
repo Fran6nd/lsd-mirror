@@ -43,6 +43,12 @@ integer get_hp(plid pid) ->
 Returns the player's current HP.
 Players that are not alive return an implementation-defined value.
 
+integer get_score(plid pid) ->
+Returns the player's current score.
+Resets to 0 on_join().
+Increases by one on kill() if kill()'s <var>pid</var> is not <var>killer</var> and <var>type</var>&lt;4. <!-- TODO: betterspades -->
+Players that are not alive return an implementation-defined value.
+
 integer get_tool(plid pid) ->
 Returns the player's currently held tool.
 Players that are not alive return an implementation-defined value.

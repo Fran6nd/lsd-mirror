@@ -77,6 +77,8 @@ void sandbox(void) {
 	unveil("./", "r");
 	unveil("./exec/", "rx");
 	unveil("./rw/", "rwc");
+	unveil("/usr/lib/", "rx");
+	unveil("/usr/local/lib/", "rx");
 	unveil(NULL, NULL);
 
 	pledge("stdio rpath wpath cpath inet prot_exec flock fattr dns unix tty", "");

@@ -18,6 +18,14 @@ Sets the player's HP, indicating a positional source of damage.
 If <var>pos</var> is <code>{x=0,y=0,z=0}</code>, OpenSpades does not consider it directional. <!-- TODO: hammer this out and move to send_set_hp_directional -->
 See set_hp() for behavior.
 
+void damage_player(plid pid, integer hp, unsigned type, plid damager) ->
+Subtracts <var>hp</var> from the player's HP.
+Calls set_hp() then, if the player's HP is 0, kill().
+
+void damage_player_directional(plid pid, integer hp, fvec3 pos, unsigned type, plid damager) ->
+Subtracts <var>hp</var> from the player's HP, indicating a positional source of damage.
+Calls set_hp_directional() then, if the player's HP is 0, kill().
+
 void set_ammo(plid pid, unsigned mag, unsigned reserve) ->
 Sets the player's magazine and reserve ammo.
 <!-- TODO: actually work around openspades for this and set_hp -->

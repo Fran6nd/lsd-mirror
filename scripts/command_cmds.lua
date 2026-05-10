@@ -1,5 +1,4 @@
 -- command_cmds.lua -- List available commands
--- TODO: /apropos
 local mod = init_mod();
 
 getcfg("cmds_pagesize", 5);
@@ -37,56 +36,55 @@ function mod.impl.can_see_command(pid, cmd)
 	return not is_fakepid(pid) or cmd.fakepid;
 end
 
+local function gen_cmdlist(pid)
+	local list = {};
+
+	for key, val in pairs(commands) do
+		if (can_see_command(pid, val) and (val.name[1] or val.name) == key) then
+			table.insert(list, val);
+		end
+	end
+
+	table.sort(list, sort_cmds);
+	return list;
+end
+
 local cmd = {name={"cmds", "commands"}, fakepid=true, usage="[page]", desc="Print an alphabetically ordered list of all commands."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv <= 1);
-	local sorted = {};
+	local page = get_arg_num_finite_opt("page", pid, cmd, argv[1]);
+	local list = gen_cmdlist(pid);
 
-	if (argv[1]) then
-		local start = 1+tonumber(argv[1]-1)*cmds_pagesize;
-
-		for key, val in pairs(commands) do
-			if (can_see_command(pid, val) and (val.name[1] or val.name) == key) then
-				table.insert(sorted, val);
-			end
-		end
-
-		table.sort(sorted, sort_cmds);
+	if (page) then
+		local start = 1+(page-1)*cmds_pagesize;
 
 		if (start < 1) then
-			for _, val in ipairs(sorted) do
+			for _, val in ipairs(list) do
 				server_msg(pid, print_cmd(val));
 			end
 			return;
 		end
 
 		for i=start,start+cmds_pagesize-1 do
-			if (i > #sorted) then
+			if (i > #list) then
 				break;
 			end
-			server_msg(pid, print_cmd(sorted[i]));
+			server_msg(pid, print_cmd(list[i]));
 		end
+
 		return;
 	end
-
-	for key, val in pairs(commands) do
-		if (can_see_command(pid, val) and (val.name[1] or val.name) == key) then
-			table.insert(sorted, key);
-		end
-	end
-
-	table.sort(sorted);
 
 	local line = "";
 	local pfx = "";
 
 	-- Limit line length to 80-ish chars
-	for i,cmd in ipairs(sorted) do
-		line = line..pfx..cmd;
+	for i,cmd in ipairs(list) do
+		line = line..pfx..(cmd.name[1] or cmd.name);
 		pfx = ", ";
 
 		if (#line >= 75) then
-			if (i ~= #sorted) then
+			if (i ~= #list) then
 				line = line..",";
 			end
 
@@ -98,6 +96,21 @@ function cmd.func(pid, argv)
 	end
 
 	server_msg(pid, line);
+end
+register_command(cmd);
+
+local cmd = {name="apropos", fakepid=true, usage="pattern", desc="Filter through the list of commands. Does not parse arguments."};
+function cmd.func(pid, argv, msg)
+	local pattern = string.sub(msg, 9);
+	local list = gen_cmdlist(pid);
+
+	for _, val in ipairs(list) do
+		local str = print_cmd(val);
+
+		if (string.find(str, pattern)) then
+			server_msg(pid, str);
+		end
+	end
 end
 register_command(cmd);
 

@@ -35,7 +35,7 @@ end
 
 -- TODO: need a level after early?
 function mod.send_chat(pid, msg, type, from)
-	if (has_cap(from, "badcap:mute")) then
+	if (type < 2 and has_cap(from, "badcap:mute")) then
 		return;
 	end
 	mod.next.send_chat(pid, msg, type, from);

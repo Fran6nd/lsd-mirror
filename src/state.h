@@ -286,6 +286,8 @@ struct Functions {
 	/* Negative HP is sent and handled as 0 and >255 is sent as 255. */
 	void (*set_hp)(plid pid, int hp, struct State *st);
 	void (*set_hp_directional)(plid pid, int hp, fvec3 pos, struct State *st);
+	void (*damage_player)(plid pid, int hp, unsigned type, plid damager, struct State *st);
+	void (*damage_player_directional)(plid pid, int hp, fvec3 pos, unsigned type, plid damager, struct State *st);
 	void (*set_tool)(plid pid, unsigned tool, struct State *st);
 	/* TODO: how to handle anonymous? */
 	void (*set_block_color)(plid pid, color color, struct State *st);

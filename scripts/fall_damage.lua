@@ -53,21 +53,6 @@ local function get_fall_damage(height)
 	return 0;
 end
 
-local function do_fall_damage(pid, height)
-	local damage = get_fall_damage(math.abs(height));
-	local newhp = get_hp(pid) - damage;
-
-	-- TODO: func to set hp AND kill?
-	if (damage > 0) then
-		set_hp(pid, newhp);
-	end
-
-	-- get_hp is called here in case set_hp is overridden
-	if (get_hp(pid) == 0) then
-		kill(pid, 4, pid);
-	end
-end
-
 -- TODO: wonder how this behaves with noclip and tp's
 -- TODO: should lua/player jump reset the apex?
 -- TODO: crap packet tp vs manual tp. . ?
@@ -93,7 +78,7 @@ function mod.tick()
 			end
 
 			if (was_airborne[i] and not is_airborne(i)) then
-				do_fall_damage(i, apex[i]-pos.z);
+				damage_player(i, get_fall_damage(math.abs(apex[i]-pos.z)), 4, i);
 				apex[i] = pos.z;
 			end
 		end

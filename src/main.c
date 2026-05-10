@@ -590,10 +590,14 @@ static void detonate_grenade(size_t index, struct State *st) {
 			continue;
 
 		if (!cast_ray2(st->globals.map.solidData, nade.pos, st->p[i].pos)) {
-			st->f.set_hp_directional(i, st->p[i].hp - 4096 / safe_sqr_dist3(nade.pos, st->p[i].pos), nade.pos, st);
-
-			if (st->p[i].hp == 0)
-				st->f.kill(i, KillTypeGrenade, nade.pid, st);
+			st->f.damage_player_directional(
+				i,
+				4096 / safe_sqr_dist3(nade.pos, st->p[i].pos),
+				nade.pos,
+				KillTypeGrenade,
+				nade.pid,
+				st
+			);
 		}
 	}
 
@@ -1199,6 +1203,20 @@ static void set_hp_directional(plid pid, int hp, fvec3 pos, struct State *st) {
 	SEND(pid, sh);
 }
 
+void damage_player(plid pid, int hp, unsigned type, plid damager, struct State *st) {
+	st->f.set_hp(pid, st->p[pid].hp - hp, st);
+
+	if (st->p[pid].hp == 0)
+		st->f.kill(pid, type, damager, st);
+}
+
+void damage_player_directional(plid pid, int hp, fvec3 pos, unsigned type, plid damager, struct State *st) {
+	st->f.set_hp_directional(pid, st->p[pid].hp - hp, pos, st);
+
+	if (st->p[pid].hp == 0)
+		st->f.kill(pid, type, damager, st);
+}
+
 static void server_msg(plid pid, const char *msg, struct State *st) {
 	st->f.send_chat(pid, msg, 2, 0, st);
 }
@@ -1400,6 +1418,8 @@ static void set_funcs(struct State *st) {
 	st->f.get_hit_damage = get_hit_damage;
 	st->f.set_hp = set_hp;
 	st->f.set_hp_directional = set_hp_directional;
+	st->f.damage_player = damage_player;
+	st->f.damage_player_directional = damage_player_directional;
 	st->f.server_msg = server_msg;
 	st->f.remove_grenade = remove_grenade;
 	st->f.detonate_grenade = detonate_grenade;

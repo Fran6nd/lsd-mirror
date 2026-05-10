@@ -193,11 +193,16 @@ static void on_mouse_input(plid pid, unsigned bitmask, struct State *st) {
 
 /* TODO: can dead men shoot in openspades if they haven't received a Kill? */
 static void on_hit(plid pid, unsigned type, plid hitPlayer, struct State *st) {
-	if (st->p[pid].team != st->p[hitPlayer].team)
-		st->f.set_hp_directional(hitPlayer, st->p[hitPlayer].hp - st->f.get_hit_damage(pid, type, st), st->p[pid].pos, st);
-
-	if (st->p[hitPlayer].hp == 0)
-		st->f.kill(hitPlayer, type == HitTypeMelee ? KillTypeMelee : type == HitTypeHead, pid, st);
+	if (st->p[pid].team != st->p[hitPlayer].team) {
+		st->f.damage_player_directional(
+			hitPlayer,
+			st->f.get_hit_damage(pid, type, st),
+			st->p[pid].pos,
+			type == HitTypeMelee ? KillTypeMelee : type == HitTypeHead,
+			pid,
+			st
+		);
+	}
 }
 
 /* TODO: sync player's own block color by making abuse of pid 32? that would be very cursed though */

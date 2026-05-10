@@ -31,12 +31,13 @@ end
 
 -- Out-of-the-box on_hit doesn't allow hitting players of the same team
 function mod.on_hit(pid, type, hitPlayer)
-	-- TODO: you still need a dedicated damage func
-	set_hp_directional(hitPlayer, get_hp(hitPlayer) - get_hit_damage(pid, type), get_position(pid));
-
-	if (get_hp(hitPlayer) == 0) then
-		kill(hitPlayer, type == 4 and 2 or (type == 1 and 1 or 0), pid);
-	end
+	damage_player_directional(
+		hitPlayer,
+		get_hit_damage(pid, type),
+		get_position(pid),
+		type == 4 and 2 or (type == 1 and 1 or 0),
+		pid
+	);
 end
 
 -- TODO: need to be able to hook grenades to override who they can hit

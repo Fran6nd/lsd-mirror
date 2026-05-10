@@ -1734,6 +1734,56 @@ static void cset_hp_directional(plid pid, int hp, fvec3 pos, struct State *st) {
 }
 
 
+static int ldamage_player(lua_State *l) {
+	plid pid = check_plid(l, 1);
+	int hp = luaL_checknumber(l, 2);
+	unsigned type = luaL_checknumber(l, 3);
+	plid damager = check_plid(l, 4);
+
+	f.damage_player(pid, hp, type, damager, st);
+	return 0;
+}
+
+static void cdamage_player(plid pid, int hp, unsigned type, plid damager, struct State *st) {
+	(void)st;
+	lua_getglobal(l, "damage_player");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, hp);
+	lua_pushnumber(l, type);
+	lua_pushnumber(l, damager);
+
+	if (lua_pcall(l, 4, 0, 0) != 0)
+		CBAIL("damage_player: %s", luaL_checkstring(l, -1));
+}
+
+
+static int ldamage_player_directional(lua_State *l) {
+	plid pid = check_plid(l, 1);
+	int hp = luaL_checknumber(l, 2);
+	fvec3 pos = get_fvec3(l, 3);
+	unsigned type = luaL_checknumber(l, 4);
+	plid damager = check_plid(l, 5);
+
+	f.damage_player_directional(pid, hp, pos, type, damager, st);
+	return 0;
+}
+
+static void cdamage_player_directional(plid pid, int hp, fvec3 pos, unsigned type, plid damager, struct State *st) {
+	(void)st;
+	lua_getglobal(l, "damage_player_directional");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, hp);
+	push_fvec3(pos);
+	lua_pushnumber(l, type);
+	lua_pushnumber(l, damager);
+
+	if (lua_pcall(l, 5, 0, 0) != 0)
+		CBAIL("damage_player_directional: %s", luaL_checkstring(l, -1));
+}
+
+
 static int lset_tool(lua_State *l) {
 	plid pid = check_plid(l, 1);
 	unsigned tool = luaL_checknumber(l, 2);
@@ -2014,6 +2064,8 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	st->f.set_ammo = cset_ammo;
 	st->f.set_hp = cset_hp;
 	st->f.set_hp_directional = cset_hp_directional;
+	st->f.damage_player = cdamage_player;
+	st->f.damage_player_directional = cdamage_player_directional;
 	st->f.set_tool = cset_tool;
 	st->f.set_block_color = cset_block_color;
 	st->f.set_position = cset_position;
@@ -2108,6 +2160,8 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	{"set_ammo", lset_ammo}, \
 	{"set_hp", lset_hp}, \
 	{"set_hp_directional", lset_hp_directional}, \
+	{"damage_player", ldamage_player}, \
+	{"damage_player_directional", ldamage_player_directional}, \
 	{"set_tool", lset_tool}, \
 	{"set_block_color", lset_block_color}, \
 	{"set_position", lset_position}, \

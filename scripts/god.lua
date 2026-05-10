@@ -2,22 +2,22 @@
 local mod = init_mod();
 local god = pid_joined_table(false);
 
-local cmd = {name="god", caps="god", desc="Prevent your HP from being changed."};
+local cmd = {name="god", caps="god", desc="Prevent yourself from being damaged."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
 	god[pid] = not god[pid];
 end
 register_command(cmd);
 
-function mod.set_hp(pid, hp)
+function mod.damage_player(pid, ...)
 	if (not god[pid]) then
-		return mod.next.set_hp(pid, hp);
+		return mod.next.damage_player(pid, ...);
 	end
 end
 
-function mod.set_hp_directional(pid, hp, pos)
+function mod.damage_player_directional(pid, ...)
 	if (not god[pid]) then
-		return mod.next.set_hp(pid, hp, pos);
+		return mod.next.damage_player_directional(pid, ...);
 	end
 end
 

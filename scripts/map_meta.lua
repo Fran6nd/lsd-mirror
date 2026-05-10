@@ -26,9 +26,9 @@ end
 function mod.before.load_map(name)
 	-- TODO: strip .lua? or put meta in .lua?
 	-- TODO: return actually to-be loaded path?
-	local file = io.open(string.gsub(name, "%.vxl$", "", 1)..".txt", "rt");
+	local file = io.open(string.gsub(name, "%.vxl$", "", 1)..".txt", "r");
 	if (file == nil) then
-		file = io.open("maps/"..string.gsub(name, "%.vxl$", "", 1)..".txt", "rt");
+		file = io.open("maps/"..string.gsub(name, "%.vxl$", "", 1)..".txt", "r");
 	end
 	if (file == nil) then
 		meta = {};

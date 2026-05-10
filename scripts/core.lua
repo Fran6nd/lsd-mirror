@@ -2,8 +2,6 @@
 package.path = "./scripts/?.lua"
 package.cpath = "./exec/?.so"
 
-math.randomseed();
-
 function log(fmt, ...)
 	io.stderr:write(string.format(fmt.."\n", ...));
 end
@@ -21,6 +19,12 @@ callchain_std = {};
 callchain_early = {};
 
 modules = {};
+
+local status, err = pcall(function() math.randomseed(); end);
+if not status then
+	log("Can't seed math.randomseed() with system entropy; are you sure this is what you want?");
+	log("HINT: you're probably running regular Lua instead of LuaJIT");
+end
 
 local function process_before_after(tbl)
 	if (tbl.before ~= nil) then

@@ -1,4 +1,4 @@
--- auth2.lua -- Leak your passwords to the world with /login
+-- auth.lua -- Leak your passwords to the world with /login
 local mod = init_mod();
 local ldb = require "lib_db";
 local totp = require "lib_totp";
@@ -185,7 +185,7 @@ local function check_totp_okay(totp_key, totp_algorithm, totp_period, totp_digit
 	return false;
 end
 
-local cmd = {name="register", caps="register", fakepid=true, usage="name password", desc="Create an account."};
+local cmd = {name="register", caps="register", fakepid=true, sensitive=true, usage="name password", desc="Create an account."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 2);
 
@@ -240,7 +240,7 @@ function cmd.func(pid, argv)
 end
 register_command(cmd);
 
-local cmd = {name="totpverify", caps="totpverify", fakepid=true, usage="otp", desc="Finish setting up TOTP for your account."};
+local cmd = {name="totpverify", caps="totpverify", fakepid=true, sensitive=true, usage="otp", desc="Finish setting up TOTP for your account."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 
@@ -272,7 +272,7 @@ end
 register_command(cmd);
 
 -- TODO: varargs?
-local cmd = {name="chpasswd", caps="login", fakepid=true, usage="password", desc="Change your account's password."};
+local cmd = {name="chpasswd", caps="login", fakepid=true, sensitive=true, usage="password", desc="Change your account's password."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 	assert(setpasswd(hash_pass(pid, auth_users[pid], argv[1]), auth_users[pid]) == 1, "chpasswd: rows updated != 1");
@@ -314,7 +314,7 @@ local function get_id_str(pid)
 	return string.format("uid=%s groups=[%s] computed=[%s]", auth_users[pid], get_cap_groups(pid), get_caps(pid));
 end
 
-local cmd = {name="login", fakepid=true, usage="name password [otp]", desc="Login to an account."};
+local cmd = {name="login", fakepid=true, sensitive=true, usage="name password [otp]", desc="Login to an account."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 2 or #argv == 3);
 

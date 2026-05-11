@@ -335,13 +335,22 @@ end
 function handle_command(pid, msg, nolog)
 	local i = 0;
 	local argv = unquote_to_table(msg);
+	local cmd = nil;
+
+	if (argv[0] ~= nil) then
+		cmd = commands[string.lower(argv[0])];
+	end
 
 	if (not nolog) then
+		if (cmd.sensitive) then
+			msg = argv[0].." [REDACTED]";
+		end
+
 		server_msg(pid, "> /"..msg);
 		log("%s: /%s", get_name(pid), msg);
 	end
 
-	if (argv[0] == nil or commands[string.lower(argv[0])] == nil) then
+	if (cmd == nil) then
 		l10n_send_chat(pid, unknown_cmd_msg);
 		return;
 	end

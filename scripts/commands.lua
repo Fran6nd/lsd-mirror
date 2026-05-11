@@ -300,6 +300,7 @@ function unquote_to_table(msg)
 	local buf = buffer.new(#msg);
 	local state = 0;
 	local exclstate = 1;
+	local squishstate = 0;
 	local argv = {};
 	local argc = 0;
 
@@ -315,9 +316,11 @@ function unquote_to_table(msg)
 			if (exclstate ~= 0) then
 				buf:put(outchr);
 			end
-		else
+			squishstate = 0;
+		elseif (squishstate == 0) then
 			argv[argc] = buf:get();
 			argc = argc + 1;
+			squishstate = 1;
 		end
 	end
 

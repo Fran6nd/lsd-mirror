@@ -93,7 +93,7 @@ local function sha1(data)
 	return out;
 end
 
-function mod.hmac_sha1(key, msg)
+function mod.hmac_sha1(msg, key)
 	local ipad = "";
 	local opad = "";
 
@@ -115,10 +115,10 @@ end
 
 -- key is normally represented in base32, but should be passed in here unencoded
 -- Probably you want to pass in os.time()/30 as counter
-function mod.gen_code(key, counter, hmac)
-	local ac = hmac(key, int64tobytes(math.floor(counter)));
+function mod.gen_code(key, counter, hmac, digits)
+	local ac = hmac(int64tobytes(math.floor(counter)), key);
 	local off = bit.band(string.byte(ac, -1), 0xf);
-	local num = bit.band(bytestoint(string.sub(ac, off+1, off+4)), 0x7fffffff) % 1000000;
+	local num = bit.band(bytestoint(string.sub(ac, off+1, off+4)), 0x7fffffff) % (10^digits);
 	return num;
 	-- If you want to display it, string.format("%06u", num);
 end
@@ -131,14 +131,15 @@ local function getbits(val, off)
 	return bit.band(bit.rshift(val, 3-off), 31);
 end
 
-local b32map = {'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '2', '3', '4', '5', '6', '7'}
-b32map[0] = 'a';
-function mod.base32enc(data)
+local b32map = {[0]='a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '2', '3', '4', '5', '6', '7'}
+function mod.base32enc(data, pad)
 	local out = "";
 
 	for i=0,math.floor((#data+4)/5)*40-5,5 do
 		if (1+math.floor(i/8) > #data) then
-			out = out.."=";
+			if (pad) then
+				out = out.."=";
+			end
 		else
 			local op0 = string.byte(data, 1+math.floor(i/8));
 			local op1 = string.byte(data, 1+math.floor(i/8)+1);

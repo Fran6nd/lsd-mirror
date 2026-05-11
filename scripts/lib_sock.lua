@@ -235,12 +235,15 @@ local function on_recv(sock, pid)
 	local con = sock.cons[pid];
 
 	-- TODO: handle embedded NULLs
-	local ptr, len = con.buf:ref();
-	local found = ffi.C.memchr(ptr, string.byte("\n"), len);
+	while (true) do
+		local ptr, len = con.buf:ref();
+		local found = ffi.C.memchr(ptr, string.byte("\n"), len);
 
-	if (found ~= nil) then
-		sock.on_line(sock, pid, con.buf:get(ffi.cast("unsigned char *", found)-ptr));
-		con.buf:skip(1);
+		if (found == nil) then
+			break;
+		end
+			sock.on_line(sock, pid, con.buf:get(ffi.cast("unsigned char *", found)-ptr));
+			con.buf:skip(1);
 	end
 end
 

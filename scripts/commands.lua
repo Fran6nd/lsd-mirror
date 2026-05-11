@@ -345,7 +345,7 @@ function handle_command(pid, msg, nolog)
 	end
 
 	if (not nolog) then
-		if (cmd.sensitive) then
+		if (cmd and cmd.sensitive) then
 			msg = argv[0].." [REDACTED]";
 		end
 

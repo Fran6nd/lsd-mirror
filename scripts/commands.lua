@@ -296,7 +296,7 @@ quottable[0][0x0c] = nil;
 quottable[0][0x0d] = nil;
 quottable[0][0x20] = nil;
 
-function unquote_to_table(msg)
+local function unquote_to_table(msg)
 	local buf = buffer.new(#msg);
 	local state = 0;
 	local exclstate = 1;

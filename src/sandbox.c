@@ -24,10 +24,16 @@
 #ifdef WITH_UNSHARE
 #define MOUNT(id, source, target, fstype, mntflags, data) do{if (mount(source, target, fstype, mntflags, data)) ERR("mount-"id);}while(0)
 /* TODO: should it just ignore bind-path fail instead of mkdir'ing? */
-#define MNT(path, flags) do { \
-	if (mkdir(path, 0755) != 0 && errno != EEXIST) ERR("mkdir"); \
-	MOUNT("bind-"path, path, "/tmp/"path, NULL, MS_SILENT | MS_BIND | MS_REC, NULL); \
-	MOUNT("remount-"path, NULL, "/tmp/"path, NULL, MS_SILENT | MS_REMOUNT | MS_BIND | MS_NODEV | MS_NOSUID | MS_REC | flags, NULL); \
+#define MNT(dest, src, flags, domkdir) do { \
+	if (domkdir) { \
+		if (mkdir("/tmp/"dest, 0755) != 0 && errno != EEXIST) ERR("mkdir"); \
+	} else { \
+		int fd = open("/tmp/"dest, O_RDONLY | O_CREAT, 0755); \
+		if (fd < 0) ERR("open-"dest); \
+		if (close(fd)) ERR("close-"dest); \
+	} \
+	MOUNT("bind-"dest, src, "/tmp/"dest, NULL, MS_SILENT | MS_BIND | MS_REC, NULL); \
+	MOUNT("remount-"dest, NULL, "/tmp/"dest, NULL, MS_SILENT | MS_REMOUNT | MS_BIND | MS_NODEV | MS_NOSUID | MS_REC | flags, NULL); \
 } while (0)
 static void pivot(void) {
 	/* TODO: is landlock worth using? */
@@ -59,13 +65,20 @@ static void pivot(void) {
 	if (close(fd)) ERR("close2");
 
 	MOUNT("/", NULL, "/", NULL, MS_SILENT | MS_REC | MS_SLAVE, NULL);
-	MNT(".", MS_NOEXEC | MS_RDONLY);
-	MNT("rw", MS_NOEXEC);
-	MNT("exec", MS_RDONLY);
+	MOUNT("/-tmpfs", NULL, "/tmp", "tmpfs", MS_SILENT | MS_NOSUID | MS_NODEV, NULL);
+
+	if (mkdir("/tmp/etc", 0755) != 0) ERR("mkdir"); \
+	if (mkdir("/tmp/tmp", 0755) != 0) ERR("mkdir"); \
+	MNT("etc/resolv.conf", "/etc/resolv.conf", MS_NOEXEC | MS_RDONLY, 0);
+	MNT("etc/hosts",       "/etc/hosts",       MS_NOEXEC | MS_RDONLY, 0);
+
+	MNT("lsd",      ".",    MS_NOEXEC | MS_RDONLY, 1);
+	MNT("lsd/rw",   "rw",   MS_NOEXEC,             1);
+	MNT("lsd/exec", "exec", MS_RDONLY,             1);
 
 	if (syscall(SYS_pivot_root, "/tmp", "/tmp")) ERR("pivot_root");
 	if (umount2("/", MNT_DETACH)) ERR("umount2");
-	if (chdir("/")) ERR("chdir");
+	if (chdir("/lsd")) ERR("chdir");
 
 	if (syscall(SYS_capset, &hdr, data)) ERR("capset");
 }

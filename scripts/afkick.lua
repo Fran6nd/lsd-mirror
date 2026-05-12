@@ -106,7 +106,7 @@ end
 
 function mod.after.boot_players_to_limbo()
 	for i in piditer(PID_BROADCAST) do
-		bump_afktm(pid, "limbo");
+		bump_afktm(i, "limbo");
 	end
 end
 

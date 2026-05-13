@@ -9,16 +9,25 @@ local cli_handshake_only_msg = {
 }
 
 local cli_msg = {
-	en="%(name): '%(char)' v%(major).%(minor).%(patch): %(msg)"
+	en="%(name): '%(char)' (%(client)) v%(major).%(minor).%(patch): %(msg)"
 }
 
 local cli_nohandshake_msg = {
-	en="%(name): (no handshake) '%(char)' v%(major).%(minor).%(patch): %(msg)"
+	en="%(name): (no handshake) '%(char)' (%(client)) v%(major).%(minor).%(patch): %(msg)"
 }
 
 local cli_fakepid_msg = {
 	en="%(name): fakepid"
 }
+
+-- TODO: nuke this and add a real api
+local climap = {
+	['B']="BetterSpades",
+	['D']="aos.dll",
+	['K']="KyroSpades",
+	['a']="ACE",
+	['o']="OpenSpades"
+};
 
 local cmd = {name={"client", "cli", "clin", "client_info"}, fakepid=true, usage="[player]", desc="Print whatever a player's client claims to be."};
 function cmd.func(pid, argv)
@@ -47,7 +56,7 @@ function cmd.func(pid, argv)
 			msg = cli_msg;
 		end
 
-		l10n_send_chat(pid, msg, {name=get_name(player), char=char, major=get_client_major(player), minor=get_client_minor(player), patch=get_client_patch(player), msg=get_client_msg(player)});
+		l10n_send_chat(pid, msg, {name=get_name(player), char=char, client=climap[char] or "?", major=get_client_major(player), minor=get_client_minor(player), patch=get_client_patch(player), msg=get_client_msg(player)});
 	else
 		if (get_client_handshaked(player)) then
 			l10n_send_chat(pid, cli_handshake_only_msg, {name=get_name(player)});

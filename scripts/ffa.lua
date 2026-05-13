@@ -2,7 +2,7 @@
 local mod = init_mod();
 
 function mod.send_spawn_player(pid, pos, gun, team, name, from)
-	for i in piditer(PID_BROADCAST) do
+	for i in piditer(pid) do
 		if (i == from and team ~= SPECTATOR) then
 			mod.next.send_spawn_player(i, pos, gun, 0, name, from);
 		else

@@ -24,7 +24,7 @@ function mod.on_switch(pid, team, gun)
 		team = 1;
 	end
 
-	if (gun ~= get_next_gun(pid)) then
+	if (team ~= get_next_team(pid) or gun ~= get_next_gun(pid)) then
 		return mod.next.on_switch(pid, team, gun);
 	end
 end

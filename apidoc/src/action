@@ -146,7 +146,7 @@ Calls send_set_tool().
 
 void demand_fingerprint(plid pid) ->
 Sends a HandshakeInit and VersionRequest to <var>pid</var>.
-Allows the client to call on_handshake() and on_version().
+Allows the client to call on_handshake(), on_version() and on_version_ext().
 
 void reload_player(plid pid) ->
 <!-- TODO: details? -->

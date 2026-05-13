@@ -828,8 +828,6 @@ static void restock(plid pid, struct State *st) {
 
 /* TODO: make this take a position arg and default it to get_spawn_position() */
 static void spawn_player(plid pid, fvec3 pos, struct State *st) {
-	plid i;
-
 	st->p[pid].spawntime = 0;
 	st->p[pid].reloadtime = 0;
 	st->p[pid].estfiretime = 0;
@@ -864,21 +862,8 @@ static void spawn_player(plid pid, fvec3 pos, struct State *st) {
 	st->p[pid].lastagreedpos.y = st->p[pid].pos.y;
 	st->p[pid].lastagreedpos.z = st->p[pid].pos.z;
 
-	pos = st->p[pid].pos;
-
-	for (i=0;i<MAX_PLAYERS;i++) {
-		if (pid_matches(PID_BROADCAST, i, st)) {
-			/* This +2 is here because *sane* clients always subtract 2 from CreatePlayer z.
-			 * BetterSpades is not sane, since it was based on piqueserver.
-			 */
-			if (st->p[i].bugMask & BS_BUG_INFLOOR)
-				pos.z = st->p[pid].pos.z;
-			else
-				pos.z = st->p[pid].pos.z + 2;
-
-			st->f.send_spawn_player(i, pos, st->p[pid].gun, st->p[pid].team, st->p[pid].name, pid, st);
-		}
-	}
+	pos.z += 2;
+	st->f.send_spawn_player(PID_BROADCAST, pos, st->p[pid].gun, st->p[pid].team, st->p[pid].name, pid, st);
 }
 
 static void set_ammo(plid pid, unsigned mag, unsigned reserve, struct State *st) {

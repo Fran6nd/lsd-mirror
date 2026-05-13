@@ -300,9 +300,9 @@ static void send_existing_player(plid pid, unsigned team, unsigned gun, unsigned
 	st->f.send_packet(pid, &ep, 13+strlen(ep.name), st);
 }
 
-/* TODO: should this work around betterspades or should spawn_player? */
 static void send_spawn_player(plid pid, fvec3 pos, unsigned gun, unsigned team, const char *name, plid from, struct State *st) {
 	struct PacketCreatePlayer cr;
+	plid i;
 
 	cr.packetID = PacketTypeCreatePlayer;
 	cr.playerID = from;
@@ -312,7 +312,19 @@ static void send_spawn_player(plid pid, fvec3 pos, unsigned gun, unsigned team, 
 	/* TODO: check strlen */
 	strcpy(cr.name, name);
 
-	SEND(pid, cr);
+	for (i=0;i<MAX_PLAYERS;i++) {
+		if (pid_matches(pid, i, st)) {
+			/* This -2 is here because *sane* clients always subtract 2 from CreatePlayer z.
+			 * BetterSpades is not sane, since it was based on piqueserver.
+			 */
+		        if (st->p[pid].bugMask & BS_BUG_INFLOOR)
+		                cr.pos.z = pos.z - 2;
+			else
+				cr.pos.z = pos.z;
+
+			SEND(i, cr);
+		}
+	}
 }
 
 static void send_connected_players(plid pid, struct State *st) {

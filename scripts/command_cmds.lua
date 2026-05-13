@@ -120,7 +120,7 @@ function cmd.func(pid, argv)
 	local val = commands.help;
 
 	if (#argv == 1) then
-		val = commands[argv[1]];
+		val = commands[string.lower(argv[1])];
 	end
 
 	-- TODO: show aliases

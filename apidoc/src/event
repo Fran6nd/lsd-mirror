@@ -134,7 +134,7 @@ The language is not validated against any standard format; verify it yourself if
 
 void on_join(plid pid, unsigned team, unsigned gun, string name) ->
 Called when the implementation thinks a client is trying to join from limbo.
-Sets relevant state, then calls spawn_player() with the return value of get_spawn_positon() as the position.
+Sets relevant state, then calls spawn_player() with the return value of get_spawn_position() as the position.
 
 void on_switch(plid pid, unsigned team, unsigned gun) ->
 Called when the implementation thinks a client is trying to switch team or gun (or both).

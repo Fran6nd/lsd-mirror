@@ -120,10 +120,17 @@ Calls send_set_tool().
 
 
 <!-- TODO: wonder how on_crap_packet() overridden by lua works with all the random vars in the state that are normally set -->
-void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch) ->
+void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, string msg) ->
 Called by most clients (not Voxlap) in response to demand_fingerprint().
-Sets the player's <a href=#get_client_char>id char</a> and <a href=#get_client_major>major</a>, <a href=#get_client_minor>minor</a> and <a href=#get_client_patch>patch</a> version.
+Sets the player's <a href=#get_client_char>id char</a>; <a href=#get_client_major>major</a>, <a href=#get_client_minor>minor</a> and <a href=#get_client_patch>patch</a> version; and <a href=#get_client_msg>version message</a>.
 Detects buggy piles of trash (BetterSpades) and works around them accordingly (except for the pyspades api implementation).
+
+void on_version_ext(plid pid, unsigned major, unsigned minor, unsigned patch, uint32_t flags, string cli, string lang) ->
+Called by very few clients (mostly OpenSpades v0.1.5) in response to demand_fingerprint().
+Marks the player as <a href=#get_client_ext_supported>ext-supported</a>.
+Sets the player's <a href=#get_client_ext_major>ext-major</a>, <a href=#get_client_ext_minor>ext-minor</a>, <a href=#get_client_ext_patch>ext-patch</a>; <a href=#get_client_ext_flags>ext-flags</a>; <a href=#get_client_ext_name>ext-name</a>; and <a href=#get_client_ext_language>ext-language</a>.
+The ext version number and standard version number do not necessarily have to match; the client could be spoofing the standard version.
+The language is not validated against any standard format; verify it yourself if you have to.
 
 void on_join(plid pid, unsigned team, unsigned gun, string name) ->
 Called when the implementation thinks a client is trying to join from limbo.

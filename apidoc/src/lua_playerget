@@ -103,6 +103,35 @@ string get_client_msg(plid pid) ->
 Returns the client's reported version message; usually this has the client's underlying kernel/operating system in it, sometimes other junk.
 If get_client_char() would return nil, return value is unspecified.
 
+boolean get_client_ext_supported(plid pid) ->
+Returns <samp>true</samp> if the player's client recognized and responded to a VersionRequestExt packet sent through demand_fingerprint() with a valid VersionResponseExt.
+
+integer get_client_ext_major(plid pid) ->
+Returns the client's reported major version, through the VersionResponseExt packet.
+The ext version number and standard version number do not necessarily have to match; the client could be spoofing the standard version.
+If get_client_ext_supported() would return false, return value is unspecified.
+
+integer get_client_ext_minor(plid pid) ->
+Behaves like get_client_ext_major() but for minor version.
+
+integer get_client_ext_patch(plid pid) ->
+Behaves like get_client_ext_major() but for patch version.
+
+integer get_client_ext_flags(plid pid) ->
+Returns the client's reported feature flags, through the VersionResponseExt packet.
+If the least-significant bit is set, the client reports UTF-8 support.
+No other bits have assigned meaning.
+If get_client_ext_supported() would return false, return value is unspecified.
+
+string get_client_ext_name(plid pid) ->
+Returns the client's reported name, e.g. "OpenSpades".
+If get_client_ext_supported() would return false, return value is unspecified.
+
+string get_client_ext_language(plid pid) ->
+Returns the client's reported language, e.g. "de", "en_us", "zh_CN". (The difference in capitalization is a mystery.)
+The language is not validated against any standard format; verify it yourself if you have to.
+If get_client_ext_supported() would return false, return value is unspecified.
+
 integer get_estimated_mag_ammo(plid pid) ->
 <strong>May return greater than get_max_mag_ammo()</strong>; you probably want to use get_mag_ammo().
 Returns <var>pid</var>'s estimated magazine ammo.

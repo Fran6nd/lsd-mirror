@@ -523,6 +523,7 @@ static fvec3 cget_spawn_position(plid pid, struct State *st) {
 
 	return ret;
 }
+
 static int lon_version(lua_State *l) {
 	size_t msglen;
 	plid pid = check_plid(l, 1);
@@ -549,6 +550,36 @@ static void con_version(plid pid, unsigned idChar, unsigned major, unsigned mino
 
 	if (lua_pcall(l, 6, 0, 0) != 0)
 		CBAIL("on_version: %s", luaL_checkstring(l, -1));
+}
+
+static int lon_version_ext(lua_State *l) {
+	size_t clilen, langlen;
+	plid pid = check_plid(l, 1);
+	unsigned major = luaL_checknumber(l, 2);
+	unsigned minor = luaL_checknumber(l, 3);
+	unsigned patch = luaL_checknumber(l, 4);
+	uint32_t flags = luaL_checknumber(l, 5);
+	const char *cli = luaL_checklstring(l, 6, &clilen);
+	const char *lang = luaL_checklstring(l, 7, &langlen);
+
+	f.on_version_ext(pid, major, minor, patch, flags, cli, clilen, lang, langlen, st);
+	return 0;
+}
+
+static void con_version_ext(plid pid, unsigned major, unsigned minor, unsigned patch, uint32_t flags, const char *cli, size_t clilen, const char *lang, size_t langlen, struct State *st) {
+	(void)st;
+	lua_getglobal(l, "on_version_ext");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, major);
+	lua_pushnumber(l, minor);
+	lua_pushnumber(l, patch);
+	lua_pushnumber(l, flags);
+	lua_pushlstring(l, cli, clilen);
+	lua_pushlstring(l, lang, langlen);
+
+	if (lua_pcall(l, 7, 0, 0) != 0)
+		CBAIL("on_version_ext: %s", luaL_checkstring(l, -1));
 }
 
 /* NOTE: Try not to touch pid_matches' conditions too much while iterating */
@@ -1085,6 +1116,55 @@ static int get_client_msg(lua_State *l) {
 	return 1;
 }
 
+static int get_client_ext_supported(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushboolean(l, st->p[pid].hasverext);
+	return 1;
+}
+
+static int get_client_ext_major(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].verExtMajor);
+	return 1;
+}
+
+static int get_client_ext_minor(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].verExtMinor);
+	return 1;
+}
+
+static int get_client_ext_patch(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].verExtPatch);
+	return 1;
+}
+
+static int get_client_ext_flags(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushnumber(l, st->p[pid].verExtFlags);
+	return 1;
+}
+
+static int get_client_ext_name(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushstring(l, st->p[pid].verExtCliName);
+	return 1;
+}
+
+static int get_client_ext_language(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushstring(l, st->p[pid].verExtLang);
+	return 1;
+}
+
 static int get_team_name(lua_State *l) {
 	unsigned team = check_teamid(l, 1);
 	/* TODO: support -1 too? */
@@ -1158,6 +1238,7 @@ static const struct luaL_Reg funcs[] = {
 	{"on_crap_packet", lon_crap_packet},
 	{"get_spawn_position", lget_spawn_position},
 	{"on_version", lon_version},
+	{"on_version_ext", lon_version_ext},
 
 	/* TODO: these two are not like the rest */
 	{"disconnect", disconnect},
@@ -1234,6 +1315,13 @@ static const struct luaL_Reg funcs[] = {
 	{"get_client_minor", get_client_minor},
 	{"get_client_patch", get_client_patch},
 	{"get_client_msg", get_client_msg},
+	{"get_client_ext_supported", get_client_ext_supported},
+	{"get_client_ext_major", get_client_ext_major},
+	{"get_client_ext_minor", get_client_ext_minor},
+	{"get_client_ext_patch", get_client_ext_patch},
+	{"get_client_ext_flags", get_client_ext_flags},
+	{"get_client_ext_name", get_client_ext_name},
+	{"get_client_ext_language", get_client_ext_language},
 	{"get_team_name", get_team_name},
 	{"get_team_color", get_team_color},
 	{"get_team_score", get_team_score},
@@ -1274,6 +1362,7 @@ void register_functions(lua_State *l, struct State *st) {
 	st->f.on_crap_packet = con_crap_packet;
 	st->f.get_spawn_position = cget_spawn_position;
 	st->f.on_version = con_version;
+	st->f.on_version_ext = con_version_ext;
 	register_luaawk(l, st);
 }
 

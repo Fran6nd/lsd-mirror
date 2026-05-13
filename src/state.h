@@ -136,13 +136,22 @@ struct Player {
 	int initStateSent;
 	uint64_t bugMask;
 	uint64_t extMask;
+	/* 0 if unwanted, 1 if only verExt wanted, 2 if only ver wanted, 3 if handshake or ver wanted --
+	 * it starts at 3, then becomes 2 or 1, then becomes 1, then becomes 0.
+	 */
 	int wantFingerprint;
 	/* TODO: is checking for handshake whatnot really necessary? */
 	int handshaked;
-	/* TODO: assert(idChar != 0) */
+	int hasverext;
 	uint8_t verMinor;
 	uint8_t verPatch;
+	uint8_t verExtMajor;
+	uint8_t verExtMinor;
+	uint32_t verExtFlags;
+	uint8_t verExtPatch;
 	char verMsg[256];
+	char verExtCliName[16];
+	char verExtLang[6];
 };
 
 struct State;
@@ -180,6 +189,7 @@ struct Functions {
 	void (*on_reload)(plid pid, struct State *st);
 	void (*on_handshake)(plid pid, struct State *st);
 	void (*on_version)(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, const char *msg, size_t msglen, struct State *st);
+	void (*on_version_ext)(plid pid, unsigned major, unsigned minor, unsigned patch, uint32_t flags, const char *cli, size_t clilen, const char *lang, size_t langlen, struct State *st);
 
 	fvec3 (*get_spawn_position)(plid pid, struct State *st);
 	clk (*get_spawn_time)(plid pid, struct State *st);

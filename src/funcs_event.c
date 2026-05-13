@@ -63,11 +63,18 @@ static void on_disconnect(plid pid, struct State *st) {
 	st->p[pid].initStateSent = 0;
 	st->p[pid].wantFingerprint = 0;
 	st->p[pid].handshaked = 0;
+	st->p[pid].hasverext = 0;
 	st->p[pid].idChar = 0;
 	st->p[pid].verMajor = 0;
 	st->p[pid].verMinor = 0;
 	st->p[pid].verPatch = 0;
 	st->p[pid].verMsg[0] = '\0';
+	st->p[pid].verExtMajor = 0;
+	st->p[pid].verExtMinor = 0;
+	st->p[pid].verExtPatch = 0;
+	st->p[pid].verExtFlags = 0;
+	st->p[pid].verExtCliName[0] = '\0';
+	st->p[pid].verExtLang[0] = '\0';
 
 	if (wasalive)
 		st->f.after_player_destroy(pid, st);
@@ -103,8 +110,6 @@ static void on_join(plid pid, unsigned team, unsigned gun, const char *name, str
 
 static void on_switch(plid pid, unsigned team, unsigned gun, struct State *st) {
 	/* TODO: should its use as :kill be permitted? */
-	//LOG("%s:%u (#%u) tried to switch or something", IP(pid), PORT(pid), pid);
-
 	st->p[pid].newteam = team;
 	st->p[pid].newgun = gun;
 
@@ -222,12 +227,13 @@ static void on_block_line(plid pid, ivec3 start, ivec3 end, struct State *st) {
 	st->f.block_line(start, end, pid, st);
 }
 
-void on_handshake(plid pid, struct State *st) {
+static void on_handshake(plid pid, struct State *st) {
 	st->p[pid].handshaked = 1;
+	st->p[pid].wantFingerprint = 2;
 }
 
-void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, const char *msg, size_t msglen, struct State *st) {
-	st->p[pid].wantFingerprint = 0;
+static void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, const char *msg, size_t msglen, struct State *st) {
+	st->p[pid].wantFingerprint = 1;
 	st->p[pid].idChar = idChar;
 	st->p[pid].verMajor = major;
 	st->p[pid].verMinor = minor;
@@ -246,8 +252,26 @@ void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsig
 		break;
 	}
 
-	/* TODO: still have to sanitize/reencode (maybe not reencode this specific one) strings */
+	/* TODO: still have to sanitize/reencode strings */
 	LOG("%s:%"PRIu16" (#%"PRIiPID") got version: '%c' (%"PRIu8") v%"PRIu8".%"PRIu8".%"PRIu8": %s", IP(pid), PORT(pid), pid, idChar < 0x20 || idChar >= 0x7f ? '?' : idChar, idChar, major, minor, patch, st->p[pid].verMsg);
+}
+
+static void on_version_ext(plid pid, unsigned major, unsigned minor, unsigned patch, uint32_t flags, const char *cli, size_t clilen, const char *lang, size_t langlen, struct State *st) {
+	st->p[pid].hasverext = 1;
+	st->p[pid].wantFingerprint = 0;
+	st->p[pid].verExtMajor = major;
+	st->p[pid].verExtMinor = minor;
+	st->p[pid].verExtPatch = patch;
+	st->p[pid].verExtFlags = flags;
+
+	memcpy(st->p[pid].verExtCliName, cli, clilen);
+	st->p[pid].verExtCliName[clilen] = '\0';
+
+	memcpy(st->p[pid].verExtLang, lang, langlen);
+	st->p[pid].verExtLang[langlen] = '\0';
+
+	/* TODO: *still* still have to sanitize/reencode strings */
+	LOG("%s:%"PRIu16" (#%"PRIiPID") got version-ext: \"%s\" v%"PRIu8".%"PRIu8".%"PRIu8", %#06"PRIx32", %s", IP(pid), PORT(pid), pid, st->p[pid].verExtCliName, major, minor, patch, flags, st->p[pid].verExtLang);
 }
 
 void set_funcs_event(struct State *st) {
@@ -272,4 +296,5 @@ void set_funcs_event(struct State *st) {
 	st->f.on_shutdown = on_shutdown;
 	st->f.on_handshake = on_handshake;
 	st->f.on_version = on_version;
+	st->f.on_version_ext = on_version_ext;
 }

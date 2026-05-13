@@ -1091,7 +1091,7 @@ static void demand_fingerprint(plid pid, struct State *st) {
 
 	for (i=0;i<MAX_PLAYERS;i++) {
 		if (pid_matches(pid, i, st)) {
-			st->p[i].wantFingerprint = 1;
+			st->p[i].wantFingerprint = 3;
 
 			/* TODO: maybe just send handshake once instead of every call until recieved?
 			 * i.e. use initStateSent. . . makes the function less useful though
@@ -1102,6 +1102,7 @@ static void demand_fingerprint(plid pid, struct State *st) {
 	}
 
 	SEND(pid, vr);
+	st->f.send_packet(pid, "\x21\x00\x01\x02", 4, st);
 }
 
 static clk get_spawn_time(plid pid, struct State *st) {

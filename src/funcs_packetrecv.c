@@ -180,23 +180,56 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 		SNUL();
 
 		SBAD(PACKET.type > 1);
+		SBAD(memchr(data+3, length-4, '\0'));
 
 		return 0;
 #undef PCKT
 #define PCKT ExistingPlayer
+		/* This packet ID is used both for ExistingPlayer and some custom OpenSpades version-getting junk */
 		SCASEANY
-		SRANGE(13, 28);
-		/* OpenSpades doesn't bother with SPID(); */
-		SNUL();
+		SRANGE(7, 2 + 2+3+15 + 2+5 + 2+4);
 
-		SBAD(st->p[pid].joined && st->p[pid].team != 255);
+		if (((char *)data)[1] == 'x' && ((uint8_t *)data)[2] == 0 && ((uint8_t *)data)[3] >= 3) {
+			/* "Enhanced" version send */
+			/* The prior SRANGE applies here */
+			SBAD(st->p[pid].wantFingerprint != 1);
 
-		/* TODO: should a spectator be allowed to switch to spectator? this doesn't match shortplayer (RENAME: something better; SpectatorSwitch?) either */
-		SBAD(PACKET.team > 1 && PACKET.team != 255);
-		SBAD(PACKET.gun > 2);
-		SBAD(PACKET.tool != ToolTypeGun);
-		/* OpenSpades puts its score (or some other data; I didn't check) in PACKET.score for some reason despite being ignored */
-		/* blue, green and red are ignored */
+			const uint8_t *dat = data;
+			uint8_t memblen;
+
+			dat += 2;
+			length -= 2;
+
+			#define VEREXT_FIELD(id, badmembsizecond, domemchr, memchroff) \
+				SBADSILENT(length < 2); \
+				SBAD(dat[0] != (id)); \
+				memblen = dat[1]; \
+\
+				SBAD(memblen > length - 2 || (badmembsizecond)); \
+				if (domemchr) SBAD(memchr(data+2+memchroff, memblen-memchroff, '\0')); \
+				dat += 2 + memblen; \
+				length -= 2 + memblen;
+
+			VEREXT_FIELD(0, memblen < 3 || memblen > 3+15, 1, 3);
+			VEREXT_FIELD(1, memblen != 2 && memblen != 5, 1, 0);
+			VEREXT_FIELD(2, memblen != 4, 0, 0);
+			SBAD(length != 0);
+		} else {
+			/* ExistingPlayer */
+			SRANGE(13, 28);
+			/* OpenSpades doesn't bother with SPID(); */
+			/* TODO: do i have to memchr this for NULs? */
+			SNUL();
+
+			SBAD(st->p[pid].joined && st->p[pid].team != 255);
+
+			/* TODO: should a spectator be allowed to switch to spectator? this doesn't match shortplayer (RENAME: something better; SpectatorSwitch?) either */
+			SBAD(PACKET.team > 1 && PACKET.team != 255);
+			SBAD(PACKET.gun > 2);
+			SBAD(PACKET.tool != ToolTypeGun);
+			/* OpenSpades puts its score (or some other data; I didn't check) in PACKET.score for some reason despite being ignored */
+			/* blue, green and red are ignored */
+		}
 
 		return 0;
 #undef PCKT
@@ -402,7 +435,7 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 		SCASEANY
 		SEXACT();
 
-		SBAD(!st->p[pid].wantFingerprint);
+		SBAD(st->p[pid].wantFingerprint < 3);
 		SBAD(st->p[pid].handshaked);
 		SBAD(PACKET.challenge != 0xdeadbeef);
 
@@ -414,9 +447,10 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 		SRANGE(5, 5+255);
 
 		/* TODO: dig into the datagrams if you feel like denying fingerprint sooner than join */
-		SBAD(!st->p[pid].wantFingerprint);
+		SBADSILENT(st->p[pid].wantFingerprint == 1);
+		SBAD(st->p[pid].wantFingerprint < 2);
 		SBAD(PACKET.client == 0);
-		SBAD(((uint8_t *)data)[length-1] == '\0');
+		SBAD(memchr(data+5, length-5, '\0'));
 
 		return 0;
 #undef PCKT
@@ -463,11 +497,36 @@ static void on_sane_packet(plid pid, const void *data, size_t length, struct Sta
 #undef PCKT
 #define PCKT ExistingPlayer
 		PCASE
-		if (st->p[pid].joined)
-			st->f.on_switch(pid, PACKET.team, PACKET.gun, st);
-		else
-			/* TODO: CP437/WIN-1252 */
-			st->f.on_join(pid, PACKET.team, PACKET.team == 255 ? 0 : PACKET.gun, PACKET.name, st);
+		if (((char *)data)[1] == 'x' && ((uint8_t *)data)[2] == 0 && ((uint8_t *)data)[3] >= 3) {
+			const uint8_t *dat = data;
+
+			unsigned major, minor, patch;
+			uint32_t flags;
+			const char *cli, *lang;
+			size_t clilen, langlen;
+
+			dat += 3;
+
+			major = dat[1];
+			minor = dat[2];
+			patch = dat[3];
+			cli = dat+1+3;
+			clilen = dat[0]-3;
+			dat += 1 + dat[0] + 1;
+
+			lang = dat+1;
+			langlen = dat[0];
+			dat += 1 + dat[0] + 1;
+
+			memcpy(&flags, dat+1, sizeof(uint32_t));
+			st->f.on_version_ext(pid, major, minor, patch, flags, cli, clilen, lang, langlen, st);
+		} else {
+			if (st->p[pid].joined)
+				st->f.on_switch(pid, PACKET.team, PACKET.gun, st);
+			else
+				/* TODO: CP437/WIN-1252 */
+				st->f.on_join(pid, PACKET.team, PACKET.team == 255 ? 0 : PACKET.gun, PACKET.name, st);
+		}
 
 		break;
 #undef PCKT

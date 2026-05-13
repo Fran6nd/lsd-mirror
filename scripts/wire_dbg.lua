@@ -1,6 +1,7 @@
 -- wire_dbg.lua -- Display trash sent on the wire
 local mod = init_mod();
 
+getcfg("wire_dbg_len", 16);
 getcfg("wire_dbg_ignore", {});
 getcfg("wire_dbg_ignore_in", {[0]=true, [1]=true});
 getcfg("wire_dbg_ignore_out", {[2]=true});
@@ -8,7 +9,7 @@ getcfg("wire_dbg_ignore_out", {[2]=true});
 local function tohex(data)
 	local hex = "";
 
-	for i=1,16 do
+	for i=1,wire_dbg_len do
 		if (i > #data) then
 			break;
 		end
@@ -20,7 +21,7 @@ local function tohex(data)
 		hex = hex..string.format("%02x", string.byte(data, i));
 	end
 
-	if (#data > 16) then
+	if (#data > wire_dbg_len) then
 		hex = hex.."...";
 	end
 

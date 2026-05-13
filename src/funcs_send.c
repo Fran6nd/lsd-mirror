@@ -317,7 +317,7 @@ static void send_spawn_player(plid pid, fvec3 pos, unsigned gun, unsigned team, 
 			/* This -2 is here because *sane* clients always subtract 2 from CreatePlayer z.
 			 * BetterSpades is not sane, since it was based on piqueserver.
 			 */
-		        if (st->p[pid].bugMask & BS_BUG_INFLOOR)
+		        if (st->p[i].bugMask & BS_BUG_INFLOOR)
 		                cr.pos.z = pos.z - 2;
 			else
 				cr.pos.z = pos.z;

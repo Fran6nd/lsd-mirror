@@ -70,7 +70,7 @@ static void con_join(plid pid, teamid team, unsigned gun, const char *name, stru
 	lua_getglobal(l, "on_join");
 
 	lua_pushnumber(l, pid);
-	lua_pushnumber(l, team);
+	lua_pushnumber(l, team+1);
 	lua_pushnumber(l, gun);
 	lua_pushstring(l, name);
 
@@ -93,7 +93,7 @@ static void con_switch(plid pid, teamid team, unsigned gun, struct State *st) {
 	lua_getglobal(l, "on_switch");
 
 	lua_pushnumber(l, pid);
-	lua_pushnumber(l, team);
+	lua_pushnumber(l, team+1);
 	lua_pushnumber(l, gun);
 
 	if (lua_pcall(l, 3, 0, 0) != 0)
@@ -920,7 +920,7 @@ static size_t cregister_grenade(plid pid, teamid team, fvec3 pos, fvec3 vel, clk
 	lua_getglobal(l, "register_grenade");
 
 	lua_pushnumber(l, pid);
-	lua_pushnumber(l, team);
+	lua_pushnumber(l, team+1);
 	push_fvec3(pos);
 	push_fvec3(vel);
 	push_clk(l, fuse);
@@ -955,7 +955,7 @@ static size_t cspawn_grenade(plid pid, teamid team, fvec3 pos, fvec3 vel, clk fu
 	lua_getglobal(l, "spawn_grenade");
 
 	lua_pushnumber(l, pid);
-	lua_pushnumber(l, team);
+	lua_pushnumber(l, team+1);
 	push_fvec3(pos);
 	push_fvec3(vel);
 	push_clk(l, fuse);
@@ -1367,7 +1367,7 @@ static void csend_move_object(bplid pid, fvec3 pos, unsigned id, gteamid team, s
 	lua_pushnumber(l, pid);
 	push_fvec3(pos);
 	lua_pushnumber(l, id);
-	lua_pushnumber(l, team);
+	lua_pushnumber(l, team+1);
 
 	if (lua_pcall(l, 4, 0, 0) != 0)
 		CBAIL("send_move_object: %s", luaL_checkstring(l, -1));
@@ -1954,7 +1954,7 @@ static void cmove_intel(gteamid team, fvec3 pos, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "move_intel");
 
-	lua_pushnumber(l, team);
+	lua_pushnumber(l, team+1);
 	push_fvec3(pos);
 
 	if (lua_pcall(l, 2, 0, 0) != 0)
@@ -1974,7 +1974,7 @@ static void cmove_tent(gteamid team, fvec3 pos, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "move_tent");
 
-	lua_pushnumber(l, team);
+	lua_pushnumber(l, team+1);
 	push_fvec3(pos);
 
 	if (lua_pcall(l, 2, 0, 0) != 0)

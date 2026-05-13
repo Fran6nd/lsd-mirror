@@ -23,7 +23,7 @@ function mod.after.tick()
 	local now = get_time();
 
 	for i in piditer(PID_BROADCAST) do
-		if (is_alive(i) and within_cylinder(get_position(i), get_tentloc()[get_team(i)+1], 3, 1, -4) and now >= timeout[i]) then
+		if (is_alive(i) and within_cylinder(get_position(i), get_tentloc()[get_team(i)], 3, 1, -4) and now >= timeout[i]) then
 			timeout[i] = now + 8;
 			restock(i);
 			-- TODO: only bother if there's something *to* restock

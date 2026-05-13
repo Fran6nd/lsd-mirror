@@ -2,6 +2,12 @@ function piditer(bplid pid) ->
 Iterates on every pid in the broadcast pid <var>pid</var>, ordered from 0 to MAX_PLAYERS&minus;1 inclusive.
 Regular pid's are a subset of broadcast pid's.
 
+function teamiter_all(bplid pid) ->
+Iterates over every team, including SPECTATOR.
+
+function teamiter_ingame(bplid pid) ->
+Iterates over every team, excluding SPECTATOR.
+
 number get_time(void) ->
 Returns the monotonic time in seconds elapsed since an unspecified epoch.
 

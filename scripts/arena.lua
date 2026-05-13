@@ -2,7 +2,7 @@
 local mod = init_mod();
 local gates = {};
 local gatesdone = {};
-local last_kill = {[0]=nil, [1]=nil};
+local last_kill = {nil, nil};
 local countdown_left = -1;
 local next_countdown_tick;
 
@@ -24,13 +24,13 @@ function mod.get_spawn_position(pid)
 	local meta = get_map_meta();
 	local team = get_next_team(pid);
 
-	if (team == 0) then
+	if (team == 1) then
 		if (meta.arena_blue_spawns) then
 			return meta.arena_blue_spawns[math.random(#meta.arena_blue_spawns)];
 		elseif (meta.arena_blue_spawn) then
 			return meta.arena_blue_spawn;
 		end
-	elseif (team == 1) then
+	elseif (team == 2) then
 		if (meta.arena_green_spawns) then
 			return meta.arena_green_spawns[math.random(#meta.arena_green_spawns)];
 		elseif (meta.arena_green_spawn) then
@@ -75,7 +75,7 @@ local function begin_round()
 	countdown_left = arena_countdown_time;
 	stage = STAGE_COUNTDOWN;
 
-	last_kill = {[0]=nil, [1]=nil};
+	last_kill = {nil, nil};
 
 	for i in piditer(PID_BROADCAST) do
 		if (is_joined(i) and get_team(i) ~= SPECTATOR) then
@@ -128,8 +128,8 @@ function mod.after.tick()
 end
 
 local function calc_players()
-	local players = {[0]=0, [1]=0};
-	local alive = {[0]=0, [1]=0};
+	local players = {0, 0};
+	local alive = {0, 0};
 
 	for i in piditer(PID_BROADCAST) do
 		if (is_joined(i)) then
@@ -143,7 +143,7 @@ local function calc_players()
 		end
 	end
 
-	enough_players = players[0] > 0 and players[1] > 0;
+	enough_players = players[1] > 0 and players[2] > 0;
 	if (not enough_players) then
 		-- Only countdown has gates
 		if (stage == STAGE_COUNTDOWN) then
@@ -161,7 +161,7 @@ local function calc_players()
 
 	for team,players in pairs(alive) do
 		if (stage == STAGE_GAME and players == 0) then
-			local winning_team = team == 0 and 1 or 0;
+			local winning_team = team == 1 and 2 or 1;
 			local last = last_kill[winning_team];
 
 			if (last == nil or not is_joined(last)) then
@@ -218,9 +218,13 @@ local function get_vec_tuple(scrape, meta, str, name)
 end
 
 local function get_vec_tupletuple(scrape, meta, str, name)
-	meta[name] = {};
-	for x in scrape.split_tupletuple(scrape.get_ext(str, name)) do
-		table.insert(meta[name], tuple_to_vec(scrape, x));
+	local str = scrape.get_ext(str, name);
+
+	if (str) then
+		meta[name] = {};
+		for x in scrape.split_tupletuple(str) do
+			table.insert(meta[name], tuple_to_vec(scrape, x));
+		end
 	end
 end
 

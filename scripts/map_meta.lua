@@ -49,9 +49,9 @@ function mod.before.load_map(name)
 
 		for i in piditer(PID_BROADCAST) do
 			if (meta.author) then
-				str = l10n_get_str_pid(PID_BROADCAST, next_up_msg_author, {name=meta.name, author=meta.author});
+				str = l10n_get_str_pid(i, next_up_msg_author, {name=meta.name, author=meta.author});
 			else
-				str = l10n_get_str_pid(PID_BROADCAST, next_up_msg_noauthor, {name=meta.name});
+				str = l10n_get_str_pid(i, next_up_msg_noauthor, {name=meta.name});
 			end
 
 			-- TODO: thanks to betterspades for making a 2nd standard that i have to support

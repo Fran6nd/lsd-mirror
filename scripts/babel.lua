@@ -15,10 +15,6 @@ local not_holding_msg = {
 	en="You're not holding the intel!"
 };
 
--- TODO: team starts at 0 or 1?
--- TODO: i think some places use 0 and others use 1, unify that
--- TODO: probably use 0 since player IDs start at 0 too? but lua uses 1. . .
-
 -- TODO: _override set of hooks? these would be all or nothing things, instead of passive listeners -- presumable the passives would come after the overrides?
 -- TODO: or instead of dedicated override hooks, BETTER IDEA: just mark it as high-priority (override-priority?). . . and allow multiple hooks with different priorities in one module
 -- TODO: on_kill?? on_kill -> get_spawn_time?
@@ -165,13 +161,13 @@ end
 -- TODO: probably take a team as arg instead? though, the score. . .
 -- TODO: end game, also redo babel
 function mod.after.capture_intel(pid)
-	move_intel(0, {x=256, y=256, z=plat_z});
+	move_intel(1, {x=256, y=256, z=plat_z});
 	local team = get_team(pid);
-	if (team == 0) then
-		move_intel(1, {x=math.huge, y=math.huge, z=math.huge});
+	if (team == 1) then
+		move_intel(2, {x=math.huge, y=math.huge, z=math.huge});
 	end
-		-- TODO: special handling for intel 0,1 and their positions. . .
-		-- TODO: probably don't need to move #1 back? except for recently-connected players. . .
+		-- TODO: special handling for intel 1,2 and their positions. . .
+		-- TODO: probably don't need to move #2 back? except for recently-connected players. . .
 		-- TODO: how do recently-connected players handle that?
 end
 
@@ -201,7 +197,7 @@ function mod.after.tick()
 	-- TODO: add restock.lua
 	-- TODO: core tents
 	if (type(intelloc) == "number") then
-		local tentloc = get_tentloc()[get_team(intelloc)+1];
+		local tentloc = get_tentloc()[get_team(intelloc)];
 		if (tentloc ~= nil and within_cylinder(get_position(intelloc), tentloc, 3, 1, -4)) then
 			-- TODO: unhardcode, make wrapper for capture_intel
 			capture_intel(intelloc, get_team_score(get_team(intelloc))+1 >= 24);
@@ -223,8 +219,8 @@ function mod.after.tick()
 		if (within_cylinder(get_position(i), intelloc, 3, 1, -4)) then
 			--print(i, "pickup", intelloc);
 			pickup_intel(i);
-			if (get_team(i) == 0) then
-				move_intel(0, {x=math.huge, y=math.huge, z=math.huge});
+			if (get_team(i) == 1) then
+				move_intel(1, {x=math.huge, y=math.huge, z=math.huge});
 			end
 			break;
 			-- TODO: hook pickup_intel?
@@ -240,16 +236,16 @@ local function putback_intel()
 	if (type(intelloc[1]) == "number") then
 		drop_intel(intelloc[1], {x=256, y=256, z=plat_z});
 	else
-		move_intel(0, {x=256, y=256, z=plat_z});
+		move_intel(1, {x=256, y=256, z=plat_z});
 	end
 	if (type(intelloc[2]) == "number") then
 		-- TODO: make drop_intel/move_intel accept nil
 		drop_intel(intelloc[2], {x=math.huge, y=math.huge, z=math.huge});
 	else
-		move_intel(1, {x=math.huge, y=math.huge, z=math.huge});
+		move_intel(2, {x=math.huge, y=math.huge, z=math.huge});
 	end
-	move_tent(0, {x=128, y=256, z=62});
-	move_tent(1, {x=512-128, y=256, z=62});
+	move_tent(1, {x=128, y=256, z=62});
+	move_tent(2, {x=512-128, y=256, z=62});
 end
 
 -- TODO: don't build if server hasn't loaded a map
@@ -288,9 +284,9 @@ local function try_drop(pid)
 		-- TODO: plumb all this junk into core already
 		-- TODO: drop_intel func which takes only team or pid -- let the gamemode deal with it
 		-- TODO: accept nil in place of fvec3
-		drop_intel(pid, get_team(pid) == 1 and intelloc or {x=math.huge, y=math.huge, z=math.huge});
-		if (get_team(pid) == 0) then
-			move_intel(0, intelloc);
+		drop_intel(pid, get_team(pid) == 2 and intelloc or {x=math.huge, y=math.huge, z=math.huge});
+		if (get_team(pid) == 1) then
+			move_intel(1, intelloc);
 		end
 		drop_timeout = get_time() + 2;
 		return true;

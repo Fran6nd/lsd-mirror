@@ -77,16 +77,16 @@ bplid check_nplid(lua_State *l, int numArg) {
 
 unsigned check_teamid(lua_State *l, int numArg) {
 	double val = luaL_checknumber(l, numArg);
-	if (val != 0 && val != 1 && val != 255)
+	if (val != 1 && val != 2 && val != 256)
 		LERR(l, "teamid is invalid (%.0f)", val);
-	return val;
+	return val - 1;
 }
 
 unsigned check_gteamid(lua_State *l, int numArg) {
 	double val = luaL_checknumber(l, numArg);
-	if (val != 0 && val != 1)
+	if (val != 1 && val != 2)
 		LERR(l, "gteamid is invalid (%.0f)", val);
-	return val;
+	return val - 1;
 }
 
 static void push_clk(lua_State *l, clk val) {
@@ -586,7 +586,7 @@ static void con_version_ext(plid pid, unsigned major, unsigned minor, unsigned p
 int pid_matches(plid broadcast, plid pid, struct State *st);
 static int do_piditer(lua_State *l) {
 	bplid broadcast = lua_tonumber(l, lua_upvalueindex(1));
-	bplid pid = lua_tonumber(l, lua_upvalueindex(2));
+	plid pid = lua_tonumber(l, lua_upvalueindex(2));
 
 	for (;pid<MAX_PLAYERS;pid++) {
 		if (pid_matches(broadcast, pid, st)) {
@@ -605,6 +605,43 @@ static int piditer(lua_State *l) {
 	lua_pushnumber(l, luaL_checknumber(l, 1));
 	lua_pushnumber(l, 0);
 	lua_pushcclosure(l, do_piditer, 2);
+	return 1;
+}
+
+static int do_teamiter_all(lua_State *l) {
+	const teamid next[3] = {0,2,256};
+	teamid team = lua_tonumber(l, lua_upvalueindex(1));
+
+	if (team == 0)
+		return 0;
+
+	lua_pushnumber(l, team);
+	lua_pushnumber(l, next[team & 0xff]);
+	lua_replace(l, lua_upvalueindex(1));
+	return 1;
+}
+
+static int teamiter_all(lua_State *l) {
+	lua_pushnumber(l, 1);
+	lua_pushcclosure(l, do_teamiter_all, 1);
+	return 1;
+}
+
+static int do_teamiter_ingame(lua_State *l) {
+	teamid team = lua_tonumber(l, lua_upvalueindex(1));
+
+	if (team == 3)
+		return 0;
+
+	lua_pushnumber(l, team);
+	lua_pushnumber(l, team+1);
+	lua_replace(l, lua_upvalueindex(1));
+	return 1;
+}
+
+static int teamiter_ingame(lua_State *l) {
+	lua_pushnumber(l, 1);
+	lua_pushcclosure(l, do_teamiter_ingame, 1);
 	return 1;
 }
 
@@ -658,7 +695,7 @@ static int get_grenade_pid(lua_State *l) {
 static int get_grenade_team(lua_State *l) {
 	size_t index = luaL_checknumber(l, 1);
 
-	lua_pushnumber(l, st->globals.grenades[index].team);
+	lua_pushnumber(l, st->globals.grenades[index].team+1);
 	return 1;
 }
 
@@ -884,12 +921,11 @@ static int get_tentloc(lua_State *l) {
 
 	lua_newtable(l);
 	for (i=0;i<2;i++) {
-		lua_pushnumber(l, i+1);
 		if (st->globals.tentpos[i].x == HUGE_VAL && st->globals.tentpos[i].y == HUGE_VAL && st->globals.tentpos[i].z == HUGE_VAL)
 			lua_pushnil(l);
 		else
 			push_fvec3(st->globals.tentpos[i]);
-		lua_settable(l, -3);
+		lua_rawseti(l, -2, i+1);
 	}
 
 	return 1;
@@ -936,7 +972,7 @@ static int get_mouse_inputs(lua_State *l) {
 static int get_team(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
-	lua_pushnumber(l, st->p[pid].team);
+	lua_pushnumber(l, st->p[pid].team+1);
 	return 1;
 }
 
@@ -950,7 +986,7 @@ static int get_gun(lua_State *l) {
 static int get_next_team(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
-	lua_pushnumber(l, st->p[pid].newteam);
+	lua_pushnumber(l, st->p[pid].newteam+1);
 	return 1;
 }
 
@@ -1208,22 +1244,22 @@ static int lget_time(struct lua_State *l) {
 }
 
 static int lPID_BROADCAST_EXCEPT(struct lua_State *l) {
-	lua_pushnumber(l, PID_BROADCAST_EXCEPT(luaL_checknumber(l, 1)));
+	lua_pushnumber(l, PID_BROADCAST_EXCEPT(check_plid(l, 1)));
 	return 1;
 }
 
 static int lPID_BROADCAST_TEAM(struct lua_State *l) {
-	lua_pushnumber(l, PID_BROADCAST_TEAM(luaL_checknumber(l, 1)));
+	lua_pushnumber(l, PID_BROADCAST_TEAM(check_teamid(l, 1)));
 	return 1;
 }
 
 static int lPID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(struct lua_State *l) {
-	lua_pushnumber(l, PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(luaL_checknumber(l, 1), luaL_checknumber(l, 2)));
+	lua_pushnumber(l, PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER(check_teamid(l, 1), check_plid(l, 2)));
 	return 1;
 }
 
 static int lPID_BROADCAST_EXCEPT_TEAM(struct lua_State *l) {
-	lua_pushnumber(l, PID_BROADCAST_EXCEPT_TEAM(luaL_checknumber(l, 1)));
+	lua_pushnumber(l, PID_BROADCAST_EXCEPT_TEAM(check_teamid(l, 1)));
 	return 1;
 }
 
@@ -1261,6 +1297,8 @@ static const struct luaL_Reg funcs[] = {
 	{"masterlist_connect", lmasterlist_connect},
 
 	{"piditer", piditer},
+	{"teamiter_all", teamiter_all},
+	{"teamiter_ingame", teamiter_ingame},
 
 	/* Nonportable state-altering funcs -- try to use these when a map
 	 * is in the middle of loading if you want defined behavior
@@ -1393,7 +1431,7 @@ void hook_lua(const char *cfg, unsigned long port, struct State *st2) {
 	lua_setglobal(l, "PID_COLOR_ANONYMOUS");
 
 	/* TODO: #define SPECTATOR 255? */
-	lua_pushnumber(l, 255);
+	lua_pushnumber(l, 256);
 	lua_setglobal(l, "SPECTATOR");
 
 	lua_pushnumber(l, port);

@@ -10,13 +10,13 @@ local function lower_intel(team, loc)
 	while (loc.z < 63 and not is_solid{x=loc.x, y=loc.y, z=loc.z}) do
 		-- TODO: dedup packets in core
 		loc.z = loc.z + 1;
-		move_intel(team-1, loc);
+		move_intel(team, loc);
 	end
 end
 
 local function raise_intel(team, loc)
 	while (is_solid{x=loc.x, y=loc.y, z=loc.z}) do
-		move_intel(team-1, loc);
+		move_intel(team, loc);
 		loc.z = loc.z - 1;
 	end
 end
@@ -24,13 +24,13 @@ end
 local function lower_tent(team, loc)
 	while (loc.z < 63 and not is_solid{x=loc.x, y=loc.y, z=loc.z}) do
 		loc.z = loc.z + 1;
-		move_tent(team-1, loc);
+		move_tent(team, loc);
 	end
 end
 
 local function raise_tent(team, loc)
 	while (is_solid{x=loc.x, y=loc.y, z=loc.z}) do
-		move_tent(team-1, loc);
+		move_tent(team, loc);
 		loc.z = loc.z - 1;
 	end
 end
@@ -103,7 +103,7 @@ end
 -- TODO: probably take a team as arg instead? though, the score. . .
 -- TODO: end game, also redo babel
 function mod.after.capture_intel(pid)
-	if (get_team(pid) == 0) then
+	if (get_team(pid) == 1) then
 		lower_intel(2, {x=math.random(511-64, 511-64-63)+0.5, y=math.random(256-32, 255+32)+0.5, z=-1});
 	else
 		lower_intel(1, {x=math.random(64, 64+63)+0.5, y=math.random(256-32, 255+32)+0.5, z=-1});
@@ -112,11 +112,11 @@ end
 
 local function get_pintel(pid)
 	local team = get_team(pid);
-	if (team == 255) then
+	if (team == SPECTATOR) then
 		return nil;
 	end
 
-	return get_intelloc()[(team == 1 and 0 or 1)+1];
+	return get_intelloc()[(team == 1 and 2 or 1)];
 end
 
 -- TODO: get, set intel position
@@ -125,13 +125,14 @@ function mod.after.tick()
 
 	for team,intelloc in pairs(locs) do
 		if (type(intelloc) == "number") then
-			local tentloc = get_tentloc()[get_team(intelloc)+1];
+			local tentloc = get_tentloc()[get_team(intelloc)];
 
 			if (tentloc ~= nil and within_cylinder(get_position(intelloc), tentloc, 3, 1, -4)) then
-				capture_intel(intelloc, get_team_score(get_team(intelloc))+1 >= 24);
+				-- TODO: get_max_score()
+				capture_intel(intelloc, get_team_score(get_team(intelloc))+1 >= max_score);
 			end
 		elseif (get_time() >= drop_timeout) then for i in piditer(PID_BROADCAST) do
-			if (is_alive(i) and get_team(i) ~= team-1 and within_cylinder(get_position(i), intelloc, 3, 1, -4)) then
+			if (is_alive(i) and get_team(i) ~= team and within_cylinder(get_position(i), intelloc, 3, 1, -4)) then
 				pickup_intel(i);
 				break;
 			end
@@ -142,7 +143,7 @@ end
 local function putback_intel()
 	local intelloc = get_intelloc();
 
-	-- TODO: drop dierctly on the spot?
+	-- TODO: drop directly on the spot?
 	if (type(intelloc[1]) == "number") then
 		drop_intel(intelloc[1], {x=math.huge, y=math.huge, z=math.huge});
 	end
@@ -176,14 +177,17 @@ local function try_drop(pid)
 	if (intelloc == pid) then
 		-- TODO: do i have to bounds check?
 		local intelloc = get_position(intelloc);
+		-- TODO: call to determine which intel a player was holding
+		local enemy = get_team(pid) == 1 and 2 or 1;
+
 		intelloc.x = math.floor(intelloc.x) + 0.5;
 		intelloc.y = math.floor(intelloc.y) + 0.5;
 		intelloc.z = math.ceil(intelloc.z);
 
 		-- TODO: too many packets
 		drop_intel(pid, intelloc);
-		raise_intel(1+get_team(pid), intelloc);
-		lower_intel(1+get_team(pid), intelloc);
+		raise_intel(enemy, intelloc);
+		lower_intel(enemy, intelloc);
 
 		drop_timeout = get_time() + 2;
 		return true;

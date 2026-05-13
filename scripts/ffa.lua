@@ -3,7 +3,8 @@ local mod = init_mod();
 
 function mod.send_spawn_player(pid, pos, gun, team, name, from)
 	for i in piditer(pid) do
-		if (i == from and team ~= SPECTATOR) then
+		if (i == from and team ~= 255) then
+			-- send_spawn_player takes the actual team id that goes on the wire. . . TODO: change?
 			mod.next.send_spawn_player(i, pos, gun, 0, name, from);
 		else
 			mod.next.send_spawn_player(i, pos, gun, team, name, from);
@@ -13,7 +14,7 @@ end
 
 function mod.on_join(pid, team, gun, name)
 	if (team ~= SPECTATOR) then
-		team = 1;
+		team = 2;
 	end
 
 	return mod.next.on_join(pid, team, gun, name);
@@ -21,7 +22,7 @@ end
 
 function mod.on_switch(pid, team, gun)
 	if (team ~= SPECTATOR) then
-		team = 1;
+		team = 2;
 	end
 
 	if (team ~= get_next_team(pid) or gun ~= get_next_gun(pid)) then

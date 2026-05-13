@@ -187,8 +187,7 @@ local strikeblocks = {};
 function build_strike(pos, forkchance)
 	if (pos == nil) then
 		if (math.random(0, 31) == 0) then
-			--sc("!!!");
-			pos = random_pos_from_team(get_team(nadepid) == 0 and 1 or 0);
+			pos = random_pos_from_team(get_team(nadepid) == 1 and 2 or 1);
 		end
 		if (pos == nil) then
 			pos = {x=math.random(0,511), y=math.random(0,511)};
@@ -272,7 +271,7 @@ function mod.after.tick()
 	-- TODO: time grenades to detonate on impact
 	-- TODO: get platform height from config?
 	local team = get_team(nadepid);
-	local nadepos = {x=math.random(nadestart[team+1].x, nadeend[team+1].x)+0.5, y=math.random(nadestart[team+1].y, nadeend[team+1].y)+0.5, z=-4};
+	local nadepos = {x=math.random(nadestart[team].x, nadeend[team].x)+0.5, y=math.random(nadestart[team].y, nadeend[team].y)+0.5, z=-4};
 	if (nadepos.x >= 256-50 and nadepos.x <= 255+50 and nadepos.y >= 256-16 and nadepos.y <= 255+16) then
 		nadepos.z = 2;
 	end

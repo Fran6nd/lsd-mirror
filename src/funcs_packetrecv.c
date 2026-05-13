@@ -510,11 +510,11 @@ static void on_sane_packet(plid pid, const void *data, size_t length, struct Sta
 			major = dat[1];
 			minor = dat[2];
 			patch = dat[3];
-			cli = dat+1+3;
+			cli = (const char *)dat+1+3;
 			clilen = dat[0]-3;
 			dat += 1 + dat[0] + 1;
 
-			lang = dat+1;
+			lang = (const char *)dat+1;
 			langlen = dat[0];
 			dat += 1 + dat[0] + 1;
 

@@ -77,12 +77,13 @@ local function build_now(path)
 	assert(img.xsize == babel_width, "Image width is not "..babel_width.." px");
 	assert(img.ysize == babel_height, "Image height is not "..babel_height.." px");
 
+	local ptr = img.buf;
 	for y=0,img.ysize-1 do
 		for x=0,img.xsize-1 do
-			local r = img.buf[0];
-			local g = img.buf[1];
-			local b = img.buf[2];
-			img.buf = img.buf + 3;
+			local r = ptr[0];
+			local g = ptr[1];
+			local b = ptr[2];
+			ptr = ptr + 3;
 
 			set_block_color(31, {r=r, g=g, b=b});
 			block_action({x=256-babel_width/2+x,y=256-babel_height/2+y,z=babel_z}, 0, 31);

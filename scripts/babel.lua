@@ -15,6 +15,10 @@ local not_holding_msg = {
 	en="You're not holding the intel!"
 };
 
+getcfg("babel_width", 100);
+getcfg("babel_height", 32);
+getcfg("babel_z", 1);
+
 -- TODO: _override set of hooks? these would be all or nothing things, instead of passive listeners -- presumable the passives would come after the overrides?
 -- TODO: or instead of dedicated override hooks, BETTER IDEA: just mark it as high-priority (override-priority?). . . and allow multiple hooks with different priorities in one module
 -- TODO: on_kill?? on_kill -> get_spawn_time?
@@ -24,10 +28,9 @@ local not_holding_msg = {
 -- TODO: what about for gamemode switch, i.e. ctf -> tc
 -- TODO: expandable map size?
 -- Size of the platform
-local size = {x=100, y=32}
-local plat_start = {x=256-size.x/2, y=256-size.y/2}
-local plat_end = {x=255+size.x/2, y=255+size.y/2}
-local plat_z = 1;
+local plat_start = {x=256-babel_width/2, y=256-babel_height/2}
+local plat_end = {x=255+babel_width/2, y=255+babel_height/2}
+local plat_z = babel_z;
 
 local function within(point, start, endp)
 	return point >= start and point <= endp;
@@ -93,21 +96,22 @@ end
 PID_COLOR_ANONYMOUS = 31
 -- TODO: don't bother with building over solid stuff (unless it's a different color -- probably block over all on load but not platform destroy)
 -- TODO: handle ridiculous blockaction queueing?
-local function build_platform()
+function mod.impl.babel_build_platform(mapload, pass2)
 	set_block_color(PID_COLOR_ANONYMOUS, {b=255, g=255, r=0});
 
-	-- TODO: block line does not overwrite colors -- you need to hook the map load and properly set colors there. . .
-	for y=plat_start.y,plat_end.y do
-		for x=plat_start.x,plat_end.x,50 do
-			block_line({x=x, y=y, z=plat_z}, {x=math.min(x+49, plat_end.x), y=y, z=plat_z}, PID_COLOR_ANONYMOUS);
+	if (mapload) then
+		for y=plat_start.y,plat_end.y do
+			for x=plat_start.x,plat_end.x do
+				block_action({x=x, y=y, z=plat_z}, 0, PID_COLOR_ANONYMOUS);
+			end
+		end
+	else
+		for y=plat_start.y,plat_end.y do
+			for x=plat_start.x,plat_end.x,50 do
+				block_line({x=x, y=y, z=plat_z}, {x=math.min(x+49, plat_end.x), y=y, z=plat_z}, PID_COLOR_ANONYMOUS);
+			end
 		end
 	end
-
-	-- for y=plat_start.y,plat_end.y do
-	-- 	for x=plat_start.x,plat_end.x do
-	-- 		block_action({x=x, y=y, z=plat_z}, 0, PID_COLOR_ANONYMOUS);
-	-- 	end
-	-- end
 end
 
 -- Prevent most block actions from tearing down the platform
@@ -122,7 +126,7 @@ end
 function mod.after.finish_cull()
 	if (not is_solid{x=plat_start.x, y=plat_start.y, z=plat_z}) then
 		l10n_send_chat(PID_BROADCAST, platform_destroyed_msg);
-		build_platform();
+		babel_build_platform();
 		-- Most of the clients don't process block line/action immediately when recieved.
 		-- They do some cursed queueing thing that, for instance, lets you break and place
 		-- a block on the same frame to recolor it. Anyway, those ones need some delay before
@@ -188,7 +192,7 @@ function mod.after.tick()
 	local intelloc = get_1intel();
 
 	if (platform_rebuild_time and get_time() >= platform_rebuild_time) then
-		build_platform();
+		babel_build_platform(false, true);
 		platform_rebuild_time = nil;
 	end
 
@@ -253,7 +257,7 @@ end
 -- TODO: what happens if i load it *while* the map is loading?
 function mod.on_load()
 	masterlist_set_gamemode("babel");
-	build_platform();
+	babel_build_platform();
 	putback_intel();
 end
 
@@ -261,7 +265,7 @@ end
 -- TODO: hook after load and before send
 function mod.before.finish_map_load()
 	-- TODO: don't send packets for this. . .
-	build_platform();
+	babel_build_platform(true);
 	putback_intel();
 end
 

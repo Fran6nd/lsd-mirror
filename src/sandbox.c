@@ -159,6 +159,8 @@ void sandbox(void) {
 		"rt_sigprocmask",
 		"rt_sigaction",
 		"membarrier",
+		/* needed for lfs */
+		"getdents64",
 #if 0
 		/* needed for openmp */
 		"sched_yield",

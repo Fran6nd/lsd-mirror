@@ -106,9 +106,9 @@ function do_func(ret, type) {
 		else if (match(argv[i], /^nplid /))
 			pushfunc = "lua_pushnumber(l, %s);";
 		else if (match(argv[i], /^teamid /))
-			pushfunc = "lua_pushnumber(l, %s);";
+			pushfunc = "lua_pushnumber(l, %s+1);";
 		else if (match(argv[i], /^gteamid /))
-			pushfunc = "lua_pushnumber(l, %s);";
+			pushfunc = "lua_pushnumber(l, %s+1);";
 		else if (match(argv[i], /^clk /))
 			pushfunc = "push_clk(l, %s);";
 		else if (match(argv[i], /^fvec3 /))

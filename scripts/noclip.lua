@@ -75,9 +75,9 @@ local function noclip_phys(pid, delta)
 end
 
 -- TODO: on_crap_packet silencing for scripts?
-function mod.on_position(pid, delta)
+function mod.on_position(pid, pos)
 	if (not clips[pid]) then
-		mod.next.on_position(pid, delta);
+		mod.next.on_position(pid, pos);
 	end
 end
 

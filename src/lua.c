@@ -7,6 +7,7 @@
 #include <lualib.h>
 #include "state.h"
 #include "demoncore.h"
+#include "budgetvxl.h"
 #include <poll.h>
 #include <setjmp.h>
 
@@ -645,6 +646,29 @@ static int teamiter_ingame(lua_State *l) {
 	return 1;
 }
 
+static int do_dump_vxl(lua_State *l) {
+	size_t off = lua_tointeger(l, lua_upvalueindex(1));
+	if (off >= 512*512)
+		return 0;
+
+	{
+		uint8_t buf[512*8*65*4];
+		size_t buflen = pvx_dump_vxl(&st->globals.map, off % 512, off / 512, 512, 512, 64, buf, 512*8);
+
+		lua_pushlstring(l, buf, buflen);
+
+		lua_pushinteger(l, off+512*8);
+		lua_replace(l, lua_upvalueindex(1));
+		return 1;
+	}
+}
+
+static int dump_vxl(lua_State *l) {
+	lua_pushinteger(l, 0);
+	lua_pushcclosure(l, do_dump_vxl, 1);
+	return 1;
+}
+
 static int simulate_grenade_physics(lua_State *l) {
 	struct Grenade grenade;
 	float delta;
@@ -696,6 +720,11 @@ static int get_grenade_team(lua_State *l) {
 	size_t index = luaL_checknumber(l, 1);
 
 	lua_pushnumber(l, st->globals.grenades[index].team+1);
+	return 1;
+}
+
+static int get_max_score(lua_State *l) {
+	lua_pushnumber(l, st->globals.maxscore);
 	return 1;
 }
 
@@ -1299,6 +1328,7 @@ static const struct luaL_Reg funcs[] = {
 	{"piditer", piditer},
 	{"teamiter_all", teamiter_all},
 	{"teamiter_ingame", teamiter_ingame},
+	{"dump_vxl", dump_vxl},
 
 	/* Nonportable state-altering funcs -- try to use these when a map
 	 * is in the middle of loading if you want defined behavior
@@ -1363,6 +1393,7 @@ static const struct luaL_Reg funcs[] = {
 	{"get_team_name", get_team_name},
 	{"get_team_color", get_team_color},
 	{"get_team_score", get_team_score},
+	{"get_max_score", get_max_score},
 	{"get_time", lget_time},
 	{"PID_BROADCAST_EXCEPT", lPID_BROADCAST_EXCEPT},
 	{"PID_BROADCAST_TEAM", lPID_BROADCAST_TEAM},

@@ -52,3 +52,6 @@ Calls finish_map_load().
 <li><code><var>name</var>.zlib</code>
 <li><code>maps/<var>name</var>.vxl.zlib</code>
 </ul>
+
+function dump_vxl(void) ->
+Iterator that returns sequenced strings containing a Voxlap5 VXL representation the map.

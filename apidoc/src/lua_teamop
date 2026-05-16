@@ -9,6 +9,9 @@ If <var>team</var> is SPECTATOR, returns an implementation-defined value.
 integer get_team_score(gteamid team) ->
 Returns the gamemode score of the given team. I.e., intel captures. <!-- TODO: TC -->
 
+integer get_max_score(void) ->
+Returns the "max" gamemode score of all teams; usually the game is won when it is reached.
+
 nil set_team_name(gteamid team) ->
 Invokes undefined behavior.
 

@@ -110,7 +110,7 @@ Kills a player.
 
 void send_chat(bplid pid, string msg, unsigned type, plid from) ->
 Displays a chat message.
-If type&le;<kbd>1</kbd> and <var>from</var> is joined, displays as if that player sent it; otherwise displays as if the server sent it.
+If <var>type</var>&le;<kbd>1</kbd> and <var>from</var> is joined, displays as if that player sent it; otherwise displays as if the server sent it.
 <var>type</var> can be one of the following:
 <dl class=num>
 <dt><kbd>0</kbd><dd>Global

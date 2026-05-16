@@ -1033,7 +1033,7 @@ function mod.on_block_action(pid, pos, type)
 			sel[pid] = nil;
 		end
 	else
-		next_call("on_block_action", mod.on_block_action)(pid, pos, type);
+		mod.next.on_block_action(pid, pos, type);
 	end
 end
 

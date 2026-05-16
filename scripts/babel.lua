@@ -204,7 +204,7 @@ function mod.after.tick()
 		local tentloc = get_tentloc()[get_team(intelloc)];
 		if (tentloc ~= nil and within_cylinder(get_position(intelloc), tentloc, 3, 1, -4)) then
 			-- TODO: make wrapper for capture_intel
-			capture_intel(intelloc, get_team_score(get_team(intelloc))+1 >= get_map_score());
+			capture_intel(intelloc, get_team_score(get_team(intelloc))+1 >= get_max_score());
 			-- TODO: put that intel back and maybe hook capture
 			--intelloc = {x=256, y=256, z=1};
 		end

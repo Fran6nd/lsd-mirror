@@ -3,7 +3,7 @@ local mod = init_mod();
 local sock;
 
 getcfg("websock_console_addr", nil);
-getcfg("websock_console_port", 32777);
+getcfg("websock_console_port", ENET_PORT);
 
 local function on_connect(sock, con)
 	local pid = new_fakepid();

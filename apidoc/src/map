@@ -14,7 +14,7 @@ Calls clear_map(). <!-- TODO: should it? -->
 
 void finish_map_load(void) ->
 Finishes loading a map.
-Calls send_map() for each pid in PID_BROADCAST.
+Calls send_map() with PID_BROADCAST if any player is connected.
 
 int load_vxl_from_mem(string data) ->
 Loads a Voxlap5 VXL file from the given buffer.

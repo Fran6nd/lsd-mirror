@@ -97,8 +97,6 @@ static void on_chat(plid pid, const char *msg, unsigned type, struct State *st) 
 static void on_join(plid pid, unsigned team, unsigned gun, const char *name, struct State *st) {
 	LOG("%s:%"PRIu16" (#%"PRIiPID") joined as \"%s\"", IP(pid), PORT(pid), pid, name);
 
-	/* at this point the player is still not alive */
-	st->p[pid].joined = 1;
 	st->p[pid].score = 0;
 	st->p[pid].newteam = team;
 	st->p[pid].newgun = gun;

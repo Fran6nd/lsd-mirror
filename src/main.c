@@ -828,6 +828,9 @@ static void restock(plid pid, struct State *st) {
 
 /* TODO: make this take a position arg and default it to get_spawn_position() */
 static void spawn_player(plid pid, fvec3 pos, struct State *st) {
+	st->p[pid].joined = 1;
+	st->p[pid].alive = st->p[pid].team != 255;
+
 	st->p[pid].spawntime = 0;
 	st->p[pid].reloadtime = 0;
 	st->p[pid].estfiretime = 0;
@@ -847,7 +850,6 @@ static void spawn_player(plid pid, fvec3 pos, struct State *st) {
 	st->p[pid].tool = ToolTypeGun;
 	st->p[pid].wade = 0;
 	st->p[pid].airborne = 0;
-	st->p[pid].alive = st->p[pid].team != 255;
 	st->p[pid].blockColor[0] = 111;
 	st->p[pid].blockColor[1] = 111;
 	st->p[pid].blockColor[2] = 111;

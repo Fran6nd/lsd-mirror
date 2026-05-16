@@ -655,7 +655,7 @@ static int do_dump_vxl(lua_State *l) {
 		uint8_t buf[512*8*65*4];
 		size_t buflen = pvx_dump_vxl(&st->globals.map, off % 512, off / 512, 512, 512, 64, buf, 512*8);
 
-		lua_pushlstring(l, buf, buflen);
+		lua_pushlstring(l, (const char *)buf, buflen);
 
 		lua_pushinteger(l, off+512*8);
 		lua_replace(l, lua_upvalueindex(1));

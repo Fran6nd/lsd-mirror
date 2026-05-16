@@ -66,12 +66,16 @@ local function raise_tents()
 	end
 end
 
+local function lower_tent(team, loc)
+	while (loc.z < 63 and not is_solid{x=loc.x, y=loc.y, z=loc.z}) do
+		loc.z = loc.z + 1;
+		move_tent(team, loc);
+	end
+end
+
 local function lower_tents()
 	for team, loc in pairs(get_tentloc()) do
-		while (loc.z < 63 and not is_solid{x=loc.x, y=loc.y, z=loc.z}) do
-			loc.z = loc.z + 1;
-			move_tent(team, loc);
-		end
+		lower_tent(team, loc);
 	end
 end
 
@@ -81,7 +85,6 @@ function mod.after.block_action(pos, type)
 	end
 end
 
--- TODO: raise/lower_tent()
 function mod.after.block_line()
 	raise_tents();
 end

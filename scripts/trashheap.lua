@@ -32,7 +32,7 @@ function fmtval(x, depth)
 	return ptab(x, depth+1);
 end
 
-ticker = {};
+ticker = init_mod();
 local before;
 function ticker.on_load()
 	before = get_time();
@@ -54,7 +54,7 @@ function ticker.tick()
 	before = now;
 end
 
-ticker2 = {};
+ticker2 = init_mod();
 local before2;
 function ticker2.on_load()
 	before2 = get_time();
@@ -74,7 +74,7 @@ function ticker2.tick()
 	before2 = now;
 end
 
-whereami = {};
+whereami = init_mod();
 function whereami.tick()
 	whereami.next.tick();
 	

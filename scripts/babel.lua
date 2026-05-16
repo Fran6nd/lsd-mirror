@@ -57,6 +57,35 @@ local function on_corner_xy(pos, start, endp, off)
 	return on_corner(pos.x, start.x, endp.x) and on_corner(pos.y, start.y, endp.y);
 end
 
+local function raise_tents()
+	for team, loc in pairs(get_tentloc()) do
+		while (is_solid{x=loc.x, y=loc.y, z=loc.z}) do
+			move_tent(team, loc);
+			loc.z = loc.z - 1;
+		end
+	end
+end
+
+local function lower_tents()
+	for team, loc in pairs(get_tentloc()) do
+		while (loc.z < 63 and not is_solid{x=loc.x, y=loc.y, z=loc.z}) do
+			loc.z = loc.z + 1;
+			move_tent(team, loc);
+		end
+	end
+end
+
+function mod.after.block_action(pos, type)
+	if (type == 0) then
+		raise_tents();
+	end
+end
+
+-- TODO: raise/lower_tent()
+function mod.after.block_line()
+	raise_tents();
+end
+
 local function legal_pos(pos, type)
 	if (type == 0) then
 		if (on_corner_xy(pos, plat_start, plat_end)) then
@@ -133,6 +162,8 @@ function mod.after.finish_cull()
 		-- rebuilding the platform.
 		platform_rebuild_time = get_time()+0.1;
 	end
+
+	lower_tents();
 end
 
 function mod.early.on_block_action(pid, pos, type)
@@ -248,8 +279,9 @@ local function putback_intel()
 	else
 		move_intel(2, {x=math.huge, y=math.huge, z=math.huge});
 	end
-	move_tent(1, {x=128, y=256, z=62});
-	move_tent(2, {x=512-128, y=256, z=62});
+
+	lower_tent(1, {x=128, y=256, z=-1});
+	lower_tent(2, {x=512-128, y=256, z=-1});
 end
 
 -- TODO: don't build if server hasn't loaded a map

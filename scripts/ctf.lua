@@ -128,8 +128,7 @@ function mod.after.tick()
 			local tentloc = get_tentloc()[get_team(intelloc)];
 
 			if (tentloc ~= nil and within_cylinder(get_position(intelloc), tentloc, 3, 1, -4)) then
-				-- TODO: get_max_score()
-				capture_intel(intelloc, get_team_score(get_team(intelloc))+1 >= max_score);
+				capture_intel(intelloc, get_team_score(get_team(intelloc))+1 >= get_max_score());
 			end
 		elseif (get_time() >= drop_timeout) then for i in piditer(PID_BROADCAST) do
 			if (is_alive(i) and get_team(i) ~= team and within_cylinder(get_position(i), intelloc, 3, 1, -4)) then

@@ -161,6 +161,8 @@ void sandbox(void) {
 		"membarrier",
 		/* needed for lfs */
 		"getdents64",
+		/* needed for os.rename() */
+		"rename",
 #if 0
 		/* needed for openmp */
 		"sched_yield",

@@ -2,6 +2,11 @@ void server_msg(bplid pid, string msg) ->
 Sends a chat message to <var>pid</var>, displayed as from the server.
 Calls send_chat().
 
+void player_msg(string msg, unsigned type, plid from) ->
+If <var>type</var>=<kbd>0</kbd>, sends a global chat message from <var>from</var>.
+If <var>type</var>=<kbd>1</kbd>, sends a team chat message from <var>from</var>.
+Calls send_chat().
+
 <!-- TODO: should these ones be able to take bplids? -->
 void restock(plid pid) ->
 Sets the player's reserve ammo to a version-defined value (see send_spawn_player()), HP to 100, blocks to 50, and grenades to 3. Usually plays a sound on <var>pid</var>'s client.

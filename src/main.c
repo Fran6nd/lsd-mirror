@@ -1209,6 +1209,10 @@ static void server_msg(plid pid, const char *msg, struct State *st) {
 	st->f.send_chat(pid, msg, 2, 0, st);
 }
 
+static void player_msg(const char *msg, unsigned type, plid from, struct State *st) {
+	st->f.send_chat(type == ChatTypeAll ? PID_BROADCAST : PID_BROADCAST_TEAM(st->p[from].team), msg, type, from, st);
+}
+
 /* TODO about grenades: mr. piquespades subtracts player velocity from grenades velocity to get roughly player orientation (len == 1). it then checks if length(that value) is > 2 (why not 1?). if it is, it sets length(that value) to 2 and adds the player velocity back. . . */
 /* TODO fun fact: openspades can send SetColor when it's in spectator. . . wonder if dead too? */
 /* TODO: what if i don't have a pid to give? */
@@ -1409,6 +1413,7 @@ static void set_funcs(struct State *st) {
 	st->f.damage_player = damage_player;
 	st->f.damage_player_directional = damage_player_directional;
 	st->f.server_msg = server_msg;
+	st->f.player_msg = player_msg;
 	st->f.remove_grenade = remove_grenade;
 	st->f.detonate_grenade = detonate_grenade;
 	st->f.set_block_color = set_block_color;

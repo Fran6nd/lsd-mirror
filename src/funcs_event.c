@@ -82,16 +82,9 @@ static void on_disconnect(plid pid, struct State *st) {
 
 /* TODO: CP437, etc. . . */
 static void on_chat(plid pid, const char *msg, unsigned type, struct State *st) {
-	plid dest;
-
 	LOG("(%s) %s: %s", type == ChatTypeAll ? "Global" : "Team", st->p[pid].name, msg);
 
-	if (type == ChatTypeAll)
-		dest = PID_BROADCAST;
-	else
-		dest = PID_BROADCAST_TEAM(st->p[pid].team);
-
-	st->f.send_chat(dest, msg, type, pid, st);
+	st->f.player_msg(msg, type, pid, st);
 }
 
 static void on_join(plid pid, unsigned team, unsigned gun, const char *name, struct State *st) {

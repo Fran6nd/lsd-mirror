@@ -34,11 +34,11 @@ function mod.early.on_hit(pid, type, hitPlayer)
 end
 
 -- TODO: need a level after early?
-function mod.send_chat(pid, msg, type, from)
-	if (type < 2 and has_cap(from, "badcap:mute")) then
+function mod.player_msg(msg, type, from)
+	if (has_cap(from, "badcap:mute")) then
 		return;
 	end
-	mod.next.send_chat(pid, msg, type, from);
+	mod.next.player_msg(msg, type, from);
 end
 
 local function toggle(pid, cmd, argv, cap)

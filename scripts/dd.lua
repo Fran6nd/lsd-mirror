@@ -22,6 +22,8 @@ getcfg("dd_prevent_fast_spadehit",         true);
 getcfg("dd_block_place_freq", 0.5);
 getcfg("dd_dig_1x_freq",      0.2);
 getcfg("dd_dig_3x_freq",      1);
+-- Shotgun ([2] here) only adds to its timer every 8 hits
+-- TODO: throw that behavior out and build it up again differently?
 getcfg("dd_shoot_freq",       {[0]=0.5, [1]=0.1, [2]=1});
 getcfg("dd_spadehit_freq",    0.2);
 
@@ -143,14 +145,25 @@ local dig_1x_timer = pid_spawn_table(nil);
 -- TODO: handle canceling 3x by releasing rmb?
 local dig_3x_timer = pid_spawn_table(nil);
 local shoot_timer = pid_spawn_table(nil);
+local shotgun_shoot_ctr = pid_spawn_table(0);
 local spadehit_timer = pid_spawn_table(nil);
 
-local function ratelimit(pid, timer, freq, winsiz, future)
+local function ratelimit(pid, timer, freq, winsiz, future, is_shotgun)
 	local now = get_time();
+	local incrtimer = true;
+
+	if (is_shotgun) then
+		shotgun_shoot_ctr[pid] = (shotgun_shoot_ctr[pid] + 1) % 8;
+		incrtimer = shotgun_shoot_ctr[pid] == 0;
+	end
 
 	if (timer[pid] == nil or now > timer[pid] + freq) then
 		timer[pid] = now + (future and freq or 0);
-	elseif (timer[pid] - now < winsiz) then
+
+		if (is_shotgun) then
+			shotgun_shoot_ctr[pid] = 0;
+		end
+	elseif (incrtimer and timer[pid] - now < winsiz) then
 		timer[pid] = timer[pid] + freq;
 	end
 
@@ -168,7 +181,7 @@ function mod.early.on_block_action(pid, pos, type)
 		-- TODO: use science (protocol extensions?) to determine which blocks have been hit enough to be digged? [sic]
 		log("dd: prevented fast 1x dig from %s (#%u)", get_name(pid), pid);
 		return;
-	elseif (type == 1 and tool == 2 and dd_prevent_fast_shoot and ratelimit(pid, shoot_timer, dd_shoot_freq[gun], dd_shoot_winsize[gun])) then
+	elseif (type == 1 and tool == 2 and dd_prevent_fast_shoot and ratelimit(pid, shoot_timer, dd_shoot_freq[gun], dd_shoot_winsize[gun], false, gun == 2)) then
 		log("dd: prevented fast block shot from %s (#%u)", get_name(pid), pid);
 		return;
 	elseif (type == 2 and dd_prevent_fast_dig_3x and ratelimit(pid, dig_3x_timer, dd_dig_3x_freq, dd_dig_3x_winsize)) then
@@ -199,7 +212,7 @@ function mod.early.on_hit(pid, type, hitPlayer)
 		return;
 	end
 
-	if (tool == 2 and dd_prevent_fast_shoot and ratelimit(pid, shoot_timer, dd_shoot_freq[gun], dd_shoot_winsize[gun])) then
+	if (tool == 2 and dd_prevent_fast_shoot and ratelimit(pid, shoot_timer, dd_shoot_freq[gun], dd_shoot_winsize[gun], false, gun == 2)) then
 		log("dd: prevented fast player shot from %s (#%u)", get_name(pid), pid);
 		return;
 	end

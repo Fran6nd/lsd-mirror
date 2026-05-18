@@ -992,6 +992,28 @@ static void cserver_msg(bplid pid, const char *msg, struct State *st) {
 }
 
 
+static int lplayer_msg(lua_State *l) {
+	const char *msg = luaL_checkstring(l, 1);
+	unsigned type = luaL_checknumber(l, 2);
+	plid from = check_plid(l, 3);
+
+	f.player_msg(msg, type, from, st);
+	return 0;
+}
+
+static void cplayer_msg(const char *msg, unsigned type, plid from, struct State *st) {
+	(void)st;
+	lua_getglobal(l, "player_msg");
+
+	lua_pushstring(l, msg);
+	lua_pushnumber(l, type);
+	lua_pushnumber(l, from);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("player_msg: %s", luaL_checkstring(l, -1));
+}
+
+
 static int lsend_map(lua_State *l) {
 	bplid pid = check_bplid(l, 1);
 
@@ -2030,6 +2052,7 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	st->f.register_grenade = cregister_grenade;
 	st->f.spawn_grenade = cspawn_grenade;
 	st->f.server_msg = cserver_msg;
+	st->f.player_msg = cplayer_msg;
 	st->f.send_map = csend_map;
 	st->f.send_state = csend_state;
 	st->f.send_connected_players = csend_connected_players;
@@ -2126,6 +2149,7 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	{"register_grenade", lregister_grenade}, \
 	{"spawn_grenade", lspawn_grenade}, \
 	{"server_msg", lserver_msg}, \
+	{"player_msg", lplayer_msg}, \
 	{"send_map", lsend_map}, \
 	{"send_state", lsend_state}, \
 	{"send_connected_players", lsend_connected_players}, \

@@ -1,41 +1,56 @@
 .POSIX:
+.SUFFIXES: .c .o
 
 CC=clang
 AWK=awk
 
 PKGCONF_MODULES=luajit libenet libisal "$$(test "x$$(uname -s)" = "xLinux" && printf '%s\n' 'libseccomp')"
 LIBS=`pkg-config --libs $(PKGCONF_MODULES)` -lm
-CPPFLAGS=`pkg-config --cflags $(PKGCONF_MODULES)`
+OPTS=-DWITH_ANYASCII
+CPPFLAGS=`pkg-config --cflags $(PKGCONF_MODULES)` $(OPTS)
 
-CFLAGS=-Wall -Wextra -s -O3 -flto -fuse-ld=lld $(CPPFLAGS)
-CFLAGSNATIVE=-Wall -Wextra -s -O3 -flto -march=native -fuse-ld=lld $(CPPFLAGS)
-CFLAGSG=-Wall -Wextra -g $(CPPFLAGS)
-LDFLAGS=$(LIBS)
+CFLAGS=-Wall -Wextra -O3 -flto
+CFLAGSNATIVE=-Wall -Wextra -O3 -flto -march=native
+CFLAGSG=-Wall -Wextra -g
 
-server: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
-	$(CC) $(CFLAGS) -o server src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o $(LDFLAGS)
+LDFLAGS=$(LIBS) -s -flto -fuse-ld=lld
+LDFLAGSNATIVE=$(LIBS) -s -flto -fuse-ld=lld
+LDFLAGSG=$(LIBS)
+LDFLAGSSTATIC=-Wl,-Bstatic -static-libgcc $(LDFLAGS) -Wl,-Bdynamic '-Wl,--export-dynamic-symbol=lua_*' '-Wl,--export-dynamic-symbol=luaL_*' -fvisibility=hidden
+
+OBJECTS=src/budgetvxl.o src/cull.o src/demoncore.o src/funcs_event.o src/funcs_packetrecv.o src/funcs_send.o src/lua.o src/main.o src/masterlist.o src/sandbox.o src/textcodec.o src/pvx/src/vxl.o
+INCL=src/bitmask.h src/budgetvxl.h src/cull.h src/demoncore.h src/luaawk.h src/masterlist.h src/protocol.h src/sandbox.h src/state.h src/textcodec_cp437.h src/textcodec_utf8.h
+
+all: server exec/libunixsock.so
+
+server: $(OBJECTS) $(INCL)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o server $(OBJECTS) $(LDFLAGS)
+
+.c.o:
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 # Not really static, musl doesn't like dlopen with static
 # See https://www.openwall.com/lists/musl/2021/09/24/6
 # You could definitely make a truly static build if you
 # don't bother loading anything in the exec dir, though.
-serverstatic: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
-	$(CC) $(CFLAGS) -o serverstatic src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o \
-		-Wl,-Bstatic -static-libgcc $(LDFLAGS) -Wl,-Bdynamic '-Wl,--export-dynamic-symbol=lua_*' '-Wl,--export-dynamic-symbol=luaL_*' -fvisibility=hidden
-serverstatic-crust: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
-	$(CC) $(CFLAGS) -DNO_DEFAULT_SANDBOX -DWITH_LIBSECCOMP -o serverstatic src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o \
-		-Wl,-Bstatic -static-libgcc $(LDFLAGS) -Wl,-Bdynamic '-Wl,--export-dynamic-symbol=lua_*' '-Wl,--export-dynamic-symbol=luaL_*' -fvisibility=hidden
-servernative: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
-	$(CC) $(CFLAGSNATIVE) -o servernative src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o $(LDFLAGS)
-serverg: src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o src/luaawk.h exec/libunixsock.so
-	$(CC) $(CFLAGSG) -g -o serverg src/main.c src/funcs_packetrecv.c src/funcs_event.c src/funcs_send.c src/sandbox.c src/lua.c src/demoncore.c src/budgetvxl.c src/cull.c src/masterlist.c src/pvx/vxl.o $(LDFLAGS)
+serverstatic: $(OBJECTS) $(INCL)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
+
+serverstatic-crust: $(OBJECTS) $(INCL)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DNO_DEFAULT_SANDBOX -DWITH_LIBSECCOMP -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
+
+servernative: $(OBJECTS) $(INCL)
+	$(CC) $(CFLAGSNATIVE) $(CPPFLAGS) -o servernative $(OBJECTS) $(LDFLAGSNATIVE)
+
+serverg: $(OBJECTS) $(INCL)
+	$(CC) $(CFLAGSG) $(CPPFLAGS) -g -o serverg $(OBJECTS) $(LDFLAGSG)
 
 exec/libunixsock.so: src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c
 	# TODO: remove getaddrinfo malloc from unixsock tcp
 	mkdir -p exec
-	$(CC) $(CFLAGS) --shared -o exec/libunixsock.so src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c -Wl,--exclude-libs,ALL
+	$(CC) $(CFLAGS) $(CPPFLAGS) --shared -o exec/libunixsock.so src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c -Wl,--exclude-libs,ALL $(LDFLAGS)
 
-dist.tar.gz: serverstatic aloha.lua exec scripts maps dirty
+dist.tar.gz: serverstatic exec/libunixsock.so aloha.lua exec scripts maps dirty
 	rm -fR dist/
 	mkdir -p dist/exec dist/scripts dist/maps
 	cp serverstatic dist/server
@@ -49,8 +64,12 @@ dist.tar.gz: serverstatic aloha.lua exec scripts maps dirty
 	bsdtar cf - dist | libdeflate-gzip -c12 - > dist.tar.gz
 	rm -fR dist
 
-dirty:
-.PHONY: dirty
-
 src/luaawk.h: gen_lua_binding.awk src/state.h
 	$(AWK) -f ./gen_lua_binding.awk src/state.h > src/luaawk.h
+
+clean:
+	rm -f ./server exec/libunixsock.so src/*.o src/pvx/src/*.o
+
+dirty:
+
+.PHONY: clean dirty

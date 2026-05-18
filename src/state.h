@@ -50,10 +50,21 @@ typedef ivec3p ivec3;
 typedef fvec3p fvec3;
 
 /* Work around buggerspades bugs */
-#define BS_BUG_INFLOOR 1
-#define BS_BUG_NOSHORTPLAYER 2
+#define BS_BUG_INFLOOR (1 << 0)
+#define BS_BUG_NOSHORTPLAYER (1 << 1)
 /* TODO: I think this one spread to IV spades too */
-#define BS_BUG_SCREWED_DISCONNECT_DATA 4
+#define BS_BUG_SCREWED_DISCONNECT_DATA (1 << 2)
+/* OpenSpades CP-437 takes 0x0a as lf, 0x0d as cr, beta as sharp s, gamma as tua */
+#define QUIRK_OS_CP437 (1 << 3)
+/* These ones may send either CP-437, or UTF-8 if prefixed with '\xff';
+ * They will also unconditionally be sent UTF-8 messages to hammer out
+ * deficiencies in shitty CP-437 codecs.
+ */
+#define QUIRK_UTF8 (1 << 4)
+/* BetterSpades doesn't understand UTF-8 *or* CP-437, so messages sent to it
+ * must be transcoded into ASCII.
+ */
+#define QUIRK_ASCII (1 << 5)
 /* TODO: BS_BUG_NODEADNADE */
 /* TODO: BS_BUG_BORKEDRELOAD */
 /* TODO: BS_BUG_MOUSEINPUTISFUCKED */

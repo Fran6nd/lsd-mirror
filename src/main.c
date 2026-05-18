@@ -1577,6 +1577,8 @@ static void sig_handler(int sig) {
 	keepRunning = 0;
 }
 
+void hook_textcodec_late(struct State *st);
+void hook_textcodec_early(struct State *st);
 int main(int argc, char **argv) {
 	struct State *st;
 
@@ -1607,7 +1609,9 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
+	hook_textcodec_late(st);
 	hook_lua(cfg, port, st);
+	hook_textcodec_early(st);
 
 	st->f.load_initial_map(st);
 

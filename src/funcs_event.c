@@ -235,9 +235,14 @@ static void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor
 
 	switch (st->p[pid].idChar) {
 	case 'B':
-		st->p[pid].bugMask = (uint32_t)-1;
+		/* Tigerspades usually identifies as >=0.1.6, though was 0.1.5 when UTF-8 was introduced */
+		st->p[pid].bugMask |= BS_BUG_INFLOOR | BS_BUG_NOSHORTPLAYER | BS_BUG_SCREWED_DISCONNECT_DATA | QUIRK_OS_CP437 |
+		(major >= 0 && minor >= 1 && patch >= 6 ? QUIRK_UTF8 : QUIRK_ASCII);
 		break;
 	case 'o':
+		/* TODO: do i want to unset QUIRK_UTF8 if not set in version-ext? */
+		st->p[pid].bugMask |= QUIRK_UTF8 | QUIRK_OS_CP437;
+
 		if (strstr(st->p[pid].verMsg, "ZeroSpades") || strstr(st->p[pid].verMsg, "IV of Spades"))
 			st->p[pid].bugMask |= BS_BUG_SCREWED_DISCONNECT_DATA;
 		break;

@@ -121,6 +121,10 @@ function get_arg_str(argname, pid, cmd, arg)
 end
 
 -- TODO: should l10n format decimal values in a language-specific manner?
+local cidr_msg = {
+	en="%(arg) should be a IPv4 address, optionally given in CIDR notation."
+};
+
 local delta_msg = {
 	en="%(arg) should be a time delta."
 };
@@ -136,6 +140,60 @@ local unit_msg = {
 local range_msg = {
 	en="%(arg) should be between %(min) and %(max)"
 };
+
+function get_arg_cidr(argname, pid, cmd, arg)
+	if (arg == nil) then
+		send_usage(pid, cmd);
+		cmd_exit();
+	end
+
+	local a1, a2, a3, a4, range = string.match(arg, "^(%d+)%.(%d+)%.(%d+)%.(%d+)/?(%d*)$");
+
+	a1 = tonumber(a1);
+	a2 = tonumber(a2);
+	a3 = tonumber(a3);
+	a4 = tonumber(a4);
+	range = tonumber(range);
+
+	if (range == nil) then
+		range = 32;
+	end
+
+	-- None of these can be negative without failing the string.match()
+	if (
+		a1 == nil or
+		a1 > 255 or
+		a2 > 255 or
+		a3 > 255 or
+		a4 > 255 or
+		range > 32
+	) then
+		send_usage(pid, cmd);
+		l10n_send_chat(pid, cidr_msg, {arg=argname});
+		cmd_exit();
+	end
+
+	local addr = bit.bor(bit.lshift(a1, 24), bit.lshift(a2, 16), bit.lshift(a3, 8), a4);
+	local mask;
+
+	if (range == 0) then
+		mask = 0xffffffff;
+	else
+		mask = bit.lshift(1, 32 - range) - 1;
+	end
+
+	local starta, enda = bit.band(addr, bit.bnot(mask)), bit.bor(addr, mask);
+
+	if (starta < 0) then
+		starta = 2^32 + starta;
+	end
+
+	if (enda < 0) then
+		enda = 2^32 + enda;
+	end
+
+	return starta, enda;
+end
 
 function get_arg_time(argname, pid, cmd, arg)
 	local umap = {s=1, min=60, h=60*60, d=60*60*24, w=60*60*24*7, month=60*60*24*30, y=60*60*24*365};

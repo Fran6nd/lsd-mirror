@@ -41,7 +41,7 @@ function mod.after.on_cap_grant(pid, cap)
 	end
 end
 
-local sel, ban;
+local data_ver sel ban revoke unrevoke queryaddr queryname;
 
 local bans = pid_connected_table(function() return {}; end);
 local function add_ban(pid, id, tbl)
@@ -227,19 +227,6 @@ DROP TABLE ArchivedBans;
 
 	queryaddr = ldb.prepare_xret(db, "queryaddr", "SELECT id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps FROM "..tbl.." WHERE ? BETWEEN startaddr AND endaddr OR ? BETWEEN startaddr AND endaddr OR startaddr BETWEEN ? and ? OR endaddr BETWEEN ? and ?;");
 	queryname = ldb.prepare_xret(db, "queryname", "SELECT id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps FROM "..tbl.." WHERE playername = ?;");
-
-local _=[[
-	createstmt("sel",          "SELECT name, comment, flags, expires FROM BanRanges WHERE expires > ? AND startaddr <= ? AND endaddr >= ?;");
-	createstmt("queryaddr",    "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby, flags FROM BanRanges WHERE endaddr >= ? AND startaddr <= ? ORDER BY bantime;");
-	createstmt("queryname",    "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby, flags FROM BanRanges WHERE name = ? ORDER BY bantime;");
-	createstmt("queryaddrarc", "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby, flags FROM ArchivedBans WHERE endaddr >= ? AND startaddr <= ? ORDER BY bantime;");
-	createstmt("querynamearc", "SELECT id, startaddr, endaddr, bantime, expires, name, comment, bannedby, flags FROM ArchivedBans WHERE name = ? ORDER BY bantime;");
-	createstmt("ban",          "INSERT INTO BanRanges VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?);");
-	createstmt("addarchive",   "INSERT INTO ArchivedBans SELECT * FROM BanRanges WHERE id = ?;");
-	createstmt("rmarchive",    "DELETE FROM BanRanges WHERE id = ?;");
-	createstmt("addunarchive",   "INSERT INTO BanRanges SELECT * FROM ArchivedBans WHERE id = ?;");
-	createstmt("rmunarchive",    "DELETE FROM ArchivedBans WHERE id = ?;");
-]];
 
 	for i in piditer(PID_BROADCAST) do
 		check_bans(i);

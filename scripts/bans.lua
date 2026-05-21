@@ -223,7 +223,7 @@ DROP TABLE ArchivedBans;
 
 	ban = ldb.prepare_0ret(db, "ban", "INSERT INTO "..tbl.."(id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps) VALUES(NULL, ?, ?, unixepoch() + ?, 0, unixepoch(), ?, ?, ?, ?, ?);");
 	revoke = ldb.prepare_0ret(db, "revoke", "UPDATE "..tbl.." SET revoked = 1 WHERE id = ?;");
-	unrevoke = ldb.prepare_0ret(db, "revoke", "UPDATE "..tbl.." SET revoked = 0 WHERE id = ?;");
+	unrevoke = ldb.prepare_0ret(db, "unrevoke", "UPDATE "..tbl.." SET revoked = 0 WHERE id = ?;");
 
 	queryaddr = ldb.prepare_xret(db, "queryaddr", "SELECT id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps FROM "..tbl.." WHERE ? BETWEEN startaddr AND endaddr OR ? BETWEEN startaddr AND endaddr OR startaddr BETWEEN ? and ? OR endaddr BETWEEN ? and ?;");
 	queryname = ldb.prepare_xret(db, "queryname", "SELECT id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps FROM "..tbl.." WHERE playername = ?;");

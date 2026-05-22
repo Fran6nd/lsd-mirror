@@ -9,6 +9,7 @@ fog = {r=32, g=64, b=128}
 max_score = 24
 
 load "pid_tables"
+load "lib_l10n"
 load "commands"
 load "command_exec"
 load "command_modutils"

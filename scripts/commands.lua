@@ -9,7 +9,7 @@ commands = {};
 getcfg("commands_hook_chat", true);
 getcfg("commands_register_hook", nil);
 
-function register_command(cmd)
+function register_command(cmd, mod)
 	if (type(cmd.name) == "table") then
 		for _, x in ipairs(cmd.name) do
 			commands[x] = cmd;
@@ -17,6 +17,12 @@ function register_command(cmd)
 	else
 		commands[cmd.name] = cmd;
 	end
+
+	if (mod) then
+		mod.commands = mod.commands or {};
+		mod.commands[cmd] = true;
+	end
+
 	if (commands_register_hook ~= nil) then
 		commands_register_hook(cmd);
 	end
@@ -91,6 +97,18 @@ function mod.on_unload()
 	end
 end
 
+function mod.after.unregister(module)
+	if (module.commands == nil) then
+		return;
+	end
+
+	for name, cmd in pairs(commands) do
+		if (module.commands[cmd] ~= nil) then
+			commands[name] = nil;
+		end
+	end
+end
+
 -- TODO: just use on_successful_connect?
 function mod.impl.on_fakepid_connect(pid)
 end
@@ -101,6 +119,7 @@ function new_fakepid()
 	return pid;
 end
 
+-- TODO: make pid_tables hook into this instead of the other way around
 function free_fakepid(pid)
 	takenfakepid[pid] = nil;
 	if (clear_fakepid_table) then

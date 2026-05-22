@@ -1,4 +1,5 @@
 -- command_say.lua -- Tell the whole server about your wildest fantasies
+local mod = init_mod();
 
 local cmd = {name="say", caps="say", fakepid=true, usage="msg", desc="Send a message to all players, displayed as if the server sent it. Does not parse arguments."};
 function cmd.func(pid, argv, msg)
@@ -18,4 +19,4 @@ function cmd.func(pid, argv, msg)
 end
 register_command(cmd, mod);
 
-return {};
+return mod;

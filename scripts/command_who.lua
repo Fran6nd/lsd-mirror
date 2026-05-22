@@ -1,4 +1,5 @@
 -- command_who.lua -- Hello, is there anybody in there?
+local mod = init_mod();
 
 local cmd = {name={"who", "lscon", "listconnections"}, fakepid=true, usage="msg", desc="Print all joined players."};
 function cmd.func(pid, argv, msg)
@@ -12,4 +13,4 @@ function cmd.func(pid, argv, msg)
 end
 register_command(cmd, mod);
 
-return {};
+return mod;

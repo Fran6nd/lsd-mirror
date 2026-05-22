@@ -1,4 +1,5 @@
 -- command_exec.lua -- Execute arbitrary lua
+local mod = init_mod();
 
 local cmd = {name="exec", caps="exec", fakepid=true, usage="lua", desc="Execute arbitrary lua. Does not parse arguments."};
 function cmd.func(pid, argv, msg)
@@ -24,4 +25,4 @@ function cmd.func(pid, argv, msg)
 end
 register_command(cmd, mod);
 
-return {};
+return mod;

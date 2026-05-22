@@ -1,4 +1,5 @@
 -- command_switch.lua -- Shuffle other players' teams around
+local mod = init_mod();
 
 local invalid_team_msg = {
 	en="team should be one of 1, 2, 256, -1, spec, spectator, %(firstteam), %(secondteam)."
@@ -36,4 +37,4 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
-return {};
+return mod;

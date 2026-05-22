@@ -1,4 +1,5 @@
 -- command_ping.lua -- Check to see just how laggy you are
+local mod = init_mod();
 
 local ping_msg = {
 	en="%(name)'s round-trip time is %(rtt) ms."
@@ -30,4 +31,4 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
-return {};
+return mod;

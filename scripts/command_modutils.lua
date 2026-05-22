@@ -1,4 +1,5 @@
 -- command_modutils.lua -- Manipulate loaded modules
+local mod = init_mod();
 -- TODO: remove command_ prefix?
 
 -- TODO: set package.cpath
@@ -65,4 +66,4 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
-return {};
+return mod;

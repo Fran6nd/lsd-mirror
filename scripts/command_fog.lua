@@ -1,4 +1,5 @@
 -- command_fog.lua -- Change the fog color
+local mod = init_mod();
 -- TODO: should it change config or just set_fog?
 
 local need_cap_msg = {
@@ -35,4 +36,4 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
-return {};
+return mod;

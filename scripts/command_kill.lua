@@ -1,4 +1,5 @@
 -- command_kill.lua -- Death by grenade with extra steps
+local mod = init_mod();
 
 local no_killing_ghosts_msg = {
 	en="You can't kill yourself unless you're in-game."
@@ -37,4 +38,4 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
-return {};
+return mod;

@@ -1,4 +1,5 @@
 -- trashheap.lua -- trash not a burner likes to /exec
+local mod = init_mod();
 require "lib_bulk_destroy";
 
 function sc(x)server_msg(PID_BROADCAST,tostring(x))end
@@ -148,4 +149,4 @@ function cmd.func()
 end
 --register_command(cmd);
 
-return {};
+return mod;

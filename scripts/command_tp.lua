@@ -1,4 +1,5 @@
 -- command_tp.lua -- Teleport people around.
+local mod = init_mod();
 
 -- TODO: for crap-positiondata, should it just ignore moving too far? legitimate players'll get synced correctly anyway, so it's counter-productive to teleport them once more -- illegitimate ones get to have fun
 
@@ -31,4 +32,4 @@ end
 register_command(cmd, mod);
 
 -- TODO: do i need to keep an upvalue for mod?
-return {};
+return mod;

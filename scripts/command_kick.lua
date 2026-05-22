@@ -1,4 +1,5 @@
 -- command_kick.lua -- Remove a silly player.
+local mod = init_mod();
 
 local kicked_msg = {
 	en="%(name) was kicked"
@@ -16,4 +17,4 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
-return {};
+return mod;

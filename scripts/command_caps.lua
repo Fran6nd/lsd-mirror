@@ -1,4 +1,5 @@
 -- command_caps.lua -- Grant and revoke arbitrary caps
+local mod = init_mod();
 
 local cmd = {name="grantcap", caps="caps", fakepid=true, usage="player caps...", desc="Give a player arbitrary caps."};
 function cmd.func(pid, argv)
@@ -22,4 +23,4 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
-return {};
+return mod;

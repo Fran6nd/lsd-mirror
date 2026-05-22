@@ -1,4 +1,5 @@
 -- command_cli.lua -- Fingerprint random people!
+local mod = init_mod();
 
 local no_cli_msg = {
 	en="%(name): not reported"
@@ -67,4 +68,4 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
-return {};
+return mod;

@@ -1,4 +1,5 @@
 -- command_savemap.lua -- Output a VXL file into a predetermined directiory
+local mod = init_mod();
 
 getcfg("command_savemap_basedir", "rw/maps/");
 getcfg("command_savemap_suffix", ".vxl");
@@ -32,4 +33,4 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
-return {};
+return mod;

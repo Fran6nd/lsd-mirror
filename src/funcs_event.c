@@ -235,6 +235,7 @@ static void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor
 
 	switch (st->p[pid].idChar) {
 	case 'B':
+	case 'K':
 		/* Tigerspades usually identifies as >=0.1.6, though was 0.1.5 when UTF-8 was introduced */
 		st->p[pid].bugMask |= BS_BUG_INFLOOR | BS_BUG_NOSHORTPLAYER | BS_BUG_SCREWED_DISCONNECT_DATA | QUIRK_OS_CP437 |
 		(major >= 0 && minor >= 1 && patch >= 6 ? QUIRK_UTF8 : QUIRK_ASCII);

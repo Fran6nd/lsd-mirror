@@ -2,8 +2,41 @@
 package.path = "./scripts/?.lua"
 package.cpath = "./exec/?.so"
 
+-- TODO: rip out most logging from the C core and implement it as a separate module
+function color_to_ansi(str)
+	local origsiz = #str;
+	local teamcolor = {get_team_color(1), get_team_color(2)};
+
+	str = string.gsub(str, "\r", "\n");
+	str = string.gsub(str, "[\x0b\x0c\x0e-\x1f]", function(chr) return string.char(0x5e, string.byte(chr)+64); end);
+	str = string.gsub(str, "\x01", "\x1b[38;2;"..teamcolor[1].r..";"..teamcolor[1].g..";"..teamcolor[1].b.."m");
+	str = string.gsub(str, "\x02", "\x1b[38;2;"..teamcolor[2].r..";"..teamcolor[2].g..";"..teamcolor[2].b.."m");
+	str = string.gsub(str, "\x03", "\x1b[35m");
+	str = string.gsub(str, "\x04", "\x1b[31m");
+	str = string.gsub(str, "\x05", "\x1b[32m");
+	str = string.gsub(str, "\x06", "\x1b[0m");
+	str = string.gsub(str, "\x07", "\x1b[90m");
+	str = string.gsub(str, "\x08a", "\x1b[1m<RIFLE>\x1b[0m");
+	str = string.gsub(str, "\x08b", "\x1b[1m<SMG>\x1b[0m");
+	str = string.gsub(str, "\x08c", "\x1b[1m<SHOTGUN>\x1b[0m");
+	str = string.gsub(str, "\x08d", "\x1b[1m<HEADSHOT>\x1b[0m");
+	str = string.gsub(str, "\x08e", "\x1b[1m<SPADE>\x1b[0m");
+	str = string.gsub(str, "\x08f", "\x1b[1m<GRENADE>\x1b[0m");
+	str = string.gsub(str, "\x08g", "\x1b[1m<FALL>\x1b[0m");
+	str = string.gsub(str, "\x08h", "\x1b[1m<TEAMSWITCH>\x1b[0m");
+	str = string.gsub(str, "\x08i", "\x1b[1m<GUNSWITCH>\x1b[0m");
+	str = string.gsub(str, "\x08j", "\x1b[1m<NOSCOPE>\x1b[0m");
+	str = string.gsub(str, "\x08", "");
+
+	if (#str ~= origsiz) then
+		return str.."\x1b[0m";
+	end
+
+	return str;
+end
+
 function log(fmt, ...)
-	io.stderr:write(string.format(fmt.."\n", ...));
+	io.stderr:write(color_to_ansi(string.format(fmt.."\n", ...)));
 end
 server.log = log;
 
@@ -119,6 +152,7 @@ local function destroy_cat(chain, tbl, chainname)
 	end
 	end
 end
+server.register = register;
 
 function register(module)
 	-- TODO: force modules to return tables
@@ -179,6 +213,7 @@ function unregister(module, no_rm)
 		error(err, 2);
 	end
 end
+server.unregister = unregister;
 
 -- TODO: remove dependency on require
 function load(modname)

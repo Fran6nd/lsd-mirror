@@ -42,7 +42,7 @@ function cmd.func(pid, argv)
 		spec(pid);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 function mod.on_unload()
 	for i in piditer(PID_BROADCAST) do

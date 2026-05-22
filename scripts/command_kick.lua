@@ -14,6 +14,6 @@ function cmd.func(pid, argv)
 	l10n_send_chat(PID_BROADCAST, kicked_msg, {name=get_name(who)});
 	disconnect(who, 2);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return {};

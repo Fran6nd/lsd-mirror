@@ -202,7 +202,7 @@ function cmd.func(pid)
 		l10n_send_chat(pid, not_holding_msg);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 function mod.after.after_player_destroy(pid)
 	try_drop(pid);

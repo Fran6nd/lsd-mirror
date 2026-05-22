@@ -19,7 +19,7 @@ function cmd.func()
 		end
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="reloadall", caps="modutils", fakepid=true, usage="module", desc="Reload all registered modules."};
 function cmd.func(pid, argv)
@@ -41,7 +41,7 @@ function cmd.func(pid, argv)
 		end
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: mod.cmds?
 local cmd = {name="lsmod", caps="modutils", fakepid=true, desc="Crusty listing of all loaded modules."};
@@ -50,19 +50,19 @@ function cmd.func(pid)
 		server_msg(pid, tostring(y.name or y));
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="load", caps="modutils", fakepid=true, usage="module", desc="Dynamically load a module."};
 function cmd.func(pid, argv)
 	unreg(argv[1]);
 	load(argv[1]);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="unload", caps="modutils", fakepid=true, usage="module", desc="Dynamically unload a module."};
 function cmd.func(pid, argv)
 	unreg(argv[1]);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return {};

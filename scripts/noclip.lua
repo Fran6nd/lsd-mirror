@@ -98,6 +98,6 @@ function cmd.func(pid)
 	clips[pid] = not clips[pid];
 	jumpctr[pid] = 0;
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return mod;

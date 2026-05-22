@@ -17,4 +17,4 @@ function cmd.func(pid, argv)
 		l10n_send_chat(player, pm_msg, {name=get_name(pid), msg=table.concat(argv, " ", 2)});
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);

@@ -90,7 +90,7 @@ function cmd.func(pid, argv)
 	revtargets[player][pid] = true;
 	l10n_send_chat(pid, an_msg, {player=get_name(player)});
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 --[[
 struct PacketHit {

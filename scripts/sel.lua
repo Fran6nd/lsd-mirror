@@ -185,7 +185,7 @@ function cmd.func(pid, argv)
 	sel_end[pid] = nil;
 	l10n_send_chat(pid, sel_begin_msg);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name={"selstart", "sel1"}, caps="sel", usage="[x y z]", desc="Set the start of a selection."};
 function cmd.func(pid, argv)
@@ -206,7 +206,7 @@ function cmd.func(pid, argv)
 		l10n_send_chat(pid, sel_start_done_msg, sel_start[pid]);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="sel1c", caps="sel", desc="Raycast the start of a selection."};
 function cmd.func(pid, argv)
@@ -227,7 +227,7 @@ function cmd.func(pid, argv)
 	sel_start[pid] = castpos;
 	l10n_send_chat(pid, sel_start_done_msg, sel_start[pid]);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="sel1h", caps="sel", desc="Set the start of a selection to your head's position."};
 function cmd.func(pid, argv)
@@ -240,7 +240,7 @@ function cmd.func(pid, argv)
 	sel_start[pid] = {x=math.floor(pos.x), y=math.floor(pos.y), z=math.floor(pos.z)};
 	l10n_send_chat(pid, sel_start_done_msg, sel_start[pid]);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name={"selend", "sel2"}, caps="sel", usage="[x y z]", desc="Set the end of a selection."};
 function cmd.func(pid, argv)
@@ -260,7 +260,7 @@ function cmd.func(pid, argv)
 		l10n_send_chat(pid, sel_end_done_msg, sel_end[pid]);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="sel2c", caps="sel", desc="Raycast the end of a selection."};
 function cmd.func(pid, argv)
@@ -280,7 +280,7 @@ function cmd.func(pid, argv)
 	sel_end[pid] = castpos;
 	l10n_send_chat(pid, sel_end_done_msg, sel_end[pid]);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="sel2h", caps="sel", desc="Set the end of a selection to your head's position."};
 function cmd.func(pid, argv)
@@ -293,7 +293,7 @@ function cmd.func(pid, argv)
 	sel_end[pid] = {x=math.floor(pos.x), y=math.floor(pos.y), z=math.floor(pos.z)};
 	l10n_send_chat(pid, sel_end_done_msg, sel_end[pid]);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: unsel -> selstop?
 local cmd = {name="unsel", caps="sel", desc="Stop a selection."};
@@ -304,7 +304,7 @@ function cmd.func(pid, argv)
 	sel_start[pid] = nil;
 	sel_end[pid] = nil;
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name={"selshape", "selsh"}, caps="sel", usage="shape", desc="Change selection shape."};
 function cmd.func(pid, argv)
@@ -318,7 +318,7 @@ function cmd.func(pid, argv)
 
 	sel_shape[pid] = argv[1];
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name={"selshapefn", "selshfn"}, caps="sel", usage="lua", desc="Change \"fn\" selection shape. Does not parse args."};
 function cmd.func(pid, argv, msg)
@@ -332,14 +332,14 @@ function cmd.func(pid, argv, msg)
 
 	sel_shapefn[pid] = func;
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name={"selnoise", "selns"}, caps="sel", usage="noise", desc="Change selection noise."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 	sel_noise[pid] = math.floor(get_arg_num_range("noise", pid, cmd, argv[1], 0, math.huge));
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: nuke PID_COLOR_ANONYMOUS
 PID_COLOR_ANONYMOUS=31;
@@ -390,7 +390,7 @@ function cmd.func(pid, argv)
 		end
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name={"selclobber", "selcb"}, caps="sel", desc="Clobber over everything in your selection to match the current shape."};
 function cmd.func(pid, argv)
@@ -418,7 +418,7 @@ function cmd.func(pid, argv)
 		end
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local function linex(start, endp)
 	for x=start.x,endp.x,50 do
@@ -500,7 +500,7 @@ function cmd.func(pid, argv)
 		end
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local function do_rm(pid)
 	-- TODO: range iter for single points, this is a mess
@@ -564,7 +564,7 @@ function cmd.func(pid, argv)
 
 	do_rm(pid);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: handle voxlap
 local cmd = {name="selpaint", caps="sel", desc="Set color of all blocks in a box."};
@@ -589,7 +589,7 @@ function cmd.func(pid, argv)
 		end
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local dirmap = {
 	["-x"]={x=-1, y= 0, z= 0},
@@ -727,13 +727,13 @@ local cmd = {name="selcpy", caps="sel", usage="[times] [direction]", desc="Dupli
 function cmd.func(pid, argv)
 	do_selcpy(cmd, pid, argv, is_solid, get_map_block_color);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="reselcpy", caps="sel", usage="[times] [direction]", desc="Duplicate the selection in a direction a certain number of times, then select the duplicated area."};
 function cmd.func(pid, argv)
 	sel_start[pid], sel_end[pid] = do_selcpy(cmd, pid, argv, is_solid, get_map_block_color);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local function do_selmv(pid, cmd, off)
 	require_sel(pid);
@@ -948,7 +948,7 @@ function cmd.func(pid, argv)
 
 	do_selmv(pid, cmd, off);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="selmvd", caps="sel", usage="dist", desc="Move the selection dist blocks in the direction you're facing, then select the moved area."};
 function cmd.func(pid, argv)
@@ -964,7 +964,7 @@ function cmd.func(pid, argv)
 
 	do_selmv(pid, cmd, off);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local axismap = {
 	     x="x",      y="y",      z="z",
@@ -1013,7 +1013,7 @@ function cmd.func(pid, argv)
 
 	do_selswiz(pid, cmd, swiz, swizflip);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 function mod.on_block_action(pid, pos, type)
 	if (type <= 1 and sel[pid]) then

@@ -97,7 +97,7 @@ function cmd.func(pid, argv)
 
 	server_msg(pid, line);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="apropos", fakepid=true, usage="pattern", desc="Filter through the list of commands. Does not parse arguments."};
 function cmd.func(pid, argv, msg)
@@ -112,7 +112,7 @@ function cmd.func(pid, argv, msg)
 		end
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: should /help display usage for unseen commands? their existence can be confirmed by just attempting to run it, but /help denies it
 local cmd = {name={"help", "man"}, fakepid=true, usage="command", desc="Display the invocation and description of a command."};
@@ -134,6 +134,6 @@ function cmd.func(pid, argv)
 		l10n_send_chat(pid, help_cmds_msg);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return mod;

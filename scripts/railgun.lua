@@ -101,7 +101,7 @@ local cmd = {name="bore"};
 function cmd.func(pid)
 	cast(get_position(pid), get_orientation(pid));
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: better combined before/after?
 function mod.on_mouse_input(pid, bitmask)

@@ -30,6 +30,6 @@ function cmd.func(pid, argv)
 	file:close();
 	os.rename(tmppath, path);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return {};

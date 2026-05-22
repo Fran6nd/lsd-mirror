@@ -142,13 +142,13 @@ local cmd = {name="heaven", caps="heaven", fakepid=true, usage="image", desc="Pa
 function cmd.func(pid, argv)
 	do_heaven(pid, cmd, argv);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="forceheaven", caps="forceheaven", fakepid=true, usage="image", desc="Paint an image on the babel platform regardless of the timer's opinion."};
 function cmd.func(pid, argv)
 	do_heaven(pid, cmd, argv, true);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local function patesc(str)
 	return string.gsub(str, "[$^()%%.%[%]*+-?]", "%%%0").."$";
@@ -190,7 +190,7 @@ function cmd.func(pid, argv)
 
 	server_msg(pid, line);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local function place_next()
 	local pos = table.remove(placepos);

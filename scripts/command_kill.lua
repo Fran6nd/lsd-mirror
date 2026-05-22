@@ -35,6 +35,6 @@ function cmd.func(pid, argv)
 		kill(tokill, 0, tokill);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return {};

@@ -33,6 +33,6 @@ function cmd.func(pid, argv)
 	tbl.hex = string.format("#%02x%02x%02x", tbl.r, tbl.g, tbl.b);
 	l10n_send_chat(pid, color_msg, tbl);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return {};

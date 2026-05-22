@@ -20,6 +20,6 @@ local cmd = {name="jp", caps="jp", desc="Press sneak (V) to fly upwards."};
 function cmd.func(pid)
 	flies[pid] = not flies[pid];
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return mod;

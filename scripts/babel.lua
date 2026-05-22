@@ -342,7 +342,7 @@ function cmd.func(pid)
 		-- TODO: add delay before intel pickup, maybe put in dedicated script
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- Drop intel on kill, disconnect, etc.
 -- TODO: something seems very wrong about after.after_*

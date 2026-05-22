@@ -53,7 +53,7 @@ function cmd.func(pid, argv)
 		server_msg(pid, y);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- If you just want to let someone use e.g. /advance, give that someone the "cmd:advance" cap
 local cmd = {name="queuemap", caps="map_queue", fakepid=true, usage="path", desc="Append a map to the temporary map queue."};
@@ -61,14 +61,14 @@ function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 	table.insert(nextqueue, argv[1]);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name={"setmapqueue", "map"}, caps="map_queue", fakepid=true, usage="path...", desc="Override the temporary map queue. Later maps get played first."};
 function cmd.func(pid, argv)
 	argv[0] = nil;
 	nextqueue = argv;
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: on_game_end -> end_game?
 local cmd = {name={"advance", "advancemap"}, caps="map_queue", fakepid=true, desc="Load the next queued map."};
@@ -76,7 +76,7 @@ function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
 	on_game_end();
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="loadmap", caps="map_queue", fakepid=true, usage="path", desc="Immediately load the map at the specified path."};
 function cmd.func(pid, argv)
@@ -85,6 +85,6 @@ function cmd.func(pid, argv)
 	table.insert(nextqueue, argv[1]);
 	on_game_end();
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return mod;

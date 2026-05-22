@@ -9,7 +9,7 @@ function cmd.func(pid, argv)
 		grant_cap(player, y);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="dropcap", caps="caps", fakepid=true, usage="player caps...", desc="Remove arbitrary caps from a player."};
 function cmd.func(pid, argv)
@@ -20,6 +20,6 @@ function cmd.func(pid, argv)
 		drop_cap(player, y);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return {};

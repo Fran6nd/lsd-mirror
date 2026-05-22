@@ -341,7 +341,7 @@ function cmd.func(pid, argv)
 
 	bans_ban_player(pid, banpid, duration, comment, bans_default_caps);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="bcban", caps="bcban", fakepid=true, usage="player duration comment badcaps...", desc="Ban a naughty player with custom badcaps."};
 function cmd.func(pid, argv)
@@ -354,7 +354,7 @@ function cmd.func(pid, argv)
 
 	bans_ban_player(pid, banpid, duration, comment, badcaps);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="capban", caps="capban", fakepid=true, usage="player duration comment caps...", desc="Ban a naughty (nice?) player with custom caps."};
 function cmd.func(pid, argv)
@@ -367,7 +367,7 @@ function cmd.func(pid, argv)
 
 	bans_ban_player(pid, banpid, duration, comment, caps);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: allow passing player name to it (instead of hardcoded nil)?
 local cmd = {name="banip", caps="bans", fakepid=true, usage="range duration comment...", desc="Ban a naughty IPv4 address or CIDR range."};
@@ -380,7 +380,7 @@ function cmd.func(pid, argv)
 
 	bans_ban_addr(pid, starta, enda, nil, duration, comment, bans_default_caps);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="bcbanip", caps="bcban", fakepid=true, usage="range duration comment badcaps...", desc="Ban a naughty IPv4 address or CIDR range with custom badcaps."};
 function cmd.func(pid, argv)
@@ -393,7 +393,7 @@ function cmd.func(pid, argv)
 
 	bans_ban_addr(pid, starta, enda, nil, duration, comment, badcaps);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="capbanip", caps="capban", fakepid=true, usage="range duration comment caps...", desc="Ban a naughty (nice?) IPv4 address or CIDR range with custom caps."};
 function cmd.func(pid, argv)
@@ -406,7 +406,7 @@ function cmd.func(pid, argv)
 
 	bans_ban_addr(pid, starta, enda, nil, duration, comment, caps);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="unban", caps="bans", fakepid=true, usage="id", desc="Revoke a given ban ID."};
 function cmd.func(pid, argv)
@@ -422,7 +422,7 @@ function cmd.func(pid, argv)
 		check_bans(i);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="reban", caps="bans", fakepid=true, usage="id", desc="Unrevoke a given ban ID."};
 function cmd.func(pid, argv)
@@ -438,7 +438,7 @@ function cmd.func(pid, argv)
 		check_bans(i);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: print addr range?
 local function print_query(pid, now, id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps)
@@ -470,7 +470,7 @@ function cmd.func(pid, argv)
 		end
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="querybanname", caps="bans", fakepid=true, usage="name", desc="Query all unexpired, unrevoked bans matching a given player name (case-insensitive)."};
 function cmd.func(pid, argv, msg)
@@ -484,7 +484,7 @@ function cmd.func(pid, argv, msg)
 		end
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="queryallbanaddr", caps="bans", fakepid=true, usage="range", desc="Query all bans matching a given IPv4 address or CIDR range."};
 function cmd.func(pid, argv)
@@ -496,7 +496,7 @@ function cmd.func(pid, argv)
 		print_query(pid, now, id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="queryallbanname", caps="bans", fakepid=true, usage="name", desc="Query all bans matching a given player name (case-insensitive)."};
 function cmd.func(pid, argv, msg)
@@ -508,6 +508,6 @@ function cmd.func(pid, argv, msg)
 		print_query(pid, now, id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return mod;

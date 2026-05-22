@@ -197,7 +197,7 @@ function cmd.func(pid, argv)
 		l10n_send_chat(pid, name_taken_msg);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="totpgen", caps="login", fakepid=true, usage="[algorithm] [period] [digits]", desc="Setup TOTP for your account."};
 function cmd.func(pid, argv)
@@ -230,7 +230,7 @@ function cmd.func(pid, argv)
 	grant_cap(pid, "totpverify");
 	auth_granted[pid].totpverify = true;
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="totprm", caps="login", fakepid=true, desc="Remove TOTP from your account."};
 function cmd.func(pid, argv)
@@ -238,7 +238,7 @@ function cmd.func(pid, argv)
 
 	assert(rmtotp(auth_users[pid]) == 1, "totprm: rows updated != 1");
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="totpverify", caps="totpverify", fakepid=true, sensitive=true, usage="otp", desc="Finish setting up TOTP for your account."};
 function cmd.func(pid, argv)
@@ -258,7 +258,7 @@ function cmd.func(pid, argv)
 
 	l10n_send_chat(pid, totpverify_okay_msg);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="authcaps", caps="authcaps", fakepid=true, usage="user caps...", desc="Set an account's capabilities."};
 function cmd.func(pid, argv)
@@ -269,7 +269,7 @@ function cmd.func(pid, argv)
 		l10n_send_chat(pid, no_user_msg);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: varargs?
 local cmd = {name="chpasswd", caps="login", fakepid=true, sensitive=true, usage="password", desc="Change your account's password."};
@@ -277,7 +277,7 @@ function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 	assert(setpasswd(hash_pass(pid, auth_users[pid], argv[1]), auth_users[pid]) == 1, "chpasswd: rows updated != 1");
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local function do_logout(pid)
 	if (auth_granted[pid]) then
@@ -348,7 +348,7 @@ function cmd.func(pid, argv)
 	do_login(pid, vals[1], vals[2]);
 	server_msg(pid, get_id_str(pid));
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="forcelogin", caps="forcelogin", fakepid=true, usage="name", desc="Barge into an account."};
 function cmd.func(pid, argv)
@@ -364,19 +364,19 @@ function cmd.func(pid, argv)
 	do_login(pid, vals[1], vals[2]);
 	server_msg(pid, get_id_str(pid));
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local cmd = {name="logout", caps="login", fakepid=true, desc="Log out of your account."};
 function cmd.func(pid)
 	do_logout(pid);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: move user to caps so we don't clear everything on unload?
 local cmd = {name="id", caps="login", fakepid=true, desc="Print your account name and groups."};
 function cmd.func(pid, argv)
 	server_msg(pid, get_id_str(pid));
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return mod;

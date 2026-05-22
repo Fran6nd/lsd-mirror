@@ -30,7 +30,7 @@ function cmd.func(pid, argv)
 		});
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 function mod.on_player_spawn(pid)
 	if (spawnpos[pid]) then

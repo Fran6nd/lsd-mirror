@@ -65,6 +65,6 @@ function cmd.func(pid, argv)
 		end
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return {};

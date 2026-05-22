@@ -114,14 +114,14 @@ function cmd.func(pid)
 	apocs[pid] = apocs[pid] - 1;
 	start_apoc(pid);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: allow console to start apocs
 local cmd = {name="forceapoc", caps="forceapoc", desc="Summon an apoc without bothering to check for killstreak."};
 function cmd.func(pid)
 	start_apoc(pid);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 local function is_prime(x)
 	if (x % 2 == 0) then

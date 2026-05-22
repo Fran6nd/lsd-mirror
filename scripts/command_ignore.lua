@@ -18,7 +18,7 @@ function cmd.func(pid, argv)
 	local player = get_arg_pid("player", pid, cmd, argv[1]);
 	cmd_ignore_ignored[pid][player] = not cmd_ignore_ignored[pid][player];
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: port mute to use send_chat?
 function mod.send_chat(pid, msg, type, from)

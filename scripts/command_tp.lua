@@ -28,7 +28,7 @@ function cmd.func(pid, argv)
 
 	set_position(from, get_position(to));
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: do i need to keep an upvalue for mod?
 return {};

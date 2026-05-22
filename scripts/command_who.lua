@@ -10,6 +10,6 @@ function cmd.func(pid, argv, msg)
 		end
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return {};

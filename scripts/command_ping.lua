@@ -28,6 +28,6 @@ function cmd.func(pid, argv)
 
 	l10n_send_chat(pid, ping_msg, {name=get_name(who), rtt=get_round_trip_time(who)});
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return {};

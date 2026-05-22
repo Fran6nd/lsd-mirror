@@ -29,7 +29,7 @@ function cmd.func(pid, argv)
 	ratio[player].ratio = string.format("%.2f", ratio[player].kills / (ratio[player].deaths + 1));
 	l10n_send_chat(pid, ratio_msg, ratio[player]);
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 function mod.after.kill(pid, type, killer)
 	-- TODO: should killing teammates increase score? it does as of now

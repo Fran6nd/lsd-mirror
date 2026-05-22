@@ -55,7 +55,7 @@ local cmd = {name={"togglebuild", "tb"}, caps="toggles", fakepid=true, usage="pl
 function cmd.func(pid, argv)
 	toggle(pid, cmd, argv, "badcap:nobuild");
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: grenade damage
 -- TODO: wonder how that would work with apoc
@@ -63,13 +63,13 @@ local cmd = {name={"togglekill", "tk"}, caps="toggles", fakepid=true, usage="pla
 function cmd.func(pid, argv)
 	toggle(pid, cmd, argv, "badcap:nodamage");
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: muted player should probably be able to run commands
 local cmd = {name={"mute", "togglechat", "tc"}, caps="toggles", fakepid=true, usage="player", desc="Shut a noisy player up."};
 function cmd.func(pid, argv)
 	toggle(pid, cmd, argv, "badcap:mute");
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return mod;

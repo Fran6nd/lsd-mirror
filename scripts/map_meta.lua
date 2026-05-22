@@ -77,6 +77,6 @@ function cmd.func(pid)
 		server_msg(pid, x);
 	end
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return mod;

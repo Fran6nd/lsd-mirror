@@ -56,6 +56,6 @@ function cmd.func(pid)
 	kits[pid] = kits[pid] - 1;
 	set_hp(pid, math.min(hp + medkit_heal, 100));
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 return mod;

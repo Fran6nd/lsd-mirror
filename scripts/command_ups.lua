@@ -25,7 +25,7 @@ function cmd.func(pid, argv)
 
 	rate[pid] = 60 / freq;
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 -- TODO: this assumes the server ticks at 60 Hz and that nobody else calls send_player_update. . .
 function mod.send_player_update(pid)

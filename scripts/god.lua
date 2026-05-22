@@ -7,7 +7,7 @@ function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
 	god[pid] = not god[pid];
 end
-register_command(cmd);
+register_command(cmd, mod);
 
 function mod.damage_player(pid, ...)
 	if (not god[pid]) then

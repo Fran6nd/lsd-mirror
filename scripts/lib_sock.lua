@@ -7,6 +7,7 @@ local buffer = require("string.buffer");
 pcall(function()ffi.cdef[[
 int create_unix_sock(const char *path);
 int create_tcp_sock(const char *listenaddr, const char *port);
+int create_tcp_client_sock(const char *connectaddr, const char *port);
 int accept_sock(int fd);
 void close_sock(int fd);
 ssize_t send_sock(int fd, const char *buf, size_t len);
@@ -86,6 +87,10 @@ function rmcon(sock, cid)
 	un.close_sock(sock.cons[cid].fd);
 	-- TODO: you can surely optimize this better
 	sock.cons[cid] = nil;
+
+	if (sock.client) then
+		socks[sock] = nil;
+	end
 end
 
 function websock_invalid_hdrs(sock, cid)
@@ -269,14 +274,39 @@ function sock_new_tcp(listenaddr, port)
 		error("socket: <some error>");
 	end
 
-	local sock = {fd=fd, path=path, cons={}, on_recv=on_recv, on_line=on_line, on_connect=on_connect, after_connect=after_connect, on_disconnect=on_disconnect};
+	local sock = {fd=fd, cons={}, on_recv=on_recv, on_line=on_line, on_connect=on_connect, after_connect=after_connect, on_disconnect=on_disconnect};
 	socks[sock] = true;
+	return sock;
+end
+
+function sock_new_tcp_client(connectaddr, port, funcs)
+	funcs = funcs or {};
+	fd = un.create_tcp_client_sock(connectaddr, tostring(port));
+	if (fd == -1) then
+		-- TODO: return errno?
+		error("socket: <some error>");
+	end
+
+	local sock = {client=true, fd=fd, cons={}, on_recv=funcs.on_recv or on_recv, on_line=funcs.on_line or on_line, on_connect=funcs.on_connect or on_connect, after_connect=funcs.after_connect or after_connect, on_disconnect=funcs.on_disconnect or on_disconnect};
+	socks[sock] = true;
+
+	local con = {fd=fd, buf=buffer.new(), unsent=buffer.new()};
+	local cid = sock.on_connect(sock, con);
+	sock.cons[cid] = con;
+	sock.after_connect(sock, cid);
+
 	return sock;
 end
 
 function sock_close(sock)
 	for cid,con in pairs(sock.cons) do
+		local confd = sock.cons[cid].fd;
+
 		rmcon(sock, cid);
+
+		if (confd == sock.fd) then
+			return;
+		end
 	end
 
 	un.close_sock(sock.fd);
@@ -318,16 +348,18 @@ end
 function mod.after.tick()
 	for sock,_ in pairs(socks) do
 		-- TODO: convert a lot of ipairs into pairs, x/y into <something useful>?
-		while (true) do
-			local newcon = un.accept_sock(sock.fd);
-			if (newcon == -1) then
-				break;
-			end
+		if (not sock.client) then
+			while (true) do
+				local newcon = un.accept_sock(sock.fd);
+				if (newcon == -1) then
+					break;
+				end
 
-			local con = {fd=newcon, buf=buffer.new(), unsent=buffer.new()};
-			local cid = sock.on_connect(sock, con);
-			sock.cons[cid] = con;
-			sock.after_connect(sock, cid);
+				local con = {fd=newcon, buf=buffer.new(), unsent=buffer.new()};
+				local cid = sock.on_connect(sock, con);
+				sock.cons[cid] = con;
+				sock.after_connect(sock, cid);
+			end
 		end
 
 		for cid,con in pairs(sock.cons) do

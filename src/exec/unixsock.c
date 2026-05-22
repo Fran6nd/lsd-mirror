@@ -80,6 +80,33 @@ int create_tcp_sock(const char *listenaddr, const char *port) {
 	return fd;
 }
 
+int create_tcp_client_sock(const char *connectaddr, const char *port) {
+	int fd, status;
+	struct addrinfo hints = {0};
+	struct addrinfo *res;
+
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+
+	if ((status = getaddrinfo(connectaddr, port, &hints, &res)) != 0)
+		return -1;
+
+	if ((fd = socket(res->ai_family, res->ai_socktype | SOCK_CLOEXEC | SOCK_NONBLOCK, res->ai_protocol)) == -1) {
+		freeaddrinfo(res);
+		return -1;
+	}
+
+        if (connect(fd, res->ai_addr, res->ai_addrlen) == -1 && errno != EINPROGRESS) {
+		close_sock(fd);
+		freeaddrinfo(res);
+		return -1;
+	}
+
+	freeaddrinfo(res);
+
+	return fd;
+}
+
 int accept_sock(int fd) {
 	int con = accept(fd, NULL, NULL);
 

@@ -8,6 +8,11 @@
 local mod = init_mod();
 getcfg("cap_groups", {
 	default = {
+		-- Remove "default_commands" if you want all commands to be forbidden
+		-- by default -- you can add individual "cmd:" caps here in its place
+		-- to make specific commands available again
+		"default_commands",
+
 		-- auth.lua account creation
 		"register"
 	},
@@ -182,8 +187,8 @@ local need_cap_msg = {
 
 -- Abusing register to interface cleanly with commands.lua
 function mod.try_run_command(cmd, pid, argv, msg)
-	if (cmd.caps ~= nil and not has_cap(pid, cmd.caps) and not has_cap(pid, "cmd:"..get_cmd_canonical_name(cmd))) then
-		l10n_send_chat(pid, need_cap_msg, {cap=cmd.caps});
+	if (not (cmd.caps == nil and has_cap(pid, "default_commands")) and not has_cap(pid, cmd.caps) and not has_cap(pid, "cmd:"..get_cmd_canonical_name(cmd))) then
+		l10n_send_chat(pid, need_cap_msg, {cap=cmd.caps or "cmd:"..get_cmd_canonical_name(cmd)});
 		return;
 	end
 
@@ -195,7 +200,7 @@ function mod.can_see_command(pid, cmd)
 		return false;
 	end
 
-	return cmd.caps == nil or has_cap(pid, cmd.caps) or has_cap(pid, "cmd:"..get_cmd_canonical_name(cmd));
+	return (cmd.caps == nil and has_cap(pid, "default_commands")) or has_cap(pid, cmd.caps) or has_cap(pid, "cmd:"..get_cmd_canonical_name(cmd));
 end
 
 return mod;

@@ -1,15 +1,18 @@
 -- lib_l10n.lua -- Allow scripts to send chat in multiple languages
 local mod = init_mod();
 
+getcfg("l10n_default_lang", "en");
+getcfg("l10n_log_lang", "en");
+
 function mod.impl.l10n_get_lang(pid)
 	if (is_fakepid(pid)) then
-		return "en";
+		return l10n_default_lang;
 	end
 
 	local extlang = get_client_ext_language(pid);
 
 	if (#extlang == 0) then
-		return "en";
+		return l10n_default_lang;
 	end
 
 	if (#extlang == 5) then
@@ -39,6 +42,10 @@ function mod.impl.l10n_get_str_lang(lang, msgtab, interptab)
 	end
 
 	if (msg == nil) then
+		msg = msgtab[l10n_default_lang];
+	end
+
+	if (msg == nil) then
 		msg = msgtab["en"];
 	end
 
@@ -60,6 +67,10 @@ function mod.impl.l10n_send_chat(pid, msgtab, interptab)
 	for i in piditer(pid) do
 		server_msg(i, l10n_get_str_pid(i, msgtab, interptab));
 	end
+end
+
+function mod.impl.l10n_log(msgtab, interptab)
+	log("%s", l10n_get_str_lang(l10n_log_lang, msgtab, interptab));
 end
 
 return mod;

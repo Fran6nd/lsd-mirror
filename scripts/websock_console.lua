@@ -5,6 +5,26 @@ local sock;
 getcfg("websock_console_addr", nil);
 getcfg("websock_console_port", ENET_PORT);
 
+local tcp_con_log_msg = {
+	en="wscon: got tcp connection (#%(pid))"
+};
+
+local tcp_con_closed_log_msg = {
+	en="wscon: tcp connection #%(pid) closed"
+};
+
+local con_log_msg = {
+	en="wscon: connected: %(name) (#%(pid))"
+};
+
+local disconnected_log_msg = {
+	en="wscon: disconnected: %(name) (#%(pid))"
+};
+
+local cmd_log_msg = {
+	en="wscon: %(name) (#%(pid)): /%(cmd)"
+};
+
 local function on_connect(sock, con)
 	local pid = new_fakepid();
 	websock_init_con(con);
@@ -13,29 +33,29 @@ end
 
 local function on_disconnect(sock, pid)
 	if (sock.cons[pid].wshdr) then
-		log("wscon: tcp connection #%u closed", pid);
+		l10n_log(tcp_con_closed_log_msg, {pid=pid});
 	else
-		log("wscon: disconnected: %s (#%u)", get_name(pid), pid);
+		l10n_log(disconnected_log_msg, {name=get_name(pid), pid=pid});
 	end
 	free_fakepid(pid);
 end
 
 local function after_connect(sock, pid)
 	-- TODO: log ipaddr (v4/v6)
-	log("wscon: got tcp connection (#%u)", pid);
+	l10n_log(tcp_con_log_msg, {pid=pid});
 end
 
 local function on_ws_recv(sock, pid)
 	local line = sock.cons[pid].wsbuf:get();
 	if (#line ~= 0) then
-		log("wscon: %s (#%u): /%s", get_name(pid), pid, line);
+		l10n_log(cmd_log_msg, {name=get_name(pid), pid=pid, cmd=line});
 		websock_send_con(sock.cons[pid], "> "..line.."\n");
 		handle_command(pid, line, true);
 	end
 end
 
 local function on_ws_connect(sock, pid)
-	log("wscon: connected: %s (#%u)", get_name(pid), pid);
+	l10n_log(con_log_msg, {name=get_name(pid), pid=pid});
 	on_fakepid_connect(pid);
 end
 

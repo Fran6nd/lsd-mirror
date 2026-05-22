@@ -35,6 +35,34 @@ getcfg("dd_dig_3x_winsize",      dd_default_winsize);
 getcfg("dd_shoot_winsize",       {[0]=dd_default_winsize, [1]=dd_default_winsize, [2]=dd_default_winsize});
 getcfg("dd_spadehit_winsize",    dd_default_winsize);
 
+local fastblock_log_msg = {
+	en="dd: prevented fast block placement from %(name) (#%(pid))"
+};
+
+local fast1dig_log_msg = {
+	en="dd: prevented fast 1x dig from %(name) (#%(pid))"
+};
+
+local fastbshot_log_msg = {
+	en="dd: prevented fast block shot from %(name) (#%(pid))"
+};
+
+local fast3dig_log_msg = {
+	en="dd: prevented fast 3x dig from %(name) (#%(pid))"
+};
+
+local fastbline_log_msg = {
+	en="dd: prevented fast block line placement from %(name) (#%(pid))"
+};
+
+local fast_spadehit_log_msg = {
+	en="dd: prevented fast spadehit from %(name) (#%(pid))"
+};
+
+local fast_pshot_log_msg = {
+	en="dd: prevented fast player shot from %(name) (#%(pid))"
+};
+
 local function length(vec)
 	return math.sqrt(vec.x*vec.x + vec.y*vec.y + vec.z*vec.z);
 end
@@ -175,18 +203,18 @@ function mod.early.on_block_action(pid, pos, type)
 	local gun = get_gun(pid);
 
 	if     (type == 0 and dd_prevent_fast_block_place and ratelimit(pid, block_place_timer, dd_block_place_freq, dd_block_place_winsize)) then
-		log("dd: prevented fast block placement from %s (#%u)", get_name(pid), pid);
+		l10n_log(fastblock_log_msg, {name=get_name(pid), pid=pid});
 		return;
 	elseif (type == 1 and tool == 0 and dd_prevent_fast_dig_1x and ratelimit(pid, dig_1x_timer, dd_dig_1x_freq, dd_dig_1x_winsize)) then
 		-- TODO: use science (protocol extensions?) to determine which blocks have been hit enough to be digged? [sic]
-		log("dd: prevented fast 1x dig from %s (#%u)", get_name(pid), pid);
+		l10n_log(fast1dig_log_msg, {name=get_name(pid), pid=pid});
 		return;
 	elseif (type == 1 and tool == 2 and dd_prevent_fast_shoot and ratelimit(pid, shoot_timer, dd_shoot_freq[gun], dd_shoot_winsize[gun], false, gun == 2)) then
-		log("dd: prevented fast block shot from %s (#%u)", get_name(pid), pid);
+		l10n_log(fastbshot_log_msg, {name=get_name(pid), pid=pid});
 		return;
 	elseif (type == 2 and dd_prevent_fast_dig_3x and ratelimit(pid, dig_3x_timer, dd_dig_3x_freq, dd_dig_3x_winsize)) then
 		-- TODO: tie in mouse_input here and ditch the future arg?(??)
-		log("dd: prevented fast 3x dig from %s (#%u)", get_name(pid), pid, true);
+		l10n_log(fast3dig_log_msg, get_name(pid), pid, true);
 		return;
 	end
 
@@ -195,7 +223,7 @@ end
 
 function mod.early.on_block_line(pid, startp, endp)
 	if (dd_prevent_fast_block_line_place and ratelimit(pid, block_place_timer, dd_block_place_freq, dd_block_place_winsize)) then
-		log("dd: prevented fast block line placement from %s (#%u)", get_name(pid), pid);
+		l10n_log(fastbline_log_msg, {name=get_name(pid), pid=pid});
 		return;
 	end
 
@@ -208,12 +236,12 @@ function mod.early.on_hit(pid, type, hitPlayer)
 
 	-- TODO: /an doesn't know it was denied
 	if (tool == 0 and dd_prevent_fast_spadehit and ratelimit(pid, spadehit_timer, dd_spadehit_freq, dd_spadehit_winsize)) then
-		log("dd: prevented fast spadehit from %s (#%u)", get_name(pid), pid);
+		l10n_log(fast_spadehit_log_msg, {name=get_name(pid), pid=pid});
 		return;
 	end
 
 	if (tool == 2 and dd_prevent_fast_shoot and ratelimit(pid, shoot_timer, dd_shoot_freq[gun], dd_shoot_winsize[gun], false, gun == 2)) then
-		log("dd: prevented fast player shot from %s (#%u)", get_name(pid), pid);
+		l10n_log(fast_pshot_log_msg, {name=get_name(pid), pid=pid});
 		return;
 	end
 

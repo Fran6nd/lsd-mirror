@@ -41,7 +41,7 @@ function mod.after.on_cap_grant(pid, cap)
 	end
 end
 
-local data_ver sel ban revoke unrevoke queryaddr queryname;
+local data_ver, sel, ban, revoke, unrevoke, queryaddr, queryname;
 
 local bans = pid_connected_table(function() return {}; end);
 local function add_ban(pid, id, tbl)

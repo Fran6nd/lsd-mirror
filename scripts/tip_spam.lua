@@ -6,7 +6,7 @@ local tip_spam_idx = 1;
 -- TODO: comma/dot ordering
 -- TODO: make wall scaling less annoying -- maybe depend on lastagreed and physics pos to be in a block? 
 getcfg("tips", {
-	"Press the L key to change team/weapon (but sometimes it's the comma or dot key)",
+	function() for i in piditer(PID_BROADCAST) do server_msg(i, "Press the "..(get_client_char(i) == string.byte('o') and "L" or "comma/dot").." key to change team/gun."); end end,
 	"Block color won't change? Try the arrow keys and E.",
 	"Use the right mouse button to place multiple blocks at a time.",
 	"Use /shutuptips if you're tired of getting tips. TODO: implement that and /tutor and maybe make /help an alias or associated",
@@ -16,17 +16,21 @@ getcfg("tips", {
 	"I hear gamebanana has some weapon skins -- just look for ones compatible with your client.",
 	"There are 3-ish popular clients: original (\"Voxlap\", sometimes incorrectly referred to as \"buildandshoot\"), OpenSpades, and BetterSpades."
 });
+getcfg("tip_frequency", 5*60);
 
 function mod.after.tick()
 	if (next_tip_spam == nil) then
-		next_tip_spam = get_time() + tip_frequency; -- TODO: why did i comment out the + tip_frequency
+		next_tip_spam = get_time() + tip_frequency;
 	end
 
 	if (get_time() >= next_tip_spam) then
 		local tip = tips[tip_spam_idx];
 
 		if (type(tip) == "function") then
-			server_msg(PID_BROADCAST, tip());
+			local ret = tip();
+			if (ret ~= nil) then
+				server_msg(PID_BROADCAST, tostring(ret));
+			end
 		else
 			server_msg(PID_BROADCAST, tip);
 		end

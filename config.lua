@@ -32,8 +32,7 @@ tips = {
 	"This is a worthless tip.",
 	"Did you learn something new today?",
 	"Use /APOC to die.",
-	"Press the L key to change teams (unless it's , or .)",
-	"TODO: client-conditional tips",
+	function() for i in piditer(PID_BROADCAST) do server_msg(i, "Press the "..(get_client_char(i) == string.byte('o') and "L" or "comma/dot").." key to change team/gun."); end end,
 	"Block color won't change? Try the arrow keys and E.",
 	"This is not Build and Shoot. This is ACE OF SPADES.",
 	"Some day I'll add a /tutor"

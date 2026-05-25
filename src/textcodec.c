@@ -221,6 +221,32 @@ static void on_chat(plid pid, const char *msg, unsigned type, struct State *st) 
 	free(utf8);
 }
 
+static void (*next_on_version)(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, const char *msg, size_t msglen, struct State *st);
+static void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, const char *msg, size_t msglen, struct State *st) {
+	char *utf8, *ptr;
+	size_t i;
+
+	/* By now server heuristics haven't determined presence of QUIRKs,
+	 * so it's assumed that the client has QUIRK_UTF8
+	 */
+	if (msg[0] == '\xff' && is_utf8_valid(msg+1))
+		return next_on_version(pid, idChar, major, minor, patch, msg+1, msglen, st);
+
+	utf8 = malloc(msglen*3);
+	if (utf8 == NULL)
+		ERR("malloc");
+
+	ptr = utf8;
+
+	/* QUIRK_OS_CP437 is assumed here */
+	for (i=0;i<msglen;i++)
+		ptr = utf8_encode(ptr, openspades_cp437_to_unicode[(unsigned char)msg[i]]);
+
+	next_on_version(pid, idChar, major, minor, patch, utf8, ptr-utf8, st);
+
+	free(utf8);
+}
+
 void hook_textcodec_late(struct State *st) {
 	next_send_chat = st->f.send_chat;
 	st->f.send_chat = send_chat;
@@ -228,5 +254,8 @@ void hook_textcodec_late(struct State *st) {
 
 void hook_textcodec_early(struct State *st) {
 	next_on_chat = st->f.on_chat;
+	next_on_version = st->f.on_version;
+
 	st->f.on_chat = on_chat;
+	st->f.on_version = on_version;
 }

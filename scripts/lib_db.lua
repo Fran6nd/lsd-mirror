@@ -169,6 +169,7 @@ end
 
 function mod.init_schema(db, schema, upgrade)
 	local checkexists = mod.prepare_1ret(db, "checkexists", "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = ?);");
+	upgrade = upgrade or {};
 
 	mod.transact(db, function()
 		mod.exec(db, schema);

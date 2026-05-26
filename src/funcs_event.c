@@ -242,7 +242,7 @@ static void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor
 		break;
 	case 'o':
 		/* TODO: do i want to unset QUIRK_UTF8 if not set in version-ext? */
-		st->p[pid].bugMask |= QUIRK_UTF8 | QUIRK_OS_CP437;
+		st->p[pid].bugMask |= QUIRK_UTF8 | QUIRK_OS_CP437 | QUIRK_OS_BACTION_CULL;
 
 		if (strstr(st->p[pid].verMsg, "ZeroSpades") || strstr(st->p[pid].verMsg, "IV of Spades"))
 			st->p[pid].bugMask |= BS_BUG_SCREWED_DISCONNECT_DATA;

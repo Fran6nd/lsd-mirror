@@ -412,6 +412,48 @@ static void destroyGrenadeVoxel(uint_fast32_t x,
 	*solids |= ctr;
 }
 
+static void send_cull(int32_t x, int32_t y, int32_t z, int noneighbor, struct State *st) {
+	plid i;
+	ivec3 pos;
+
+	if (!(x >= 0 && x < 512 && y >= 0 && y < 512 && z >= 0 && z < 62))
+		return;
+
+	pos.x = x;
+	pos.y = y;
+	pos.z = z;
+
+	if (st->globals.cullPersonality == CULL_PERSONALITY_OPENSPADES) {
+		if (noneighbor)
+		for (i=0;i<MAX_PLAYERS;i++) {
+			if (pid_matches(PID_BROADCAST, i, st) && !(st->p[i].bugMask & QUIRK_OS_BACTION_CULL))
+				st->f.send_block_action(i, pos, 1, 32, st);
+		}
+	} else {
+		if (!noneighbor) {
+			const int xoffs[6] = {-1,  1,  0,  0,  0,  0};
+			const int yoffs[6] = { 0,  0, -1,  1,  0,  0};
+			const int zoffs[6] = { 0,  0,  0,  0, -1,  1};
+			unsigned j;
+
+			for (j=0;j<6;j++) {
+				pos.x = x + xoffs[j];
+				pos.y = y + yoffs[j];
+				pos.z = z + zoffs[j];
+
+				if (pos.x >= 0 && pos.x < 512 && pos.y >= 0 && pos.y < 512 && pos.z >= 0 && pos.z < 62 && !get_solid3(pos.x, pos.y, pos.z, st))
+				for (i=0;i<MAX_PLAYERS;i++) {
+					if (pid_matches(PID_BROADCAST, i, st) && st->p[i].bugMask & QUIRK_OS_BACTION_CULL)
+						st->f.send_block_action(i, pos, 1, 32, st);
+				}
+			}
+		} else for (i=0;i<MAX_PLAYERS;i++) {
+			if (pid_matches(PID_BROADCAST, i, st) && st->p[i].bugMask & QUIRK_OS_BACTION_CULL)
+				st->f.send_block_action(i, pos, 1, 32, st);
+		}
+	}
+}
+
 static void grenade_cullblocks(ivec3 pos, uint32_t solids, struct State *st) {
 	ivec3 off;
 	uint_fast32_t ctr = 1;
@@ -419,8 +461,11 @@ static void grenade_cullblocks(ivec3 pos, uint32_t solids, struct State *st) {
 	for (off.z = -1; off.z <= 1; off.z++) {
 		for (off.y = -1; off.y <= 1; off.y++) {
 			for (off.x = -1; off.x <= 1; off.x++) {
-				if (solids & ctr)
+				if (solids & ctr || st->globals.cullPersonality == CULL_PERSONALITY_VOXLAP) {
 					cull_grenade(pos.x, pos.y, pos.z, off.x, off.y, off.z, st);
+				} if (!(solids & 0x20000000))
+					send_cull(pos.x + off.x, pos.y + off.y, pos.z + off.z, solids & ctr, st);
+
 				ctr <<= 1;
 			}
 		}
@@ -455,6 +500,7 @@ static void unpristine(struct State *st) {
 /* Don't try to build with this! */
 static uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct State *st) {
 	uint32_t mask = 0;
+	int full = 0;
 
 	unpristine(st);
 
@@ -464,12 +510,11 @@ static uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct Stat
 		if (get_solid(pos, st)) {
 			set_empty(pos, st);
 			mask = 1;
+			full = 1;
 		}
 		break;
 	case 2: /* 3x destroy */
 		/* TODO: only do cull on actually destroyed voxels in rl */
-		/* TODO: does piqueserver have that bug? test by building 2 blocks, then a floating block diagonal to the top of those 2, rmb spade the top of the 2 */
-		/* (TODO: betterspades could handle this weird, in which case i may have to polyfill it) */
 		/* TODO: do i need to verify that pos.z < 62 here, or do i trust that all calls have valid position? what do the clients do? */
 		if (pos.z < 62 && get_solid3(pos.x, pos.y, pos.z, st)) {
 			set_empty(pos, st);
@@ -482,18 +527,30 @@ static uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct Stat
 			mask |= 4;
 		}
 
+		full = mask == 7;
 		break;
 	case 3: /* nade destroy */
 		mask = grenade_rmblocks(pos, st);
+		full = (mask & 0x7ffdfff) == 0x7ffdfff;
 		break;
 	}
 
 	if (mask == 0)
 		type = 0;
-	else if (!st->globals.loadingMap)
-		st->f.send_block_action(PID_BROADCAST, pos, type, from, st);
+	else if (!st->globals.loadingMap) {
+		plid i;
 
-	return mask | (type << 30);
+		if (full || st->globals.cullPersonality == CULL_PERSONALITY_VOXLAP)
+			st->f.send_block_action(PID_BROADCAST, pos, type, from, st);
+		else for (i=0;i<MAX_PLAYERS;i++) {
+			/* This also handles OpenSpades decreasing its block count on packet recv */
+			if (pid_matches(PID_BROADCAST, i, st) && st->p[i].bugMask & QUIRK_OS_BACTION_CULL)
+				st->f.send_block_action(i, pos, type, from, st);
+		}
+	}
+
+	/* full here is 0x20000000 if true */
+	return (type << 30) | (full << 29) | mask;
 }
 
 static void block_action_cull(ivec3 pos, uint32_t mask, struct State *st) {
@@ -511,28 +568,32 @@ static void block_action_cull(ivec3 pos, uint32_t mask, struct State *st) {
 		cull3(pos.x, pos.y, pos.z+1, st);
 		break;
 	case 2: /* 3x destroy */
-		if (mask & 4) {
+		if (mask & 4 || st->globals.cullPersonality == CULL_PERSONALITY_VOXLAP) {
 			cull3(pos.x-1, pos.y, pos.z-1, st);
 			cull3(pos.x+1, pos.y, pos.z-1, st);
 			cull3(pos.x, pos.y-1, pos.z-1, st);
 			cull3(pos.x, pos.y+1, pos.z-1, st);
 			cull3(pos.x, pos.y, pos.z-2, st);
-		}
+		} if (!(mask & 0x20000000))
+			send_cull(pos.x, pos.y, pos.z - 1, mask & 4, st);
 
-		if (mask & 2) {
+		if (mask & 2 || st->globals.cullPersonality == CULL_PERSONALITY_VOXLAP) {
 			cull3(pos.x-1, pos.y, pos.z+1, st);
 			cull3(pos.x+1, pos.y, pos.z+1, st);
 			cull3(pos.x, pos.y-1, pos.z+1, st);
 			cull3(pos.x, pos.y+1, pos.z+1, st);
 			cull3(pos.x, pos.y, pos.z+2, st);
-		}
+		} if (!(mask & 0x20000000))
+			send_cull(pos.x, pos.y, pos.z + 1, mask & 2, st);
 
-		if (mask & 1) {
+		if (mask & 1 || st->globals.cullPersonality == CULL_PERSONALITY_VOXLAP) {
 			cull3(pos.x-1, pos.y, pos.z, st);
 			cull3(pos.x+1, pos.y, pos.z, st);
 			cull3(pos.x, pos.y-1, pos.z, st);
 			cull3(pos.x, pos.y+1, pos.z, st);
-		}
+		} if (!(mask & 0x20000000))
+			send_cull(pos.x, pos.y, pos.z, mask & 1, st);
+
 		break;
 	case 3: /* Nade destroy */
 		grenade_cullblocks(pos, mask, st);
@@ -1535,6 +1596,8 @@ static struct State *st_init(void) {
 	st->globals.grenades = calloc(256, sizeof(struct Grenade));
 	if (st->globals.grenades == NULL)
 		ERR("calloc");
+
+	st->globals.cullPersonality = CULL_PERSONALITY_OPENSPADES;
 
 	addr.host = ENET_HOST_ANY;
 	addr.port = port;

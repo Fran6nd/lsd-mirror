@@ -13,3 +13,9 @@ Valid player IDs are integers in the range of 0 to MAX_PLAYERS&minus;1 inclusive
 
 ENET_PORT ->
 UDP port the server is listening for <a rel=noreferrer href=http://sauerbraten.org/enet/>ENet</a> connections on.
+
+CULL_PERSONALITY_VOXLAP ->
+Voxlap-type cull personality used with set_cull_personality().
+
+CULL_PERSONALITY_OPENSPADES ->
+OpenSpades-type cull personality used with set_cull_personality().

@@ -52,19 +52,30 @@ typedef fvec3p fvec3;
 /* Work around buggerspades bugs */
 #define BS_BUG_INFLOOR (1 << 0)
 #define BS_BUG_NOSHORTPLAYER (1 << 1)
-/* TODO: I think this one spread to IV spades too */
 #define BS_BUG_SCREWED_DISCONNECT_DATA (1 << 2)
+
 /* OpenSpades CP-437 takes 0x0a as lf, 0x0d as cr, beta as sharp s, gamma as tua */
 #define QUIRK_OS_CP437 (1 << 3)
+
 /* These ones may send either CP-437, or UTF-8 if prefixed with '\xff';
  * They will also unconditionally be sent UTF-8 messages to hammer out
  * deficiencies in shitty CP-437 codecs.
  */
 #define QUIRK_UTF8 (1 << 4)
+
 /* BetterSpades doesn't understand UTF-8 *or* CP-437, so messages sent to it
  * must be transcoded into ASCII.
  */
 #define QUIRK_ASCII (1 << 5)
+
+/* Voxlap and BetterSpades cull floating voxels for spade 3x and grenade on
+ * all sides of the shape, even on sides with no adjacent removed solid voxel.
+ * OpenSpades only culls where voxels have been removed.
+ *
+ * Did that make sense?
+ */
+#define QUIRK_OS_BACTION_CULL (1 << 6)
+
 /* TODO: BS_BUG_NODEADNADE */
 /* TODO: BS_BUG_BORKEDRELOAD */
 /* TODO: BS_BUG_MOUSEINPUTISFUCKED */
@@ -323,6 +334,9 @@ struct Functions {
 	void (*move_tent)(gteamid team, fvec3 pos, struct State *st);
 };
 
+#define CULL_PERSONALITY_VOXLAP 0
+#define CULL_PERSONALITY_OPENSPADES 1
+
 struct Globals {
 	struct BitmaskUData map;
 	/* pristineBuf points to some zlib-compressed map data if:
@@ -341,6 +355,7 @@ struct Globals {
 	unsigned teamscore[2];
 	unsigned maxscore;
 	int loadingMap;
+	int cullPersonality;
 	plid intelplayers[2];
 	fvec3 intelpos[2];
 	fvec3 tentpos[2];

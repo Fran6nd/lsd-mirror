@@ -745,6 +745,15 @@ static int set_team_color(lua_State *l) {
 	return 0;
 }
 
+static int set_cull_personality(lua_State *l) {
+	int personality = luaL_checknumber(l, 1);
+	if (personality < 0 || personality > 1)
+		LERR(l, "personality should be one of the CULL_PERSONALITY macros");
+
+	st->globals.cullPersonality = personality;
+	return 0;
+}
+
 static int set_team_name(lua_State *l) {
 	unsigned team = check_gteamid(l, 1);
 	const char *name = luaL_checkstring(l, 2);
@@ -1337,6 +1346,8 @@ static const struct luaL_Reg funcs[] = {
 	{"set_team_name", set_team_name},
 	{"set_team_color", set_team_color},
 
+	{"set_cull_personality", set_cull_personality},
+
 	{"input_on_stdin", input_on_stdin},
 	{"raycast", raycast},
 	{"simulate_grenade_physics", simulate_grenade_physics},
@@ -1467,6 +1478,12 @@ void hook_lua(const char *cfg, unsigned long port, struct State *st2) {
 
 	lua_pushnumber(l, port);
 	lua_setglobal(l, "ENET_PORT");
+
+	lua_pushnumber(l, CULL_PERSONALITY_VOXLAP);
+	lua_setglobal(l, "CULL_PERSONALITY_VOXLAP");
+
+	lua_pushnumber(l, CULL_PERSONALITY_OPENSPADES);
+	lua_setglobal(l, "CULL_PERSONALITY_OPENSPADES");
 
 	if (luaL_loadfile(l, "scripts/core.lua") || lua_pcall(l, 0, 0, 0))
 		LERR(l, "Can't load scripts/core.lua: %s", lua_tostring(l, -1));

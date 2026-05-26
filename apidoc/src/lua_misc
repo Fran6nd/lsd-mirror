@@ -47,3 +47,16 @@ Deprecated.
 void set_reload_time(plid pid, clk time) ->
 Schedules reload_player() to be called for <var>pid</var> at <var>time</var>.
 Unschedules instead if <var>time</var>=<kbd>0</kbd>.
+
+void set_cull_personality(integer personality) ->
+Sets the server's cull (block gravity) personality.
+
+<p>Voxlap and OpenSpades cull behavior differ on a spade 3x destroy or a grenade destroy
+where not all voxels in the destroyed area are solid, and floating voxels are adjacent
+to any one of those nonsolid voxels; Voxlap will remove the floating voxels, OpenSpades
+will not.
+
+<p>BetterSpades behaves the same as Voxlap.
+
+<p><var>personality</var> may be either CULL_PERSONALITY_VOXLAP or CULL_PERSONALITY_OPENSPADES.
+LSd defaults to CULL_PERSONALITY_OPENSPADES.

@@ -26,7 +26,7 @@ all: server exec/libunixsock.so
 server: $(OBJECTS) $(INCL)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o server $(OBJECTS) $(LDFLAGS)
 
-.c.o: $(INCL)
+.c.o:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 # Not really static, musl doesn't like dlopen with static

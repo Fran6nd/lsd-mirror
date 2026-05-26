@@ -535,9 +535,10 @@ static uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct Stat
 		break;
 	}
 
-	if (mask == 0)
-		type = 0;
-	else if (!st->globals.loadingMap) {
+	if (mask == 0 && st->globals.cullPersonality == CULL_PERSONALITY_OPENSPADES)
+		return 0;
+
+	if (!st->globals.loadingMap) {
 		plid i;
 
 		if (full || st->globals.cullPersonality == CULL_PERSONALITY_VOXLAP)

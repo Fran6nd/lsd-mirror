@@ -78,7 +78,11 @@ function mod.tick()
 			end
 
 			if (was_airborne[i] and not is_airborne(i)) then
-				damage_player(i, get_fall_damage(math.abs(apex[i]-pos.z)), 4, i);
+				local damage = get_fall_damage(math.abs(apex[i]-pos.z));
+				if (damage > 0) then
+					damage_player(i, damage, 4, i);
+				end
+
 				apex[i] = pos.z;
 			end
 		end

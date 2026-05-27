@@ -111,7 +111,7 @@ local function legal_pos(pid, pos, type)
 	local team = get_team(pid);
 	local func = type <= 2 and within_xy or adjacent_xy;
 
-	if (type ~= 0 and has_cap(pid, "nobabelprotect")) then
+	if (type ~= 0 and has_cap(pid, "no_babel_protect")) then
 		return true;
 	end
 

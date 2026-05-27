@@ -47,7 +47,7 @@ register_command(cmd, mod);
 
 function mod.on_unload()
 	if (disco_timer) then
-		send_fog(PID_BROADCAST, get_fog());
+		end_disco();
 	end
 end
 

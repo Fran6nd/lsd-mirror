@@ -9,6 +9,10 @@ local freq_msg = {
 	en="%(arg) should be one of {%(freqs)} (Hz)"
 };
 
+local current_freq_msg = {
+	en="Current update rate: %(freq) Hz"
+};
+
 local valid_freqs = {[60]=true, [30]=true, [20]=true, [15]=true, [12]=true, [10]=true};
 -- TODO: how to l10n format a list of ints?
 local cmd = {name="ups", usage="freq", desc="Set the rate your client receives player position/orientation."};
@@ -20,6 +24,7 @@ function cmd.func(pid, argv)
 	if (freq == nil or not valid_freqs[freq]) then
 		send_usage(pid, cmd);
 		l10n_send_chat(pid, freq_msg, {arg="freq", freqs="60, 30, 20, 15, 12, 10"});
+		l10n_send_chat(pid, current_freq_msg, {freq=60/rate[pid]});
 		return;
 	end
 

@@ -60,3 +60,7 @@ will not.
 
 <p><var>personality</var> may be either CULL_PERSONALITY_VOXLAP or CULL_PERSONALITY_OPENSPADES.
 LSd defaults to CULL_PERSONALITY_OPENSPADES.
+
+function iter_block_line(ivec3 start, ivec3 end) ->
+Iterates over all voxels in a block line started at <var>start</var> and ended at <var>end</var>.
+Does not check them for solidity; this is just the pure modified DDA algorithm.

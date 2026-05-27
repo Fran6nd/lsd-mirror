@@ -8,6 +8,7 @@ If the voxel is not <a href=#is_solid>solid</a>, return value is implementation-
 Out of bounds positions invoke undefined behavior.
 
 <!-- TODO: nuke as non-essential? -->
+<!-- TODO: iter_raycast? -->
 ivec3|nil raycast(fvec3 start, fvec3 end, boolean last) ->
 Casts a ray from <var>start</var> to <var>end</var>.
 The raycast is guaranteed to use a correctly-implemented DDA.

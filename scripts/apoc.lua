@@ -11,12 +11,29 @@ local lastprime;
 local ctr;
 local resetctr;
 local nadepid;
--- TODO: should alive implicitly be joined and joined implicitly be connected?
 local streak = pid_spawn_table(0);
 local apocs = pid_joined_table(0);
--- TODO: you can find a better way than "oldfog"
--- TODO: maybe send instead of set?
---local oldfog;
+
+getcfg("apoc_streak", 20);
+getcfg("apoc_nadestart", {{x=256- 49, y=256-64}, {x=256-128, y=256-64}});
+getcfg("apoc_nadeend",   {{x=255+128, y=255+64}, {x=255+ 49, y=255+64}});
+
+local apoc_transfer_msg = {
+	en="%(originname)'s apocs have been given to %(destname)"
+};
+
+local apoc_grant_msg = {
+	en="%(name) can now use /apoc. . ."
+};
+
+-- This can be overridden by clobbering over send_apoc_not_unlocked_msg()
+local need_killstreak_msg = {
+	en="You need a %(needstreak) killstreak to use apoc! Current streak: %(curstreak)"
+};
+
+local apoc_ongoing_msg = {
+	en="Don't be so hasty!"
+};
 
 -- TODO: teamkill actually increases score for some reason
 -- TODO on_unload stuff
@@ -33,51 +50,44 @@ function mod.on_unload()
 	end
 end
 
-local apoc_transfer_msg = {
-	en="%(originname)'s apocs have been given to %(destname)"
-};
-
 function mod.after.on_disconnect(pid)
-	local beststreak;
+	local bestscore;
 
-	-- TODO: base off of get_score(pid) instead of streak[pid]; streak is too easy to suddenly lose
 	if (apocs[pid] > 0) then
 		-- TODO: teamswitchers should probably not keep apocs, especially when switching to spectator
 		for i in piditer(PID_BROADCAST_TEAM(get_team(pid))) do
-			if (beststreak == nil or streak[i] > streak[beststreak]) then
-				beststreak = i;
+			if (bestscore == nil or get_score(i) > get_score(bestscore)) then
+				bestscore = i;
 			end
 		end
 
-		if (beststreak ~= nil) then
+		if (best_score ~= nil) then
 			l10n_send_chat(PID_BROADCAST, apoc_transfer_msg, {originname=get_name(pid), destname=get_name(beststreak)});
-			apocs[beststreak] = apocs[beststreak] + apocs[pid];
+			apocs[bestscore] = apocs[bestscore] + apocs[pid];
 		end
 	end
 end
 
-local apoc_grant_msg = {
-	en="%(name) can now use /apoc. . ."
-};
+function mod.impl.apoc_grant(pid)
+	apocs[pid] = apocs[pid] + 1;
+	l10n_send_chat(PID_BROADCAST, apoc_grant_msg, {name=get_name(pid)});
+end
 
--- TODO: on_kill -> get_spawn_position, then add on_kill for on_hit but with a kill
--- would *not* be triggered by nade explosions though
+-- Override this to do nothing if you want to implement your own apoc-granting logic
+function mod.impl.try_apoc_grant(pid)
+	return apoc_grant(pid);
+end
+
 function mod.after.kill(pid, type, killer)
-	-- TODO: need easy way to determine if score increased
-
 	-- This also prevents /kill from increasing streak.
 	if (get_team(pid) ~= get_team(killer)) then
 		streak[killer] = streak[killer] + 1;
-		if (streak[killer] == 20) then
-			apocs[killer] = apocs[killer] + 1;
+		if (streak[killer] == apoc_streak) then
 			streak[killer] = 0;
-			l10n_send_chat(PID_BROADCAST, apoc_grant_msg, {name=get_name(killer)});
+			try_apoc_grant(killer);
 		end
 	end
 end
-
-local nadestart = {{x=256-49,  y=256-64}, {x=256-128, y=256-64}};
-local nadeend   = {{x=255+128, y=255+64}, {x=255+49,  y=255+64}};
 
 local function start_apoc(pid)
 	nexttick = get_time() + 0.05;
@@ -90,19 +100,14 @@ local function start_apoc(pid)
 	nadepid = pid;
 end
 
--- TODO: make killstreak check part of dedicated module, maybe i want to get the apoc in alternative ways
-local need_killstreak_msg = {
-	en="You need a %(needstreak) killstreak to use apoc! Current streak: %(curstreak)"
-};
+function mod.impl.send_apoc_not_unlocked_msg(pid)
+	l10n_send_chat(pid, need_killstreak_msg, {needstreak=apoc_streak, curstreak=streak[pid]});
+end
 
-local apoc_ongoing_msg = {
-	en="Don't be so hasty!"
-};
-
-local cmd = {name="apoc", desc="Summon an apoc if you have a 20 killstreak."};
+local cmd = {name="apoc", desc="Attempt to summon an apoc."};
 function cmd.func(pid)
 	if (apocs[pid] == 0) then
-		l10n_send_chat(pid, need_killstreak_msg, {needstreak=20, curstreak=streak[pid]});
+		send_apoc_not_unlocked_msg(pid);
 		return;
 	end
 
@@ -117,7 +122,7 @@ end
 register_command(cmd, mod);
 
 -- TODO: allow console to start apocs
-local cmd = {name="forceapoc", caps="forceapoc", desc="Summon an apoc without bothering to check for killstreak."};
+local cmd = {name="forceapoc", caps="forceapoc", desc="Bombs away!"};
 function cmd.func(pid)
 	start_apoc(pid);
 end
@@ -197,7 +202,6 @@ function build_strike(pos, forkchance)
 		forkchance = 8;
 	end
 
-	--sc("START "..tostring(forks));
 	while (true) do
 		pos.x = pos.x % 512;
 		pos.y = pos.y % 512;
@@ -231,7 +235,6 @@ function build_strike(pos, forkchance)
 		pos.y = pos.y + math.random(-1, 1);
 		pos.z = pos.z + 1;
 	end
-	--sc("END "..tostring(forks));
 end
 
 function destroy_strike()
@@ -271,7 +274,7 @@ function mod.after.tick()
 	-- TODO: time grenades to detonate on impact
 	-- TODO: get platform height from config?
 	local team = get_team(nadepid);
-	local nadepos = {x=math.random(nadestart[team].x, nadeend[team].x)+0.5, y=math.random(nadestart[team].y, nadeend[team].y)+0.5, z=-4};
+	local nadepos = {x=math.random(apoc_nadestart[team].x, apoc_nadeend[team].x)+0.5, y=math.random(apoc_nadestart[team].y, apoc_nadeend[team].y)+0.5, z=-4};
 	if (nadepos.x >= 256-50 and nadepos.x <= 255+50 and nadepos.y >= 256-16 and nadepos.y <= 255+16) then
 		nadepos.z = 2;
 	end
@@ -286,7 +289,6 @@ function mod.after.tick()
 	end
 	-- TODO: decouple from tickrate
 	if (is_prime(ctr)) then
-		--sc(ctr);
 		if (modctr == 1) then
 			send_fog(PID_BROADCAST, white2);
 			build_strike();

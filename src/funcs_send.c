@@ -317,8 +317,8 @@ static void send_spawn_player(plid pid, fvec3 pos, unsigned gun, unsigned team, 
 			/* This -2 is here because *sane* clients always subtract 2 from CreatePlayer z.
 			 * BetterSpades is not sane, since it was based on piqueserver.
 			 */
-		        if (st->p[i].bugMask & BS_BUG_INFLOOR)
-		                cr.pos.z = pos.z - 2;
+			if (st->p[i].bugMask & BS_BUG_INFLOOR)
+				cr.pos.z = pos.z - 2;
 			else
 				cr.pos.z = pos.z;
 
@@ -520,31 +520,31 @@ static void send_move_object(plid pid, fvec3 pos, unsigned id, unsigned team, st
 }
 
 void set_funcs_send(struct State *st) {
-        st->f.send_packet = send_packet;
-        st->f.send_packet_unreliable = send_packet_unreliable;
-        st->f.send_map = send_map;
-        st->f.send_state = send_state;
-        st->f.send_chat = send_chat;
-        st->f.send_block_action = send_block_action;
-        st->f.send_connected_players = send_connected_players;
-        st->f.send_player_update = send_player_update;
-        st->f.send_position = send_position;
-        st->f.send_block_line = send_block_line;
-        st->f.send_set_block_color = send_set_block_color;
-        st->f.send_set_tool = send_set_tool;
-        st->f.send_reload = send_reload;
-        st->f.send_intel_capture = send_intel_capture;
-        st->f.send_intel_pickup = send_intel_pickup;
-        st->f.send_intel_drop = send_intel_drop;
-        st->f.send_state_ctf = send_state_ctf;
-        st->f.send_state_tc = send_state_tc;
-        st->f.send_restock = send_restock;
-        st->f.send_disconnect = send_disconnect;
-        st->f.send_move_object = send_move_object;
-        st->f.send_map_start = send_map_start;
-        st->f.send_grenade = send_grenade;
-        st->f.send_fog = send_fog;
-        st->f.send_orientation = send_orientation;
+	st->f.send_packet = send_packet;
+	st->f.send_packet_unreliable = send_packet_unreliable;
+	st->f.send_map = send_map;
+	st->f.send_state = send_state;
+	st->f.send_chat = send_chat;
+	st->f.send_block_action = send_block_action;
+	st->f.send_connected_players = send_connected_players;
+	st->f.send_player_update = send_player_update;
+	st->f.send_position = send_position;
+	st->f.send_block_line = send_block_line;
+	st->f.send_set_block_color = send_set_block_color;
+	st->f.send_set_tool = send_set_tool;
+	st->f.send_reload = send_reload;
+	st->f.send_intel_capture = send_intel_capture;
+	st->f.send_intel_pickup = send_intel_pickup;
+	st->f.send_intel_drop = send_intel_drop;
+	st->f.send_state_ctf = send_state_ctf;
+	st->f.send_state_tc = send_state_tc;
+	st->f.send_restock = send_restock;
+	st->f.send_disconnect = send_disconnect;
+	st->f.send_move_object = send_move_object;
+	st->f.send_map_start = send_map_start;
+	st->f.send_grenade = send_grenade;
+	st->f.send_fog = send_fog;
+	st->f.send_orientation = send_orientation;
 	st->f.send_existing_player = send_existing_player;
 	st->f.send_move_input = send_move_input;
 	st->f.send_mouse_input = send_mouse_input;

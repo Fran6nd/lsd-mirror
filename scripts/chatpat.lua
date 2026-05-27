@@ -26,8 +26,8 @@ function chatpat_parse(str)
 	for i=1,#str,2 do
 		local char = string.sub(str, i, i);
 
-		if (char == "(" or char == ")") then
-			out = out .. char;
+		if (char == "%" or char == "(" or char == ")") then
+			out = out .. string.sub(str, i+1, i+1);
 		else
 			char = assemble_character(char);
 			local modifier = string.sub(str, i+1, i+1);
@@ -47,7 +47,8 @@ end
 getcfg("chatpat_chat", {
 	{chatpat_parse("n+e+g+r+((o+))"), "potat%1"},
 	{chatpat_parse("n+i+((g+))e*r+"), "di%1er"},
-	{chatpat_parse("n+i+g+"), "sop"},
+	{chatpat_parse("n+i+g+((%[%a%@%s% %]%+))"), "sop%1"},
+	{chatpat_parse("n+i+g+((%[%a%@%s% %]%*))%$"), "sop%1"},
 	{chatpat_parse("f+((a+))g+o*t*"), "m%1n"},
 	--{chatpat_parse("f+((u+))k+"), "fl%1ff"},
 	--{"onion", "garlic"}
@@ -56,7 +57,8 @@ getcfg("chatpat_chat", {
 getcfg("chatpat_name", {
 	{chatpat_parse("n+e+g+r+((o+))"), "potat%1"},
 	{chatpat_parse("n+i+((g+))e*r+"), "di%1er"},
-	{chatpat_parse("n+i+g+"), "sop"},
+	{chatpat_parse("n+i+g+((%[%a%@%s% %]%+))"), "sop%1"},
+	{chatpat_parse("n+i+g+((%[%a%@%s% %]%*))%$"), "sop%1"},
 	{chatpat_parse("f+((a+))g+o*t*"), "m%1n"},
 	--{chatpat_parse("f+((u*))k+"), "fl%1ff"},
 	--{"onion", "garlic"}

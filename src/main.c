@@ -67,34 +67,34 @@ static volatile sig_atomic_t keepRunning = 1;
 static struct State *exit_st;
 
 static int cat_strl(char **out, ...) {
-        va_list args, args2;
-        size_t i, len, outLen = 0, totalSize = 0;
+	va_list args, args2;
+	size_t i, len, outLen = 0, totalSize = 0;
 
-        va_start(args, out);
-        va_copy(args2, args);
+	va_start(args, out);
+	va_copy(args2, args);
 
-        for (i=0;;i++) {
-                const char *arg = va_arg(args, const char *);
-                if (arg == NULL)
-                        break;
-                totalSize += strlen(arg);
-        }
-        va_end(args);
-        len = i;
+	for (i=0;;i++) {
+		const char *arg = va_arg(args, const char *);
+		if (arg == NULL)
+			break;
+		totalSize += strlen(arg);
+	}
+	va_end(args);
+	len = i;
 
-        *out = malloc(totalSize+1);
-        if (*out == NULL)
+	*out = malloc(totalSize+1);
+	if (*out == NULL)
 		return -1;
 
-        for (i=0;i<len;i++) {
-                const char *arg = va_arg(args2, const char *);
-                size_t inLen = strlen(arg);
-                memcpy(*out+outLen, arg, inLen);
-                outLen += inLen;
-        }
-        (*out)[outLen] = 0;
+	for (i=0;i<len;i++) {
+		const char *arg = va_arg(args2, const char *);
+		size_t inLen = strlen(arg);
+		memcpy(*out+outLen, arg, inLen);
+		outLen += inLen;
+	}
+	(*out)[outLen] = 0;
 
-        va_end(args2);
+	va_end(args2);
 	return 0;
 }
 

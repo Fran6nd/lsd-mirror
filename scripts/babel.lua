@@ -178,7 +178,16 @@ function mod.early.on_block_action(pid, pos, type)
 	mod.early.next.on_block_action(pid, pos, type);
 end
 
--- TODO: block_line iterator func so i can hook on_block_line. . .
+function mod.early.on_block_line(pid, startp, endp)
+	for pos in iter_block_line(startp, endp) do
+		if (not legal_pos(pos, 0)) then
+			l10n_send_chat(pid, no_build_msg);
+			return;
+		end
+	end
+
+	mod.early.next.on_block_line(pid, startp, endp);
+end
 
 local function length2(vec)
 	return math.sqrt(vec.x*vec.x + vec.y*vec.y);

@@ -40,6 +40,14 @@ local function fmt_code(code)
 	return codemap[code] or code;
 end
 
+local function init_stmt(db, name, stmtsql)
+	local stmt, code = db.con:prepare(stmtsql);
+	assert(stmt ~= nil, "db.con:prepare: "..name..": "..fmt_code(code));
+
+	db.stmt[name] = stmt;
+	return stmt;
+end
+
 function mod.open(path, creat)
 	local con, code, msg = sql.open(path);
 	if (con == nil) then
@@ -59,7 +67,13 @@ function mod.open(path, creat)
 		error("con:exec: "..db.con:errmsg()..": "..fmt_code(code));
 	end
 
-	return {con=con, stmt={}};
+	-- Try to avoid memory errors by preparing statements up front
+	local db = {con=con, stmt={}};
+	init_stmt(db, "begin", "BEGIN;");
+	init_stmt(db, "commit", "COMMIT;");
+	init_stmt(db, "rollback", "ROLLBACK;");
+
+	return db;
 end
 
 function mod.close(db)
@@ -71,13 +85,10 @@ function mod.close(db)
 	db.con:close();
 end
 
--- Try to avoid memory errors by creating strings up front
-local begin = "BEGIN;";
-local commit = "COMMIT;";
-local rollback = "ROLLBACK;";
 function mod.transact(db, func)
-	local code = db.con:exec(begin);
-	assert(code == sql.OK, "db.con:exec: "..fmt_code(code));
+	db.stmt.begin:reset();
+	local code = db.stmt.begin:step();
+	assert(code == sql.DONE, "begin:step: "..fmt_code(code));
 
 	local status, err = pcall(func);
 
@@ -86,9 +97,11 @@ function mod.transact(db, func)
 		error(err, 2);
 	end
 
-	code = db.con:exec(commit);
-	if (code ~= sql.OK) then
-		db.con:exec(rollback);
+	db.stmt.commit:reset();
+	code = db.stmt.commit:step();
+	if (code ~= sql.DONE) then
+		db.stmt.rollback:reset();
+		db.stmt.rollback:step();
 		error("db.con:exec: "..fmt_code(code));
 	end
 end
@@ -101,14 +114,6 @@ function mod.exec(db, str)
 	end
 
 	return code;
-end
-
-local function init_stmt(db, name, stmtsql)
-	local stmt, code = db.con:prepare(stmtsql);
-	assert(stmt ~= nil, "db.con:prepare: "..name..": "..fmt_code(code));
-
-	db.stmt[name] = stmt;
-	return stmt;
 end
 
 function mod.finalize(db, name)

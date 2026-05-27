@@ -110,12 +110,12 @@ static void on_switch(plid pid, unsigned team, unsigned gun, struct State *st) {
 		if (!(st->p[pid].bugMask & BS_BUG_NOSHORTPLAYER) || team != 255) {
 			st->f.spawn_player(pid, st->f.get_spawn_position(pid, st), st);
 			if (st->p[pid].alive)
-				st->f.kill(pid, KillTypeTeamChange, 0, st);
+				st->f.kill(pid, KillTypeTeamChange, pid, st);
 		}
 	} else if (team != st->p[pid].team && st->p[pid].alive)
-		st->f.kill(pid, KillTypeTeamChange, 0, st);
+		st->f.kill(pid, KillTypeTeamChange, pid, st);
 	else if (st->p[pid].alive)
-		st->f.kill(pid, KillTypeGunChange, 0, st);
+		st->f.kill(pid, KillTypeGunChange, pid, st);
 }
 
 static void on_tool_change(plid pid, unsigned tool, struct State *st) {

@@ -178,6 +178,16 @@ function mod.early.on_block_action(pid, pos, type)
 	mod.early.next.on_block_action(pid, pos, type);
 end
 
+-- Just to send "Can't do that there!" to people who throw nades
+function mod.early.block_action(pos, type, pid)
+	if (pid >= 0 and pid < MAX_PLAYERS and is_joined(pid) and type == 3 and not legal_pos(pos, type)) then
+		l10n_send_chat(pid, no_build_msg);
+		return;
+	end
+
+	mod.early.next.block_action(pos, type, pid);
+end
+
 function mod.early.on_block_line(pid, startp, endp)
 	for pos in iter_block_line(startp, endp) do
 		if (not legal_pos(pos, 0)) then
@@ -292,8 +302,8 @@ local function putback_intel()
 		move_intel(2, {x=math.huge, y=math.huge, z=math.huge});
 	end
 
-	lower_tent(1, {x=128, y=256, z=-1});
-	lower_tent(2, {x=512-128, y=256, z=-1});
+	lower_tent(1, {x=128-10, y=256, z=-1});
+	lower_tent(2, {x=512-128+10, y=256, z=-1});
 end
 
 -- TODO: don't build if server hasn't loaded a map

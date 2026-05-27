@@ -1,5 +1,7 @@
 integer masterlist_get_port(void) ->
+<NOAUTOLINK>
 Returns the port advertised to any connected masterlists.
+<AUTOLINK>
 
 integer masterlist_get_players(void) ->
 Returns the connected player count advertised.
@@ -17,8 +19,10 @@ string masterlist_get_map(void) ->
 Returns the map name advertised.
 
 void masterlist_set_port(void) ->
+<NOAUTOLINK>
 Sets the port advertised to any connected masterlists.
 The LSd implementation batches sending all masterlist changes into the next tick().
+<AUTOLINK>
 
 void masterlist_set_players(void) ->
 Sets the connected player count advertised.

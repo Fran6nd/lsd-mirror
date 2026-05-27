@@ -1,5 +1,5 @@
 -- purgatory.lua -- Send banned players to the shadow realm
--- TODO: extract old work on this + sed4chat from stick2
+-- TODO: extract old work on this from stick2
 local mod = init_mod();
 -- TODO: a lot
 

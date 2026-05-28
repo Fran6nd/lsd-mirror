@@ -176,7 +176,7 @@ local shoot_timer = pid_spawn_table(nil);
 local shotgun_shoot_ctr = pid_spawn_table(0);
 local spadehit_timer = pid_spawn_table(nil);
 
-local function ratelimit(pid, timer, freq, winsiz, future, is_shotgun)
+local function ratelimit(pid, timer, freq, winsiz, is_shotgun)
 	local now = get_time();
 	local incrtimer = true;
 
@@ -186,7 +186,7 @@ local function ratelimit(pid, timer, freq, winsiz, future, is_shotgun)
 	end
 
 	if (timer[pid] == nil or now > timer[pid] + freq) then
-		timer[pid] = now + (future and freq or 0);
+		timer[pid] = now;
 
 		if (is_shotgun) then
 			shotgun_shoot_ctr[pid] = 0;
@@ -209,11 +209,11 @@ function mod.early.on_block_action(pid, pos, type)
 		-- TODO: use science (protocol extensions?) to determine which blocks have been hit enough to be digged? [sic]
 		l10n_log(fast1dig_log_msg, {name=get_name(pid), pid=pid});
 		return;
-	elseif (type == 1 and tool == 2 and dd_prevent_fast_shoot and ratelimit(pid, shoot_timer, dd_shoot_freq[gun], dd_shoot_winsize[gun], false, gun == 2)) then
+	elseif (type == 1 and tool == 2 and dd_prevent_fast_shoot and ratelimit(pid, shoot_timer, dd_shoot_freq[gun], dd_shoot_winsize[gun], gun == 2)) then
 		l10n_log(fastbshot_log_msg, {name=get_name(pid), pid=pid});
 		return;
-	elseif (type == 2 and dd_prevent_fast_dig_3x and ratelimit(pid, dig_3x_timer, dd_dig_3x_freq, dd_dig_3x_winsize, true)) then
-		-- TODO: tie in mouse_input here and ditch the future arg?(??)
+	elseif (type == 2 and dd_prevent_fast_dig_3x and ratelimit(pid, dig_3x_timer, dd_dig_3x_freq, dd_dig_3x_winsize)) then
+		-- TODO: tie in mouse_input here?(??)
 		l10n_log(fast3dig_log_msg, {name=get_name(pid), pid=pid});
 		return;
 	end
@@ -240,7 +240,7 @@ function mod.early.on_hit(pid, type, hitPlayer)
 		return;
 	end
 
-	if (tool == 2 and dd_prevent_fast_shoot and ratelimit(pid, shoot_timer, dd_shoot_freq[gun], dd_shoot_winsize[gun], false, gun == 2)) then
+	if (tool == 2 and dd_prevent_fast_shoot and ratelimit(pid, shoot_timer, dd_shoot_freq[gun], dd_shoot_winsize[gun], gun == 2)) then
 		l10n_log(fast_pshot_log_msg, {name=get_name(pid), pid=pid});
 		return;
 	end

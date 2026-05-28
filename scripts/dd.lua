@@ -212,9 +212,9 @@ function mod.early.on_block_action(pid, pos, type)
 	elseif (type == 1 and tool == 2 and dd_prevent_fast_shoot and ratelimit(pid, shoot_timer, dd_shoot_freq[gun], dd_shoot_winsize[gun], false, gun == 2)) then
 		l10n_log(fastbshot_log_msg, {name=get_name(pid), pid=pid});
 		return;
-	elseif (type == 2 and dd_prevent_fast_dig_3x and ratelimit(pid, dig_3x_timer, dd_dig_3x_freq, dd_dig_3x_winsize)) then
+	elseif (type == 2 and dd_prevent_fast_dig_3x and ratelimit(pid, dig_3x_timer, dd_dig_3x_freq, dd_dig_3x_winsize, true)) then
 		-- TODO: tie in mouse_input here and ditch the future arg?(??)
-		l10n_log(fast3dig_log_msg, get_name(pid), pid, true);
+		l10n_log(fast3dig_log_msg, {name=get_name(pid), pid=pid});
 		return;
 	end
 

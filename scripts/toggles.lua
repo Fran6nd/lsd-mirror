@@ -65,10 +65,15 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
--- TODO: muted player should probably be able to run commands
 local cmd = {name={"mute", "togglechat", "tc"}, caps="toggles", fakepid=true, usage="player", desc="Shut a noisy player up."};
 function cmd.func(pid, argv)
 	toggle(pid, cmd, argv, "badcap:mute");
+end
+register_command(cmd, mod);
+
+local cmd = {name={"toggleadmin", "ta"}, caps="toggles", fakepid=true, usage="player", desc="Shut a noisy /admin'er up."};
+function cmd.func(pid, argv)
+	toggle(pid, cmd, argv, "badcap:noadmin");
 end
 register_command(cmd, mod);
 

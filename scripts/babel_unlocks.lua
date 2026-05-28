@@ -61,7 +61,7 @@ end
 local function in_build_zone(pid, pos)
 	local team = get_team(pid);
 
-	for _,zone in ipairs(babel_protect_zones[team]) do
+	for _,zone in ipairs(babel_unlocks_zones[team]) do
 		if (within_xy(pos, zone[1], zone[2])) then
 			return true;
 		end
@@ -71,7 +71,7 @@ local function in_build_zone(pid, pos)
 end
 
 local function check_blocks_placed(pid)
-	if (not has_cap(pid, "heaven") and blocks[pid] >= babel_heaven_unlock_blocks) then
+	if (not has_cap(pid, "heaven") and blocks[pid] >= babel_unlocks_heaven_blocks) then
 		l10n_send_chat(PID_BROADCAST, unlocked_msg, {name=get_name(pid), blocks=babel_heaven_unlock_blocks});
 		grant_cap(pid, "heaven");
 	end

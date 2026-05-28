@@ -50,6 +50,11 @@ function mod.on_unload()
 	end
 end
 
+function mod.before.finish_map_load()
+	destroy_strike();
+	nexttick = nil;
+end
+
 function mod.after.on_disconnect(pid)
 	local bestscore;
 

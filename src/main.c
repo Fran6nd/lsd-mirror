@@ -215,16 +215,16 @@ extern int pid_matches(plid broadcast, plid pid, struct State *st) {
 	switch (flags) {
 	case 1:
 		/* PID_BROADCAST */
-		return st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED;
+		return st->p[pid].connected;
 	case 2:
 		/* PID_BROADCAST_EXCEPT */
-		return (st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED && pid != (plid)data);
+		return (st->p[pid].connected && pid != (plid)data);
 	case 3:
 		/* PID_BROADCAST_TEAM */
 		return (st->p[pid].joined && st->p[pid].team == data);
 	case 4:
 		/* PID_BROADCAST_EXCEPT_TEAM_AND_PLAYER */
-		return (pid != data >> 8 && st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED && (!st->p[pid].joined || (st->p[pid].joined && st->p[pid].team != (data & 0xff))));
+		return (pid != data >> 8 && st->p[pid].connected && (!st->p[pid].joined || (st->p[pid].joined && st->p[pid].team != (data & 0xff))));
 	default:
 		return broadcast == pid;
 	}
@@ -890,6 +890,14 @@ static void restock(plid pid, struct State *st) {
 
 /* TODO: make this take a position arg and default it to get_spawn_position() */
 static void spawn_player(plid pid, fvec3 pos, struct State *st) {
+	/* The player *should* already be connected by now, and if it isn't
+	 * then consistency will definitely get screwed, but at least it won't
+	 * be """that""" screwed if I set connected to 1 here. . . right?
+	 *
+	 * Maybe I should call just on_successful_connect() here. . .
+	 */
+	st->p[pid].connected = 1;
+
 	st->p[pid].joined = 1;
 	st->p[pid].alive = st->p[pid].newteam != 255;
 
@@ -1571,7 +1579,7 @@ static void atexit_server(void) {
 	close_lua();
 
 	for (i=0;i<MAX_PLAYERS;i++) {
-		if (exit_st->host->peers[i].state == ENET_PEER_STATE_CONNECTED)
+		if (exit_st->p[i].connected)
 			enet_peer_disconnect_now(exit_st->host->peers+i, 5); /* "Server shutdown" to betterspades and maybe iv of spades */
 	}
 

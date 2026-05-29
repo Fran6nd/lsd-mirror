@@ -43,8 +43,9 @@ static void on_any_connect(plid pid, struct State *st) {
 }
 
 static void on_successful_connect(plid pid, struct State *st) {
-	LOG("%s:%"PRIu16" (#%"PRIiPID") connected", IP(pid), PORT(pid), pid);
+	st->p[pid].connected = 1;
 
+	LOG("%s:%"PRIu16" (#%"PRIiPID") connected", IP(pid), PORT(pid), pid);
 	st->f.send_map(pid, st);
 }
 
@@ -55,6 +56,7 @@ static void on_disconnect(plid pid, struct State *st) {
 	if (st->p[pid].joined)
 		st->f.send_disconnect(PID_BROADCAST, pid, st);
 
+	st->p[pid].connected = 0;
 	st->p[pid].joined = 0;
 	st->p[pid].alive = 0;
 

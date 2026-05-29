@@ -155,6 +155,7 @@ struct Player {
 	 */
 	uint8_t idChar;
 	uint8_t verMajor;
+	int connected;
 	int initStateSent;
 	uint64_t bugMask;
 	uint64_t extMask;

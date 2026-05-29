@@ -1237,7 +1237,7 @@ static int is_joined(lua_State *l) {
 static int is_connected(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
-	lua_pushboolean(l, st->host->peers[pid].state == ENET_PEER_STATE_CONNECTED);
+	lua_pushboolean(l, st->p[pid].connected);
 	return 1;
 }
 

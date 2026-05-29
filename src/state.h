@@ -113,6 +113,10 @@ typedef fvec3p fvec3;
 /* TODO: aoscam/src/demoncore.h has an incompatible struct definition; i recommend merging all the random struct Player's strewn about the place. Or just removing everything after int joined; */
 /* TODO: the capitalization is inconsistent here */
 struct Player {
+	/* Or NULL if there is no attached ENet peer -- packets just get sent to /dev/null unless overridden */
+	ENetPeer *peer;
+	plid pid;
+
 	/*
 	 * Life-based
 	 */

@@ -8,8 +8,8 @@ clk from_s_double(double ts);
 #define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
 #define SEND(pid, data) st->f.send_packet(pid, &(data), sizeof(data), st)
 #define LOG(x, ...) do {st->f.before_log(st); fprintf(stderr, x"\n", __VA_ARGS__); st->f.after_log(st);} while (0)
-#define IP(pid) host_ip(&st->host->peers[pid].address)
-#define PORT(pid) (st->host->peers[pid].address.port)
+#define IP(pid) (st->p[pid].peer ? host_ip(&st->p[pid].peer->address) : "<local>")
+#define PORT(pid) (st->p[pid].peer ? st->p[pid].peer->address.port : 0)
 
 const char *host_ip(ENetAddress *addr);
 
@@ -37,7 +37,8 @@ static void on_any_connect(plid pid, struct State *st) {
 	if (pid >= MAX_PLAYERS) {
 		LOG("%s:%"PRIu16" (#%"PRIiPID") attempted to connect but server was full", IP(pid), PORT(pid), pid);
 		/* TODO: should i disconnect_now or just disconnect? if just disconnect, should i increase the amount of connections? */
-		enet_peer_disconnect_now(st->host->peers+pid, 4);
+		if (st->p[pid].peer)
+			enet_peer_disconnect_now(st->p[pid].peer, 4);
 	} else
 		st->f.on_successful_connect(pid, st);
 }

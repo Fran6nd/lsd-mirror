@@ -163,22 +163,47 @@ extern clk from_s_double(double ts) {
 	return ts * 1000000000;
 }
 
+static plid pick_pid(struct State *st) {
+	plid i;
+
+	for (i=0;i<MAX_PLAYERS;i++) {
+		if (!st->p[i].connected)
+			return i;
+	}
+
+	/* There's no room here. . . return MAX_PLAYERS and let on_any_connect() deal with it */
+	/* TODO: make sure nobody bumps up MAX_PLAYERS to 256 and screws everything over -- from
+	 * betterspades to server-side block placement to smashing right through our players array
+	 * when pid #MAX_PLAYERS connects and has to get removed by on_any_connect()
+	 */
+	return MAX_PLAYERS;
+}
+
 static void handle_event(ENetEvent *event, struct State *st) {
 	switch (event->type) {
-	case ENET_EVENT_TYPE_CONNECT:
-		st->f.on_any_connect(event->peer->incomingPeerID, st);
-		break;
-	case ENET_EVENT_TYPE_DISCONNECT:
-		st->f.on_disconnect(event->peer->incomingPeerID, st);
-		break;
-	case ENET_EVENT_TYPE_RECEIVE:
-		if (st->f.on_any_packet(event->peer->incomingPeerID, event->packet->data, event->packet->dataLength, st))
-			st->f.on_crap_packet(event->peer->incomingPeerID, event->packet->data, event->packet->dataLength, st);
+	case ENET_EVENT_TYPE_CONNECT: {
+		const plid pid = pick_pid(st);
+
+		st->p[pid].peer = event->peer;
+		event->peer->data = st->p+pid;
+		st->f.on_any_connect(pid, st);
+	} break;
+	case ENET_EVENT_TYPE_DISCONNECT: {
+		const plid pid = ((struct Player *)event->peer->data)->pid;
+
+		st->f.on_disconnect(pid, st);
+		st->p[pid].peer = NULL;
+	} break;
+	case ENET_EVENT_TYPE_RECEIVE: {
+		const plid pid = ((struct Player *)event->peer->data)->pid;
+
+		if (st->f.on_any_packet(pid, event->packet->data, event->packet->dataLength, st))
+			st->f.on_crap_packet(pid, event->packet->data, event->packet->dataLength, st);
 		else
-			st->f.on_sane_packet(event->peer->incomingPeerID, event->packet->data, event->packet->dataLength, st);
+			st->f.on_sane_packet(pid, event->packet->data, event->packet->dataLength, st);
 
 		enet_packet_destroy(event->packet);
-		break;
+	} break;
 	case ENET_EVENT_TYPE_NONE:
 		break;
 	}
@@ -1416,10 +1441,14 @@ const char *host_ip(ENetAddress *addr) {
 
 static int intercept(ENetHost *host, ENetEvent *event) {
 	ENetBuffer buf;
+	struct State *st;
+	struct Player *pl;
 
 	(void)event;
 
-#define st ((struct State *)host->peers->data)
+	pl = (struct Player *)host->peers[0].data;
+	st = (void *)(pl - pl->pid) - offsetof(struct State, p);
+
 	if (host->receivedDataLength == 5 && !memcmp(host->receivedData, "HELLO", 5)) {
 		buf.data = "HI";
 		buf.dataLength = 2;
@@ -1441,8 +1470,6 @@ static int intercept(ENetHost *host, ENetEvent *event) {
 		LOG("%s:%"PRIu16" says HELLOLAN", host_ip(&host->receivedAddress), host->receivedAddress.port);
 		return 1;
 	}
-
-#undef st
 
 	return 0;
 }
@@ -1566,9 +1593,9 @@ static void parse_args(int argc, char **argv) {
 }
 
 static void atexit_server(void) {
-	plid i;
+	size_t i;
 
-	for (i=0;i<MASTERLIST_MAX_PEERS;i++) {
+	for (i=0;i<exit_st->ms.host->peerCount;i++) {
 		if (exit_st->ms.host->peers[i].state == ENET_PEER_STATE_CONNECTED)
 			enet_peer_disconnect_now(exit_st->ms.host->peers+i, 0);
 	}
@@ -1578,8 +1605,8 @@ static void atexit_server(void) {
 	exit_st->f.on_shutdown(exit_st);
 	close_lua();
 
-	for (i=0;i<MAX_PLAYERS;i++) {
-		if (exit_st->p[i].connected)
+	for (i=0;i<exit_st->host->peerCount;i++) {
+		if (exit_st->host->peers[i].state == ENET_PEER_STATE_CONNECTED)
 			enet_peer_disconnect_now(exit_st->host->peers+i, 5); /* "Server shutdown" to betterspades and maybe iv of spades */
 	}
 
@@ -1595,6 +1622,7 @@ static void atexit_server(void) {
 static struct State *st_init(void) {
 	ENetAddress addr;
 	struct State *st;
+	size_t i;
 
 	st = calloc(1, sizeof(struct State));
 	if (st == NULL)
@@ -1611,10 +1639,18 @@ static struct State *st_init(void) {
 	addr.host = ENET_HOST_ANY;
 	addr.port = port;
 
+	for (i=0;i<sizeof(st->p)/sizeof(st->p[0]);i++)
+		st->p[i].pid = i;
+
 	st->host = bringup_host(&addr);
 	if (st->host == NULL)
 		ERR("bringup_host");
-	st->host->peers[0].data = st;
+
+	/* ENet doesn't let us pass any data through the intercept
+	 * callback or the host struct, so we go through a random peer's
+	 * data to get to the st.
+	 */
+	st->host->peers[0].data = st->p;
 	st->host->intercept = intercept;
 
 	st->tickrate = (clk)1000000000 / TICKRATE;

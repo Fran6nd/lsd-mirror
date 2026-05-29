@@ -22,12 +22,12 @@ static int send_packet_flags(plid pid, const void *data, size_t length, unsigned
 	if (pid == PID_BROADCAST)
 		enet_host_broadcast(st->host, 0, packet);
 	else if ((uint32_t)pid < MAX_PLAYERS)
-		return enet_peer_send(st->host->peers+pid, 0, packet) == 0 ? 0 : -1;
+		return st->p[pid].peer == NULL ? 0 : (enet_peer_send(st->p[pid].peer, 0, packet) == 0 ? 0 : -1);
 	else {
 		plid i;
 		for (i=0;i<MAX_PLAYERS;i++) {
-			if (pid_matches(pid, i, st))
-				enet_peer_send(st->host->peers+i, 0, packet);
+			if (pid_matches(pid, i, st) && st->p[i].peer != NULL)
+				enet_peer_send(st->p[i].peer, 0, packet);
 		}
 	}
 

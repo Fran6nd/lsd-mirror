@@ -905,7 +905,8 @@ static int disconnect(lua_State *l) {
 	if (reason == 2 && st->p[pid].bugMask & BS_BUG_SCREWED_DISCONNECT_DATA)
 		reason = 10;
 
-	enet_peer_disconnect(st->host->peers+pid, reason);
+	if (st->p[pid].peer)
+		enet_peer_disconnect(st->p[pid].peer, reason);
 	return 0;
 }
 
@@ -916,7 +917,8 @@ static int disconnect_now(lua_State *l) {
 	if (reason == 2 && st->p[pid].bugMask & BS_BUG_SCREWED_DISCONNECT_DATA)
 		reason = 10;
 
-	enet_peer_disconnect_now(st->host->peers+pid, reason);
+	if (st->p[pid].peer)
+		enet_peer_disconnect_now(st->p[pid].peer, reason);
 	return 0;
 }
 
@@ -1041,20 +1043,35 @@ static int get_score(lua_State *l) {
 /* In host byte order */
 static int get_ipaddr(lua_State *l) {
 	plid pid = check_plid(l, 1);
-	lua_pushnumber(l, ntohl(st->host->peers[pid].address.host));
+
+	if (st->p[pid].peer)
+		lua_pushnumber(l, ntohl(st->p[pid].peer->address.host));
+	else
+		lua_pushnumber(l, 0);
+
 	return 1;
 }
 
 static int get_udp_port(lua_State *l) {
 	plid pid = check_plid(l, 1);
-	lua_pushnumber(l, st->host->peers[pid].address.port);
+
+	if (st->p[pid].peer)
+		lua_pushnumber(l, st->p[pid].peer->address.port);
+	else
+		lua_pushnumber(l, 0);
+
 	return 1;
 }
 
 /* More popularly referred to as "ping" */
 static int get_round_trip_time(lua_State *l) {
 	plid pid = check_plid(l, 1);
-	lua_pushnumber(l, st->host->peers[pid].roundTripTime);
+
+	if (st->p[pid].peer)
+		lua_pushnumber(l, st->p[pid].peer->roundTripTime);
+	else
+		lua_pushnumber(l, 500);
+
 	return 1;
 }
 

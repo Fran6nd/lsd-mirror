@@ -4,8 +4,8 @@
 #include <math.h>
 
 #define LOG(x, ...) do {st->f.before_log(st); fprintf(stderr, x"\n", __VA_ARGS__); st->f.after_log(st);} while (0)
-#define IP(pid) host_ip(&st->host->peers[pid].address)
-#define PORT(pid) (st->host->peers[pid].address.port)
+#define IP(pid) (st->p[pid].peer ? host_ip(&st->p[pid].peer->address) : "<local>")
+#define PORT(pid) (st->p[pid].peer ? st->p[pid].peer->address.port : 0)
 const char *host_ip(ENetAddress *addr);
 
 #define CAT2(x,y) x##y

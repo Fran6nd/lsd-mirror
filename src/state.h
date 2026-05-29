@@ -76,6 +76,11 @@ typedef fvec3p fvec3;
  */
 #define QUIRK_OS_BACTION_CULL (1 << 6)
 
+/* IV of Spades and ZeroSpades move the Gray color to '\x08' from '\x07' for
+ * some reason and put an image-prefix-code-thing in its place.
+ */
+#define QUIRK_UTF8_COLOR_IMG (1 << 7)
+
 /* TODO: BS_BUG_NODEADNADE */
 /* TODO: BS_BUG_BORKEDRELOAD */
 /* TODO: BS_BUG_MOUSEINPUTISFUCKED */

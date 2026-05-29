@@ -248,7 +248,7 @@ static void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor
 		st->p[pid].bugMask |= QUIRK_UTF8 | QUIRK_OS_CP437 | QUIRK_OS_BACTION_CULL;
 
 		if (strstr(st->p[pid].verMsg, "ZeroSpades") || strstr(st->p[pid].verMsg, "IV of Spades"))
-			st->p[pid].bugMask |= BS_BUG_SCREWED_DISCONNECT_DATA;
+			st->p[pid].bugMask |= BS_BUG_SCREWED_DISCONNECT_DATA | QUIRK_UTF8_COLOR_IMG;
 		break;
 	}
 

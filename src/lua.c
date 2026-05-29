@@ -583,6 +583,33 @@ static void con_version_ext(plid pid, unsigned major, unsigned minor, unsigned p
 		CBAIL("on_version_ext: %s", luaL_checkstring(l, -1));
 }
 
+static int lload_vxl_from_mem(lua_State *l) {
+	size_t len;
+	const void *data = luaL_checklstring(l, 1, &len);
+
+	lua_pushnumber(l, f.load_vxl_from_mem(data, len, st));
+	return 1;
+}
+
+static int cload_vxl_from_mem(const void *data, size_t len, struct State *st) {
+	int ret;
+
+	(void)st;
+	lua_getglobal(l, "load_vxl_from_mem");
+
+	lua_pushlstring(l, data, len);
+
+	if (lua_pcall(l, 1, 1, 0) != 0)
+		CBAILN1("load_vxl_from_mem: %s", luaL_checkstring(l, -1));
+
+	if (!lua_isnumber(l, -1))
+		CBAIL1N1("load_vxl_from_mem: should return a number");
+
+	ret = lua_tonumber(l, -1);
+	lua_pop(l, 1);
+	return ret;
+}
+
 /* NOTE: Try not to touch pid_matches' conditions too much while iterating */
 int pid_matches(plid broadcast, plid pid, struct State *st);
 static int do_piditer(lua_State *l) {
@@ -1435,6 +1462,7 @@ static const struct luaL_Reg funcs[] = {
 	{"get_spawn_position", lget_spawn_position},
 	{"on_version", lon_version},
 	{"on_version_ext", lon_version_ext},
+	{"load_vxl_from_mem", lload_vxl_from_mem},
 
 	/* TODO: these two are not like the rest */
 	{"disconnect", disconnect},
@@ -1566,6 +1594,7 @@ void register_functions(lua_State *l, struct State *st) {
 	st->f.get_spawn_position = cget_spawn_position;
 	st->f.on_version = con_version;
 	st->f.on_version_ext = con_version_ext;
+	st->f.load_vxl_from_mem = cload_vxl_from_mem;
 	register_luaawk(l, st);
 }
 

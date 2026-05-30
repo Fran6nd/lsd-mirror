@@ -54,7 +54,7 @@ void on_hit(plid pid, unsigned type, plid hitPlayer) ->
 Called by the client when it tries to hit another player (<var>hitPlayer</var>).
 See get_hit_damage() for values of <var>type</var>.
 
-<p>Calls damage_player_directional() with <var>hp</var> as get_hit_damage().
+<p>Calls damage_player_directional() with get_hit_damage() as <var>hp</var>.
 
 
 void on_mouse_input(plid pid, unsigned bitmask) ->

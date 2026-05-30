@@ -229,7 +229,7 @@ static void send_chat(plid pid, const char *msg, unsigned type, plid from, struc
 		free(utf8);
 
 	if (utf8img)
-		free(utf8);
+		free(utf8img);
 }
 
 static void (*next_on_chat)(plid pid, const char *msg, unsigned type, struct State *st);

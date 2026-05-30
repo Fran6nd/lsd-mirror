@@ -228,7 +228,7 @@ local function get_vec_tupletuple(scrape, meta, str, name)
 	end
 end
 
-function mod.pyscrape_ext(scrape, str, meta)
+function mod.after.pyscrape_ext(scrape, str, meta)
 	meta.arena = scrape.parse_bool(scrape.get_ext(str, "arena"));
 	get_vec_tuple(scrape, meta, str, "arena_blue_spawn");
 	get_vec_tuple(scrape, meta, str, "arena_green_spawn");

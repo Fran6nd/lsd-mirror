@@ -32,6 +32,8 @@ function largs(argv) {
 			pullfunc = "%s = check_teamid(l, %i);";
 		else if (match(argv[i], /^gteamid /))
 			pullfunc = "%s = check_gteamid(l, %i);";
+		else if (match(argv[i], /^nteamid /))
+			pullfunc = "%s = check_nteamid(l, %i);";
 		else if (match(argv[i], /^clk /))
 			pullfunc = "%s = check_clk(l, %i);";
 		else if (match(argv[i], /^fvec3 /))
@@ -108,6 +110,8 @@ function do_func(ret, type) {
 		else if (match(argv[i], /^teamid /))
 			pushfunc = "lua_pushnumber(l, %s+1);";
 		else if (match(argv[i], /^gteamid /))
+			pushfunc = "lua_pushnumber(l, %s+1);";
+		else if (match(argv[i], /^nteamid /))
 			pushfunc = "lua_pushnumber(l, %s+1);";
 		else if (match(argv[i], /^clk /))
 			pushfunc = "push_clk(l, %s);";

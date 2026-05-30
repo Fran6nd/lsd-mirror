@@ -1572,7 +1572,7 @@ static int lsend_spawn_player(lua_State *l) {
 	bplid pid = check_bplid(l, 1);
 	fvec3 pos = get_fvec3(l, 2);
 	unsigned gun = luaL_checknumber(l, 3);
-	unsigned team = luaL_checknumber(l, 4);
+	nteamid team = check_nteamid(l, 4);
 	const char *name = luaL_checkstring(l, 5);
 	plid from = check_plid(l, 6);
 
@@ -1580,14 +1580,14 @@ static int lsend_spawn_player(lua_State *l) {
 	return 0;
 }
 
-static void csend_spawn_player(bplid pid, fvec3 pos, unsigned gun, unsigned team, const char *name, plid from, struct State *st) {
+static void csend_spawn_player(bplid pid, fvec3 pos, unsigned gun, nteamid team, const char *name, plid from, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "send_spawn_player");
 
 	lua_pushnumber(l, pid);
 	push_fvec3(pos);
 	lua_pushnumber(l, gun);
-	lua_pushnumber(l, team);
+	lua_pushnumber(l, team+1);
 	lua_pushstring(l, name);
 	lua_pushnumber(l, from);
 

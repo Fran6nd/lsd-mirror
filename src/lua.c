@@ -90,6 +90,13 @@ unsigned check_gteamid(lua_State *l, int numArg) {
 	return val - 1;
 }
 
+unsigned check_nteamid(lua_State *l, int numArg) {
+	double val = luaL_checknumber(l, numArg);
+	if (val < 1 || val > 256)
+		LERR(l, "nteamid is invalid (%.0f)", val);
+	return val - 1;
+}
+
 static void push_clk(lua_State *l, clk val) {
 	lua_pushnumber(l, to_s_double(val));
 }

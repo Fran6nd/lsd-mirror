@@ -37,6 +37,12 @@ typedef unsigned teamid;
 /* Holds an inGame team value -- i.e., not spectators */
 typedef unsigned gteamid;
 
+/* Gets sent over the wire, use whatever.
+ * In Lua land, it is 1-indexed, not 0-indexed, i.e. its range maps from 1,256 -> 0,255 inclusive.
+ * C uses standard 0-indexing for this.
+ */
+typedef unsigned nteamid;
+
 /* [0] is B, [1] is G, [2] is R */
 typedef uint8_t color[3];
 
@@ -314,7 +320,7 @@ struct Functions {
 	void (*send_mouse_input)(bplid pid, unsigned inputs, plid from, struct State *st);
 	void (*send_kill)(bplid pid, clk spawndelta, unsigned type, plid killer, plid from, struct State *st);
 	void (*send_grenade)(bplid pid, fvec3 pos, fvec3 vel, float fuse, nplid from, struct State *st);
-	void (*send_spawn_player)(bplid pid, fvec3 pos, unsigned gun, unsigned team, const char *name, plid from, struct State *st);
+	void (*send_spawn_player)(bplid pid, fvec3 pos, unsigned gun, nteamid team, const char *name, plid from, struct State *st);
 
 	/*
 	 * Player funcs -- these send packets and modify player state

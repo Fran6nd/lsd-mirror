@@ -41,7 +41,7 @@ Sets assorted gamemode-related things.
 void send_existing_player(bplid pid, unsigned team, unsigned gun, unsigned tool, unsigned score, color blockColor, string name, plid from) ->
 Silently joins and spawns a player. Where exactly it spawns is uncertain<!-- and on my TODO list -->.
 
-void send_spawn_player(bplid pid, fvec3 pos, unsigned gun, unsigned team, string name, plid from) ->
+void send_spawn_player(bplid pid, fvec3 pos, unsigned gun, nteamid team, string name, plid from) ->
 Spawns a player. If the player wasn't joined before, joins it now.
 
 <!-- TODO: actually support nil, then add another BSbug for the fun of it -->

@@ -27,8 +27,7 @@ local function spec(pid)
 	local pos = get_position(pid);
 	pos.z = pos.z + 2;
 
-	-- TODO: map send_spawn_player team?
-	send_spawn_player(pid, pos, get_gun(pid), 255, get_name(pid), pid);
+	send_spawn_player(pid, pos, get_gun(pid), SPECTATOR, get_name(pid), pid);
 	spectating[pid] = true;
 end
 

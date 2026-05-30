@@ -26,6 +26,17 @@ all: server exec/libunixsock.so
 server: $(OBJECTS) $(INCL)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o server $(OBJECTS) $(LDFLAGS)
 
+src/budgetvxl.o: src/budgetvxl.c
+src/cull.o: src/cull.c src/bitmask.h
+src/demoncore.o: src/demoncore.c src/demoncore.h src/bitmask.h src/protocol.h src/state.h src/masterlist.h
+src/funcs_event.o: src/funcs_event.c src/state.h src/protocol.h src/bitmask.h src/masterlist.h src/demoncore.h
+src/funcs_packetrecv.o: src/funcs_packetrecv.c src/state.h src/protocol.h src/bitmask.h src/masterlist.h src/demoncore.h
+src/funcs_send.o: src/funcs_send.c src/state.h src/protocol.h src/bitmask.h src/masterlist.h src/budgetvxl.h
+src/lua.o: src/lua.c src/state.h src/protocol.h src/bitmask.h src/masterlist.h src/demoncore.h src/budgetvxl.h src/luaawk.h
+src/main.o: src/main.c src/cull.h src/demoncore.h src/bitmask.h src/protocol.h src/state.h src/masterlist.h src/pvx/src/vxl.h src/sandbox.h
+src/masterlist.o: src/masterlist.c src/masterlist.h
+src/sandbox.o: src/sandbox.c
+src/textcodec.o: src/textcodec.c src/state.h src/protocol.h src/bitmask.h src/masterlist.h src/textcodec_utf8.h src/textcodec_cp437.h
 .c.o:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 

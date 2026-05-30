@@ -150,15 +150,15 @@ static void send_chat(plid pid, const char *msg, unsigned type, plid from, struc
 
 		if (st->p[i].bugMask & QUIRK_UTF8_COLOR_IMG) {
 			if (utf8img == NULL) {
-				size_t msglen = strlen(msg)+1;
+				size_t len = strlen(msg);
 				size_t j;
 
-				utf8img = malloc(1+msglen);
+				utf8img = malloc(1+len+1);
 				if (utf8img == NULL)
 					ERR("malloc");
 
 				utf8img[0] = '\xff';
-				for (j=0;j<msglen+1;j++)
+				for (j=0;j<len+1;j++)
 					utf8img[j+1] = imgtbl[(uint8_t)msg[j]];
 			}
 

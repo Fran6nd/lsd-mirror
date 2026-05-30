@@ -1271,6 +1271,13 @@ static int is_airborne(lua_State *l) {
 	return 1;
 }
 
+static int is_wading(lua_State *l) {
+	plid pid = check_plid(l, 1);
+
+	lua_pushboolean(l, st->p[pid].wade);
+	return 1;
+}
+
 static int is_alive(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
@@ -1542,6 +1549,7 @@ static const struct luaL_Reg funcs[] = {
 	{"get_block_color", get_block_color},
 	{"get_map_block_color", get_map_block_color},
 	{"is_airborne", is_airborne},
+	{"is_wading", is_wading},
 	{"is_alive", is_alive},
 	{"is_joined", is_joined},
 	{"is_connected", is_connected},

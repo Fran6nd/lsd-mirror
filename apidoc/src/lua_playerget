@@ -14,6 +14,12 @@ boolean is_airborne(plid pid) ->
 Returns <samp>true</samp> if the player was not on the ground last time tick_player_physics() was called.
 Return value is unspecified if the player was not alive at the time of the physics tick.
 
+boolean is_wading(plid pid) ->
+Returns <samp>true</samp> if the player was not ``wading'' last time tick_player_physics() was called.
+A player is considered wading from the moment the player lands in water to the moment the player lands on non-water land;
+if a player jumps in the water and then flies into space, that player is considered wading until that player lands on dry land.
+Return value is unspecified if the player was not alive at the time of the physics tick.
+
 fvec3 get_position(plid pid) ->
 Reutrns the player's current position.
 Players that are not alive return an implementation-defined value.

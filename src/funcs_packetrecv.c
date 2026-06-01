@@ -36,7 +36,7 @@ static int stuck_in_a_block(fvec3 pos, struct State *st) {
 }
 
 /* TODO: sometimes voxlap and rl trigger this on ori with <0.000001 */
-#define CLOSE_ENOUGH_TO_1(x) (fabsf((x) - 1) < 0.00005)
+#define CLOSE_ENOUGH_TO_1(x) (fabsf((x) - 1) < 0.0001)
 
 #define HORIZONTAL_SPEED_LIMIT 10.4
 #define DOWNWARD_SPEED_LIMIT 32.5403 /* Normally just 32, but sometimes OpenSpades likes to send more */

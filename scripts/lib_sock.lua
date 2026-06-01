@@ -9,6 +9,8 @@ int create_unix_sock(const char *path);
 int create_tcp_sock(const char *listenaddr, const char *port);
 int create_tcp_client_sock(const char *connectaddr, const char *port);
 int accept_sock(int fd);
+uint32_t get_sock_peer_addr32(int fd);
+int get_sock_peer_name(int fd, void *host, size_t hostlen);
 void close_sock(int fd);
 ssize_t send_sock(int fd, const char *buf, size_t len);
 ssize_t recv_sock(int fd, char *buf, size_t len);
@@ -159,7 +161,7 @@ local function websock_read(sock, cid)
 	end
 end
 
-function websock_send_con(con, text)
+function websock_send_con(con, text, bin)
 	if (not con.wsclose) then
 		local unsentbuf = con.unsent;
 
@@ -167,7 +169,8 @@ function websock_send_con(con, text)
 			unsentbuf = con.wsunsent;
 		end
 
-		unsentbuf:putcdata(buf, un.websockets_create_frame(buf, WS_OPCODE_TEXT, 1, #text));
+		local opcode = bin and WS_OPCODE_BLOB or WS_OPCODE_TEXT;
+		unsentbuf:putcdata(buf, un.websockets_create_frame(buf, opcode, 1, #text));
 		unsentbuf:put(text);
 		if (not con.wshdr) then
 			flush(con);
@@ -177,10 +180,12 @@ end
 
 function websock_disconnect(sock, cid, code)
 	local con = sock.cons[cid];
-	un.websockets_create_close_frame(buf, code and code or 0);
-	-- TODO: is con nil here?
-	con.unsent:putcdata(buf, code and 4 or 2);
-	flush(con);
+	if (not con.wshdr) then
+		un.websockets_create_close_frame(buf, code and code or 0);
+		-- TODO: is con nil here?
+		con.unsent:putcdata(buf, code and 4 or 2);
+		flush(con);
+	end
 	-- TODO: does this gracefully disconnect? you may have to shutdown(SHUT_RD) instead and close when all of unsent isn't
 	-- TODO: should this gracefully disconnect?
 	con.wsclose = true;
@@ -247,8 +252,9 @@ local function on_recv(sock, pid)
 		if (found == nil) then
 			break;
 		end
-			sock.on_line(sock, pid, con.buf:get(ffi.cast("unsigned char *", found)-ptr));
-			con.buf:skip(1);
+
+		sock.on_line(sock, pid, con.buf:get(ffi.cast("unsigned char *", found)-ptr));
+		con.buf:skip(1);
 	end
 end
 
@@ -296,6 +302,17 @@ function sock_new_tcp_client(connectaddr, port, funcs)
 	sock.after_connect(sock, cid);
 
 	return sock;
+end
+
+function sock_tcp_getaddr32(con)
+	local addr = un.get_sock_peer_addr32(con.fd);
+	assert(addr ~= 0, "getpeername: <some error>");
+	return addr;
+end
+
+function sock_tcp_getname(con)
+	assert(un.get_sock_peer_name(con.fd, buf, buflen) == 0, "get_sock_peer_name: <some error>");
+	return ffi.string(buf);
 end
 
 function sock_close(sock)

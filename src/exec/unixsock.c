@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <netinet/in.h>
 #include <netdb.h>
 #include <string.h>
 #include <stddef.h>
@@ -119,6 +120,30 @@ int accept_sock(int fd) {
 	}
 
 	return con;
+}
+
+uint32_t get_sock_peer_addr32(int fd) {
+	struct sockaddr_in sa;
+	socklen_t salen = sizeof(sa);
+
+	if (getpeername(fd, (struct sockaddr *)&sa, &salen) != 0)
+		return 0;
+
+	/* TODO: handle that without throwing errors all over the place */
+	if (sa.sin_family != AF_INET)
+		return 0;
+
+	return ntohl(sa.sin_addr.s_addr);
+}
+
+int get_sock_peer_name(int fd, void *host, size_t hostlen) {
+	struct sockaddr sa;
+	socklen_t salen = sizeof(sa);
+
+	if (getpeername(fd, &sa, &salen) != 0)
+		return -1;
+
+	return getnameinfo(&sa, salen, host, hostlen, NULL, 0, NI_NUMERICHOST);
 }
 
 ssize_t send_sock(int fd, const char *buf, size_t len) {

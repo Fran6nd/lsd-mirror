@@ -114,7 +114,14 @@ local function msg_revtargets(pid, ...)
 	end
 end
 
-local function handle_packet(pid, data, iscrap)
+local function handle_hit(pid, type, hitPlayer, delta, iscrap)
+	local dist = math.floor(distance_2d(pid, hitPlayer) * 10) / 10;
+	local iscrapmsg = iscrap and l10n_get_str_pid(pid, crap_msg) or "";
+
+	msg_revtargets(pid, msgmap[type], {player=get_name(pid), hitplayer=get_name(hitPlayer), dist=dist, delta=delta, iscrap=iscrapmsg});
+end
+
+function mod.after.on_crap_packet(pid, data)
 	if (string.byte(data, 1) ~= 5) then
 		return;
 	end
@@ -146,18 +153,22 @@ local function handle_packet(pid, data, iscrap)
 		return;
 	end
 
-	local dist = math.floor(distance_2d(pid, target) * 10) / 10;
-	local iscrapmsg = iscrap and l10n_get_str_pid(pid, crap_msg) or "";
-
-	msg_revtargets(pid, msgmap[type], {player=get_name(pid), hitplayer=get_name(target), dist=dist, delta=delta, iscrap=iscrapmsg});
+	handle_hit(pid, type, target, delta, true);
 end
 
-function mod.after.on_sane_packet(pid, data)
-	handle_packet(pid, data);
-end
+-- TODO: need xearly, and rebrand it all to be semantic
+-- TODO: display if it's been canceled
+function mod.early.after.on_hit(pid, type, hitPlayer)
+	local now = get_time();
 
-function mod.after.on_crap_packet(pid, data)
-	handle_packet(pid, data, true);
+	if (last_hit_time[pid] == nil) then
+		last_hit_time[pid] = 0/0;
+	end
+
+	local delta = math.floor((now - last_hit_time[pid]) * 1000);
+	last_hit_time[pid] = now;
+
+	handle_hit(pid, type, hitPlayer, delta, false);
 end
 
 return mod;

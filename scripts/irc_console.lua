@@ -125,7 +125,7 @@ function mod.on_unload()
         end
 end
 
-function mod.early.log(fmt, ...)
+function mod.late.log(fmt, ...)
         for pid,con in pairs(sock.cons) do
 		local msg = string.format(fmt, ...);
 
@@ -133,10 +133,10 @@ function mod.early.log(fmt, ...)
 			sock_send_broadcast(sock, cmd_tostr({[0]="PRIVMSG", irc_console_chan, line}));
 		end
         end
-        mod.early.next.log(fmt, ...);
+        mod.late.next.log(fmt, ...);
 end
 
-function mod.early.send_chat(pid, msg, type, from)
+function mod.late.send_chat(pid, msg, type, from)
         -- TODO: one conpid per connection? OPTIONAL?
         if (pid == cur_fakepid) then
 		for line in string.gmatch(msg, "[^\n]+") do
@@ -144,14 +144,14 @@ function mod.early.send_chat(pid, msg, type, from)
 		end
                 return;
         end
-        mod.early.next.send_chat(pid, msg, type, from);
+        mod.late.next.send_chat(pid, msg, type, from);
 end
 
-function mod.early.get_name(pid)
+function mod.late.get_name(pid)
         if (pid == cur_fakepid) then
                 return irc_console_name;
         end
-        return mod.early.next.get_name(pid);
+        return mod.late.next.get_name(pid);
 end
 
 return mod;

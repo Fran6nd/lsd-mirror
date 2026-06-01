@@ -155,6 +155,7 @@ void sandbox(void) {
 		"sendto",
 		/* needed for unixsock TCP */
 		"connect",
+		"getpeername",
 		/* needed for stbimage */
 		"rt_sigprocmask",
 		"rt_sigaction",

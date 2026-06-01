@@ -219,18 +219,18 @@ end
 -- TODO: determine l10n language
 -- TODO: l10n language set func
 
-function mod.early.log(fmt, ...)
+function mod.late.log(fmt, ...)
 	for pid,con in pairs(sock.cons) do
 		-- TODO: extend viewlog to regular players? (optionally?)
 		if (has_cap(pid, "viewlog")) then
 			websock_send_con(con, string.format(fmt.."\n", ...));
 		end
 	end
-	mod.early.next.log(fmt, ...);
+	mod.late.next.log(fmt, ...);
 end
 
 -- TODO: if something decides to piditer over PID_BROADCAST before this, what happens?
-function mod.early.send_chat(pid, msg, type, from)
+function mod.late.send_chat(pid, msg, type, from)
 	-- TODO: one conpid per connection? OPTIONAL?
 	if (sock.cons[pid]) then
 		websock_send_con(sock.cons[pid], msg.."\n");
@@ -248,10 +248,10 @@ function mod.early.send_chat(pid, msg, type, from)
 		end
 	end
 
-	mod.early.next.send_chat(pid, msg, type, from);
+	mod.late.next.send_chat(pid, msg, type, from);
 end
 
-function mod.early.get_name(pid)
+function mod.late.get_name(pid)
 	if (sock.cons[pid]) then
 		if (auth_users and auth_users[pid]) then
 			return "@"..auth_users[pid];
@@ -260,7 +260,7 @@ function mod.early.get_name(pid)
 		-- TODO: should this be configurable? should i make lots of random trash configurable?
 		return "@Deuce";
 	end
-	return mod.early.next.get_name(pid);
+	return mod.late.next.get_name(pid);
 end
 
 return mod;

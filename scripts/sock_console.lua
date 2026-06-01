@@ -20,27 +20,27 @@ end
 -- TODO: determine l10n language
 -- TODO: l10n language set func
 
-function mod.early.log(fmt, ...)
+function mod.late.log(fmt, ...)
 	for pid,con in pairs(sock.cons) do
 		sock_send_con(con, string.format(fmt.."\n", ...));
 	end
-	mod.early.next.log(fmt, ...);
+	mod.late.next.log(fmt, ...);
 end
 
-function mod.early.send_chat(pid, msg, type, from)
+function mod.late.send_chat(pid, msg, type, from)
 	-- TODO: one conpid per connection? OPTIONAL?
 	if (sock.cons[pid]) then
 		sock_send_con(sock.cons[pid], msg.."\n");
 		return;
 	end
-	mod.early.next.send_chat(pid, msg, type, from);
+	mod.late.next.send_chat(pid, msg, type, from);
 end
 
-function mod.early.get_name(pid)
+function mod.late.get_name(pid)
 	if (sock.cons[pid]) then
 		return sock_console_name;
 	end
-	return mod.early.next.get_name(pid);
+	return mod.late.next.get_name(pid);
 end
 
 return mod;

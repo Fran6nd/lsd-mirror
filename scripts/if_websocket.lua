@@ -57,47 +57,47 @@ local function on_ws_connect(sock, pid)
 	l10n_log(con_log_msg, {pid=pid});
 end
 
-function mod.early.send_packet(pid, data)
+function mod.late.send_packet(pid, data)
 	for i in piditer(pid) do
 		if (sock.cons[i] ~= nil) then
 			websock_send_con(sock.cons[i], data, true);
 		else
-			mod.early.next.send_packet(i, data);
+			mod.late.next.send_packet(i, data);
 		end
 	end
 
 	return 0;
 end
 
-function mod.early.send_packet_unreliable(pid, data)
+function mod.late.send_packet_unreliable(pid, data)
 	for i in piditer(pid) do
 		if (sock.cons[i] ~= nil) then
 			websock_send_con(sock.cons[i], data, true);
 		else
-			mod.early.next.send_packet_unreliable(i, data);
+			mod.late.next.send_packet_unreliable(i, data);
 		end
 	end
 
 	return 0;
 end
 
-function mod.early.disconnect(pid, reason)
+function mod.late.disconnect(pid, reason)
 	if (sock.cons[pid] ~= nil) then
 		websock_disconnect(sock, pid, 4000+reason);
 	else
-		mod.early.next.disconnect(pid, reason);
+		mod.late.next.disconnect(pid, reason);
 	end
 end
 
-function mod.early.disconnect_now(pid, reason)
+function mod.late.disconnect_now(pid, reason)
 	if (sock.cons[pid] ~= nil) then
 		websock_disconnect(sock, pid, 4000+reason);
 	else
-		mod.early.next.disconnect_now(pid, reason);
+		mod.late.next.disconnect_now(pid, reason);
 	end
 end
 
-function mod.early.get_ipaddr(pid)
+function mod.late.get_ipaddr(pid)
 	if (sock.cons[pid] ~= nil) then
 		-- TODO: handle IPv6, probably merge this with the websock console
 		local status, addr = pcall(sock_tcp_getaddr32, sock.cons[pid]);
@@ -109,7 +109,7 @@ function mod.early.get_ipaddr(pid)
 		return addr;
 	end
 
-	return mod.early.next.get_ipaddr(pid);
+	return mod.late.next.get_ipaddr(pid);
 end
 
 local WS_GOTFLAG_GET = 1

@@ -163,7 +163,7 @@ extern clk from_s_double(double ts) {
 	return ts * 1000000000;
 }
 
-static plid pick_pid(struct State *st) {
+static plid assign_new_pid(struct State *st) {
 	plid i;
 
 	for (i=0;i<MAX_PLAYERS;i++) {
@@ -182,7 +182,7 @@ static plid pick_pid(struct State *st) {
 static void handle_event(ENetEvent *event, struct State *st) {
 	switch (event->type) {
 	case ENET_EVENT_TYPE_CONNECT: {
-		const plid pid = pick_pid(st);
+		const plid pid = st->f.assign_new_pid(st);
 
 		st->p[pid].peer = event->peer;
 		event->peer->data = st->p+pid;
@@ -1478,6 +1478,7 @@ void set_funcs_packetrecv(struct State *st);
 void set_funcs_event(struct State *st);
 void set_funcs_send(struct State *st);
 static void set_funcs(struct State *st) {
+	st->f.assign_new_pid = assign_new_pid;
 	st->f.tick = tick;
 	st->f.before_log = before_log;
 	st->f.after_log = after_log;

@@ -1,6 +1,32 @@
 #ifndef LS2_SERVER_LUAAWK_H
 #define LS2_SERVER_LUAAWK_H
 
+static int lassign_new_pid(lua_State *l) {
+	(void)l;
+
+	lua_pushnumber(l, f.assign_new_pid(st));
+	return 1;
+}
+
+static plid cassign_new_pid(struct State *st) {
+	plid ret;
+
+	(void)st;
+	lua_getglobal(l, "assign_new_pid");
+
+
+	if (lua_pcall(l, 0, 1, 0) != 0)
+		CBAILN1("assign_new_pid: %s", luaL_checkstring(l, -1));
+
+	if (!lua_isnumber(l, -1))
+		CBAIL1N1("assign_new_pid: should return a number");
+
+	ret = lua_tonumber(l, -1);
+	lua_pop(l, 1);
+	return ret;
+}
+
+
 static int lon_any_connect(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
@@ -2005,6 +2031,7 @@ static void cmove_tent(gteamid team, fvec3 pos, struct State *st) {
 
 static void register_luaawk(lua_State *l, struct State *st) {
 	(void)l;
+	st->f.assign_new_pid = cassign_new_pid;
 	st->f.on_any_connect = con_any_connect;
 	st->f.on_successful_connect = con_successful_connect;
 	st->f.on_disconnect = con_disconnect;
@@ -2102,6 +2129,7 @@ static void register_luaawk(lua_State *l, struct State *st) {
 }
 
 #define LUA_CALLS \
+	{"assign_new_pid", lassign_new_pid}, \
 	{"on_any_connect", lon_any_connect}, \
 	{"on_successful_connect", lon_successful_connect}, \
 	{"on_disconnect", lon_disconnect}, \

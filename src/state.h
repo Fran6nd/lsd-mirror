@@ -196,7 +196,9 @@ struct State;
 struct Functions {
 	/*
 	 * Events
+	 * TODO: reorganize the entire thing, then split up into even more individual files
 	 */
+	plid (*assign_new_pid)(struct State *st);
 	/* This one should disconnect the player if server full, banned, etc. */
 	void (*on_any_connect)(plid pid, struct State *st);
 	/* This one gets called if the player was not kicked after connecting. */

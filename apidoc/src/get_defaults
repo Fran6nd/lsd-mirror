@@ -18,3 +18,7 @@ Possible values of <var>type</var> are:
 <dt>3<dd>Gun, legs
 <dt>4<dd>Spade
 </dl>
+
+plid assign_new_pid(void) ->
+Returns a free pid to be passed to on_any_connect().
+If no free pid in the range of 0 to MAX_PLAYERS&minus;1 inclusive can be allocated, returns MAX_PLAYERS.

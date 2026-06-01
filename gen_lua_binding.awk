@@ -165,4 +165,5 @@ function do_func(ret, type) {
 	if (match($0, /clk \(\*/)) do_func(1, "clk");
 	if (match($0, /uint32_t \(\*/)) do_func(1, "uint32_t");
 	if (match($0, /size_t \(\*/)) do_func(1, "size_t");
+	if (match($0, /plid \(\*/)) do_func(1, "plid");
 }

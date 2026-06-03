@@ -8,7 +8,10 @@ local function refill(pid)
 	local oldreserve = get_reserve_ammo(pid);
 	-- Mag ammo isn't affected by restock()
 
-	restock(pid);
+	-- Explicitly bypass all hooks for restock by directly using
+	-- the LSd api implementation's function in the server table
+	-- TODO: this seems evil
+	server.restock(pid);
 	set_hp(pid, oldhp);
 	set_ammo(pid, get_mag_ammo(pid), oldreserve);
 end

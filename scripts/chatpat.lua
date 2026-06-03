@@ -46,21 +46,21 @@ end
 -- Improves the two most popular words by default. Add something fun, won't you?
 getcfg("chatpat_chat", {
 	{chatpat_parse("n+e+g+r+((o+))"), "potat%1"},
-	{chatpat_parse("n+i+((g+))e*r+"), "di%1er"},
-	{chatpat_parse("n+i+g+((%[%a%@%s% %]%+))"), "sop%1"},
+	{chatpat_parse("n+i+((g+))e*r+"), "di%1er "},
+	{chatpat_parse("n+i+g+((%[%a%@%s% %]%+%[%%%c%%%p%%%s%]%+))"), "sop%1"},
 	{chatpat_parse("n+i+g+((%[%a%@%s% %]%*))%$"), "sop%1"},
-	{chatpat_parse("f+((a+))g+o*t*"), "m%1n"},
-	--{chatpat_parse("f+((u+))k+"), "fl%1ff"},
+	{chatpat_parse("f+((a+))g+o*t*"), "m%1n "},
+	--{chatpat_parse("f+((u*))k+"), "fl%1ff "},
 	--{"onion", "garlic"}
 });
 
 getcfg("chatpat_name", {
 	{chatpat_parse("n+e+g+r+((o+))"), "potat%1"},
-	{chatpat_parse("n+i+((g+))e*r+"), "di%1er"},
-	{chatpat_parse("n+i+g+((%[%a%@%s% %]%+))"), "sop%1"},
+	{chatpat_parse("n+i+((g+))e*r+"), "di%1er "},
+	{chatpat_parse("n+i+g+((%[%a%@%s% %]%+%[%%%c%%%p%%%s%]%+))"), "sop%1"},
 	{chatpat_parse("n+i+g+((%[%a%@%s% %]%*))%$"), "sop%1"},
-	{chatpat_parse("f+((a+))g+o*t*"), "m%1n"},
-	--{chatpat_parse("f+((u*))k+"), "fl%1ff"},
+	{chatpat_parse("f+((a+))g+o*t*"), "m%1n "},
+	--{chatpat_parse("f+((u*))k+"), "fl%1ff "},
 	--{"onion", "garlic"}
 });
 

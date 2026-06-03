@@ -5,6 +5,10 @@ local totp = require "lib_totp";
 local sodium = require "luasodium";
 local db;
 
+getcfg("auth_db", "rw/auth.db");
+getcfg("auth_rate_passwords", true);
+getcfg("auth_login_ratelimit", 15);
+
 if (auth_granted == nil) then
 	auth_granted = pid_connected_table(function() return {} end);
 end
@@ -15,8 +19,10 @@ end
 
 local totp_verify = pid_connected_table(nil);
 
-getcfg("auth_db", "rw/auth.db");
-getcfg("auth_rate_passwords", true);
+-- Used to ratelimit /login to prevent excessive CPU usage from password hashing and brute-force attacks
+-- TODO: ratelimit /chpasswd, /register? Might need a cap to unlimit those, for administrative use.
+-- TODO: still should thread it
+local login_ratelimit = pid_connected_table(nil);
 
 local login_first_msg = {
 	en="You need to login to run that command."
@@ -34,6 +40,10 @@ local name_taken_msg = {
 -- TODO: should it just pretend it's a bad password? only if registration is locked though
 local no_user_msg = {
 	en="User not found."
+};
+
+local login_ratelimit_msg = {
+	en="Try logging in again in %(timeleft) s."
 };
 
 local bad_login_msg = {
@@ -317,6 +327,13 @@ end
 local cmd = {name="login", fakepid=true, sensitive=true, usage="name password [otp]", desc="Login to an account."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 2 or #argv == 3);
+
+	local now = get_time();
+	if (login_ratelimit[pid] and now < login_ratelimit[pid]) then
+		l10n_send_chat(pid, login_ratelimit_msg, {timeleft=math.ceil(login_ratelimit[pid] - now)});
+		return;
+	end
+	login_ratelimit[pid] = now + auth_login_ratelimit;
 
 	local name = argv[1];
 	local pwd = argv[2];

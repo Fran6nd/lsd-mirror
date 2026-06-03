@@ -186,7 +186,7 @@ local hmac = {
 local function check_totp_okay(totp_key, totp_algorithm, totp_period, totp_digits, otp)
 	local ctr = math.floor(os.time()/totp_period);
 
-	for i=-1,0,1 do
+	for i=-1,1 do
 		if (tonumber(otp) == totp.gen_code(totp_key, ctr+i, hmac[totp_algorithm], totp_digits)) then
 			return true;
 		end

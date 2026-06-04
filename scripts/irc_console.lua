@@ -108,6 +108,7 @@ local function try_add_nick(nick)
 		if (user) then
 			local user = user[1];
 			local pid = new_fakepid();
+			on_fakepid_connect(pid);
 
 			nicktopid[nick] = pid;
 			pidtonick[pid] = nick;

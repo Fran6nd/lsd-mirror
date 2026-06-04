@@ -15,16 +15,20 @@ local current_freq_msg = {
 
 local valid_freqs = {[60]=true, [30]=true, [20]=true, [15]=true, [12]=true, [10]=true};
 -- TODO: how to l10n format a list of ints?
-local cmd = {name="ups", usage="freq", desc="Set the rate your client receives player position/orientation."};
+local cmd = {name="ups", usage="[freq]", desc="Get/set the rate your client receives player position/orientation."};
 function cmd.func(pid, argv)
 	-- The _opt arg-get function is used to allow for a more useful usage message
 	cmd_assert(pid, cmd, #argv <= 1);
 	local freq = get_arg_num_finite_opt("freq", pid, cmd, argv[1]);
 
-	if (freq == nil or not valid_freqs[freq]) then
+	if (freq == nil) then
+		l10n_send_chat(pid, current_freq_msg, {freq=60/rate[pid]});
+		return;
+	end
+
+	if (not valid_freqs[freq]) then
 		send_usage(pid, cmd);
 		l10n_send_chat(pid, freq_msg, {arg="freq", freqs="60, 30, 20, 15, 12, 10"});
-		l10n_send_chat(pid, current_freq_msg, {freq=60/rate[pid]});
 		return;
 	end
 

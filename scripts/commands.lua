@@ -81,7 +81,7 @@ function cmd_assert(pid, cmd, condition)
 	end
 end
 
-local takenfakepid;
+takenfakepid = {};
 function mod.on_load()
 	takenfakepid = {};
 	for i=0,MAX_PLAYERS-1 do

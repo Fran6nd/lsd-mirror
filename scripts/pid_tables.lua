@@ -23,6 +23,14 @@ local function init_pid_table(insertto, default, onclear)
 		end
 	end
 
+	for i, _ in pairs(takenfakepid) do
+		if (type(default) == "function") then
+			tbl[i] = default(i);
+		else
+			tbl[i] = default;
+		end
+	end
+
 	tbl.default = default;
 	tbl.onclear = onclear;
 

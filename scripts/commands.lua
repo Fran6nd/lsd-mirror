@@ -121,10 +121,10 @@ end
 
 -- TODO: make pid_tables hook into this instead of the other way around
 function free_fakepid(pid)
-	takenfakepid[pid] = nil;
 	if (clear_fakepid_table) then
 		clear_fakepid_table(pid);
 	end
+	takenfakepid[pid] = nil;
 end
 
 function is_fakepid(pid)

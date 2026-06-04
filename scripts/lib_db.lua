@@ -42,7 +42,7 @@ end
 
 local function init_stmt(db, name, stmtsql)
 	local stmt, code = db.con:prepare(stmtsql);
-	assert(stmt ~= nil, "db.con:prepare: "..name..": "..fmt_code(code));
+	assert(stmt ~= nil, "db.con:prepare: "..name..": "..db.con:errmsg()..": "..fmt_code(code));
 
 	db.stmt[name] = stmt;
 	return stmt;
@@ -93,7 +93,8 @@ function mod.transact(db, func)
 	local status, err = pcall(func);
 
 	if (not status) then
-		db.con:exec(rollback);
+		db.stmt.rollback:reset();
+		db.stmt.rollback:step();
 		error(err, 2);
 	end
 

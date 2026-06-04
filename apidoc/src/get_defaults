@@ -19,11 +19,11 @@ Possible values of <var>type</var> are:
 <dt>4<dd>Spade
 </dl>
 
-<!-- TODO: how to handle dmrpl's case of 32 pids being reserved, and display that properly with the masterlist? -->
+<!-- TODO: how to handle dmrpl's case of 32 pid's being reserved, and display that properly with the masterlist? -->
 plid get_effective_max_players(void) ->
 Returns 1 greater than the highest pid currently allowed to make a new connection.
-Pids greater than or equal to the return value of this may still be connected if
-the return value is lowered after those pids join.
+Pid's greater than or equal to the return value of this may still be connected if
+the return value is lowered after those pid's join.
 This may be less than or equal to MAX_PLAYERS.
 
 plid get_anon_pid(void) ->

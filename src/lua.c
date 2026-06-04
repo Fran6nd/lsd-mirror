@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <math.h>
-#include <arpa/inet.h>
 #include <errno.h>
 #include <lua.h>
 #include <lauxlib.h>
@@ -1079,7 +1078,7 @@ static int get_ipaddr(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
 	if (st->p[pid].peer)
-		lua_pushnumber(l, ntohl(st->p[pid].peer->address.host));
+		lua_pushnumber(l, ENET_NET_TO_HOST_32(st->p[pid].peer->address.host));
 	else
 		lua_pushnumber(l, 0);
 

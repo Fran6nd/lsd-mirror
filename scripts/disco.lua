@@ -15,14 +15,15 @@ getcfg("disco_palette", {
 	{r=128, g=232, b=121}
 });
 
-local function start_disco()
+-- game_end is used by other hooks
+function mod.impl.start_disco(game_end)
 	disco_timer = get_time() + disco_frequency;
 
 	disco_palette_idx = 1;
 	send_fog(PID_BROADCAST, disco_palette[disco_palette_idx]);
 end
 
-local function end_disco()
+function mod.impl.end_disco()
 	disco_timer = nil;
 	send_fog(PID_BROADCAST, get_fog());
 
@@ -54,7 +55,7 @@ end
 function mod.early.on_game_end()
 	if (disco_gameend_time > 0) then
 		disco_end_timer = get_time() + disco_gameend_time;
-		start_disco();
+		start_disco(true);
 		return;
 	end
 

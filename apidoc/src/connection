@@ -1,7 +1,7 @@
-void on_any_connect(plid pid) ->
+void on_any_connect(nplid pid) ->
 Called when a client attempts to connect to the server.
 The connection may be denied by calling disconnect_now() and returning.
-The pid may be out of range; in this case, default behavior is to deny the connection.
+The pid may be &ge; MAX_PLAYERS; in this case, default behavior is to deny the connection.
 Otherwise, on_successful_connect() is called.
 
 void on_successful_connect(plid pid) ->

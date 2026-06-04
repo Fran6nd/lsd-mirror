@@ -28,13 +28,13 @@ static plid cassign_new_pid(struct State *st) {
 
 
 static int lon_any_connect(lua_State *l) {
-	plid pid = check_plid(l, 1);
+	nplid pid = check_nplid(l, 1);
 
 	f.on_any_connect(pid, st);
 	return 0;
 }
 
-static void con_any_connect(plid pid, struct State *st) {
+static void con_any_connect(nplid pid, struct State *st) {
 	(void)st;
 	lua_getglobal(l, "on_any_connect");
 

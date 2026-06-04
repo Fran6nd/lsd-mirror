@@ -198,7 +198,7 @@ struct Functions {
 	 */
 	plid (*assign_new_pid)(struct State *st);
 	/* This one should disconnect the player if server full, banned, etc. */
-	void (*on_any_connect)(plid pid, struct State *st);
+	void (*on_any_connect)(nplid pid, struct State *st);
 	/* This one gets called if the player was not kicked after connecting. */
 	void (*on_successful_connect)(plid pid, struct State *st);
 	void (*on_disconnect)(plid pid, struct State *st);

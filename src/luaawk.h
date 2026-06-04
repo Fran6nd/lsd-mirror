@@ -453,6 +453,58 @@ static int cget_hit_damage(plid pid, unsigned type, struct State *st) {
 }
 
 
+static int lget_effective_max_players(lua_State *l) {
+	(void)l;
+
+	lua_pushnumber(l, f.get_effective_max_players(st));
+	return 1;
+}
+
+static plid cget_effective_max_players(struct State *st) {
+	plid ret;
+
+	(void)st;
+	lua_getglobal(l, "get_effective_max_players");
+
+
+	if (lua_pcall(l, 0, 1, 0) != 0)
+		CBAILN1("get_effective_max_players: %s", luaL_checkstring(l, -1));
+
+	if (!lua_isnumber(l, -1))
+		CBAIL1N1("get_effective_max_players: should return a number");
+
+	ret = lua_tonumber(l, -1);
+	lua_pop(l, 1);
+	return ret;
+}
+
+
+static int lget_anon_pid(lua_State *l) {
+	(void)l;
+
+	lua_pushnumber(l, f.get_anon_pid(st));
+	return 1;
+}
+
+static plid cget_anon_pid(struct State *st) {
+	plid ret;
+
+	(void)st;
+	lua_getglobal(l, "get_anon_pid");
+
+
+	if (lua_pcall(l, 0, 1, 0) != 0)
+		CBAILN1("get_anon_pid: %s", luaL_checkstring(l, -1));
+
+	if (!lua_isnumber(l, -1))
+		CBAIL1N1("get_anon_pid: should return a number");
+
+	ret = lua_tonumber(l, -1);
+	lua_pop(l, 1);
+	return ret;
+}
+
+
 static int lafter_player_destroy(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
@@ -2052,6 +2104,8 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	st->f.on_handshake = con_handshake;
 	st->f.get_spawn_time = cget_spawn_time;
 	st->f.get_hit_damage = cget_hit_damage;
+	st->f.get_effective_max_players = cget_effective_max_players;
+	st->f.get_anon_pid = cget_anon_pid;
 	st->f.after_player_destroy = cafter_player_destroy;
 	st->f.before_estimated_fire = cbefore_estimated_fire;
 	st->f.on_game_end = con_game_end;
@@ -2150,6 +2204,8 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	{"on_handshake", lon_handshake}, \
 	{"get_spawn_time", lget_spawn_time}, \
 	{"get_hit_damage", lget_hit_damage}, \
+	{"get_effective_max_players", lget_effective_max_players}, \
+	{"get_anon_pid", lget_anon_pid}, \
 	{"after_player_destroy", lafter_player_destroy}, \
 	{"before_estimated_fire", lbefore_estimated_fire}, \
 	{"on_game_end", lon_game_end}, \

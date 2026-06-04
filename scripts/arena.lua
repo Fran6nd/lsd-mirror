@@ -57,14 +57,14 @@ end
 
 local function add_gates()
 	for _,x in ipairs(gates) do
-		set_block_color(31, x.color);
-		block_action(x, 0, 31);
+		set_block_color(get_anon_pid(), x.color);
+		block_action(x, 0, get_anon_pid());
 	end
 end
 
 local function rm_gates()
 	for _,x in ipairs(gates) do
-		block_action(x, 1, 31);
+		block_action(x, 1, get_anon_pid());
 	end
 end
 

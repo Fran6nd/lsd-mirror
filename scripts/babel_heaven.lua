@@ -85,8 +85,8 @@ local function build_now(path)
 			local b = ptr[2];
 			ptr = ptr + 3;
 
-			set_block_color(31, {r=r, g=g, b=b});
-			block_action({x=256-babel_width/2+x,y=256-babel_height/2+y,z=babel_z}, 0, 31);
+			set_block_color(get_anon_pid(), {r=r, g=g, b=b});
+			block_action({x=256-babel_width/2+x,y=256-babel_height/2+y,z=babel_z}, 0, get_anon_pid());
 		end
 	end
 end
@@ -202,8 +202,8 @@ local function place_next()
 	local g = img.buf[off+1];
 	local b = img.buf[off+2];
 
-	set_block_color(31, {r=r, g=g, b=b});
-	block_action({x=256-babel_width/2+x,y=256-babel_height/2+y,z=babel_z}, 0, 31);
+	set_block_color(get_anon_pid(), {r=r, g=g, b=b});
+	block_action({x=256-babel_width/2+x,y=256-babel_height/2+y,z=babel_z}, 0, get_anon_pid());
 
 	if (#placepos ~= 0) then
 		placetimer = placetimer + 0.005;

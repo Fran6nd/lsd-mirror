@@ -90,8 +90,8 @@ function mod.block_action_rm(pos, type, from)
 			-- TODO: ick
 			-- TODO: also, drop the set_?
 			-- TODO: map_block -> voxel?
-			send_set_block_color(PID_BROADCAST, get_map_block_color(p), 32);
-			send_block_action(PID_BROADCAST, p, 0, 32);
+			send_set_block_color(PID_BROADCAST, get_map_block_color(p), get_anon_pid());
+			send_block_action(PID_BROADCAST, p, 0, get_anon_pid());
 		end
 	end
 

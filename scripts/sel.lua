@@ -341,9 +341,6 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
--- TODO: nuke PID_COLOR_ANONYMOUS
-PID_COLOR_ANONYMOUS=31;
-
 local function require_sel(pid)
 	if (sel_start[pid] == nil or sel_end[pid] == nil) then
 		if (sel[pid] == nil and sel_start[pid] == nil and sel_end[pid] == nil) then
@@ -363,7 +360,7 @@ local function set_noised_color(pid, clr)
 	for chan,val in pairs(clr) do
 		clr[chan] = math.min(math.max(val + noise, 0), 255);
 	end
-	set_block_color(PID_COLOR_ANONYMOUS, clr);
+	set_block_color(get_anon_pid(), clr);
 end
 
 local cmd = {name="selrep", caps="sel", desc="Fill and replace a box."};
@@ -373,7 +370,7 @@ function cmd.func(pid, argv)
 
 	-- TODO: remove and just use the per-block set_color?
 	if (sel_noise[pid] == 0) then
-		set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
+		set_block_color(get_anon_pid(), get_block_color(pid));
 	end
 
 	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
@@ -384,7 +381,7 @@ function cmd.func(pid, argv)
 					if (sel_noise[pid] ~= 0) then
 						set_noised_color(pid, get_block_color(pid));
 					end
-					block_action(pos, 0, PID_COLOR_ANONYMOUS);
+					block_action(pos, 0, get_anon_pid());
 				end
 			end
 		end
@@ -399,7 +396,7 @@ function cmd.func(pid, argv)
 
 	-- TODO: remove and just use the per-block set_color?
 	if (sel_noise[pid] == 0) then
-		set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
+		set_block_color(get_anon_pid(), get_block_color(pid));
 	end
 
 	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
@@ -410,9 +407,9 @@ function cmd.func(pid, argv)
 					if (sel_noise[pid] ~= 0) then
 						set_noised_color(pid, get_block_color(pid));
 					end
-					block_action(pos, 0, PID_COLOR_ANONYMOUS);
+					block_action(pos, 0, get_anon_pid());
 				else
-					block_action(pos, 1, PID_COLOR_ANONYMOUS);
+					block_action(pos, 1, get_anon_pid());
 				end
 			end
 		end
@@ -422,19 +419,19 @@ register_command(cmd, mod);
 
 local function linex(start, endp)
 	for x=start.x,endp.x,50 do
-		block_line({x=x, y=start.y, z=start.z}, {x=math.min(x+49, endp.x), y=endp.y, z=endp.z}, PID_COLOR_ANONYMOUS);
+		block_line({x=x, y=start.y, z=start.z}, {x=math.min(x+49, endp.x), y=endp.y, z=endp.z}, get_anon_pid());
 	end
 end
 
 local function liney(start, endp)
 	for y=start.y,endp.y,50 do
-		block_line({x=start.x, y=y, z=start.z}, {x=endp.x, y=math.min(y+49, endp.y), z=endp.z}, PID_COLOR_ANONYMOUS);
+		block_line({x=start.x, y=y, z=start.z}, {x=endp.x, y=math.min(y+49, endp.y), z=endp.z}, get_anon_pid());
 	end
 end
 
 local function linez(start, endp)
 	for z=start.z,endp.z,50 do
-		block_line({x=start.x, y=start.y, z=z}, {x=endp.x, y=endp.y, z=math.min(z+49, endp.z)}, PID_COLOR_ANONYMOUS);
+		block_line({x=start.x, y=start.y, z=z}, {x=endp.x, y=endp.y, z=math.min(z+49, endp.z)}, get_anon_pid());
 	end
 end
 
@@ -473,7 +470,7 @@ function cmd.func(pid, argv)
 	local x1, x2 = order(sel_start[pid].x, sel_end[pid].x);
 
 	if (sel_noise[pid] == 0) then
-		set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
+		set_block_color(get_anon_pid(), get_block_color(pid));
 	end
 	if (sel_shape[pid] == "cube" and sel_noise[pid] == 0) then
 		for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
@@ -493,7 +490,7 @@ function cmd.func(pid, argv)
 						if (sel_noise[pid] ~= 0) then
 							set_noised_color(pid, get_block_color(pid));
 						end
-						block_action(pos, 0, PID_COLOR_ANONYMOUS);
+						block_action(pos, 0, get_anon_pid());
 					end
 				end
 			end
@@ -534,7 +531,7 @@ local function do_rm(pid)
 				for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
 					local pos = {x=x, y=y, z=z};
 					if (is_solid(pos)) then
-						block_action(pos, 1, PID_COLOR_ANONYMOUS);
+						block_action(pos, 1, get_anon_pid());
 					end
 				end
 			end
@@ -573,7 +570,7 @@ function cmd.func(pid, argv)
 	require_sel(pid);
 
 	if (sel_noise[pid] == 0) then
-		set_block_color(PID_COLOR_ANONYMOUS, get_block_color(pid));
+		set_block_color(get_anon_pid(), get_block_color(pid));
 	end
 	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
 		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
@@ -583,7 +580,7 @@ function cmd.func(pid, argv)
 					if (sel_noise[pid] ~= 0) then
 						set_noised_color(pid, get_block_color(pid));
 					end
-					block_action(pos, 0, PID_COLOR_ANONYMOUS);
+					block_action(pos, 0, get_anon_pid());
 				end
 			end
 		end
@@ -684,7 +681,7 @@ local function do_selcpy(cmd, pid, argv, is_solid, get_map_block_color, forceoff
 							-- TODO: make destroy optional
 							-- TODO: make sure this doesn't allow gravity to be "helpful"
 							-- TODO: bring gravitied blocks back from the dead if you have to
-							block_action(newpos, 1, PID_COLOR_ANONYMOUS);
+							block_action(newpos, 1, get_anon_pid());
 						end
 					end
 				end
@@ -700,7 +697,7 @@ local function do_selcpy(cmd, pid, argv, is_solid, get_map_block_color, forceoff
 					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
 						if (is_solid(pos)) then
 							set_noised_color(pid, get_map_block_color(pos));
-							block_action(newpos, 0, PID_COLOR_ANONYMOUS);
+							block_action(newpos, 0, get_anon_pid());
 						end
 					end
 				end

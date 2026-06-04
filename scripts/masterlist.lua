@@ -10,7 +10,7 @@ getcfg("masterlist_remotes", {
 
 local function calc_players()
 	local players = 0;
-	local max = MAX_PLAYERS;
+	local max = get_effective_max_players();
 
 	for i in piditer(PID_BROADCAST) do
 		if (is_joined(i)) then

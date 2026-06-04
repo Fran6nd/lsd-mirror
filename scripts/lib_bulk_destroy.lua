@@ -4,7 +4,7 @@
 local posarr = {};
 local maskarr = {};
 function bdestroy_block_action(pos, type)
-	local mask = block_action_rm(pos, type, 0);
+	local mask = block_action_rm(pos, type, get_anon_pid());
 	if (mask ~= 0) then
 		table.insert(posarr, {x=pos.x, y=pos.y, z=pos.z});
 		table.insert(maskarr, mask);

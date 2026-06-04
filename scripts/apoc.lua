@@ -203,7 +203,7 @@ function build_strike(pos, forkchance)
 			pos = {x=math.random(0,511), y=math.random(0,511)};
 		end
 		pos.z = 3;
-		set_block_color(PID_COLOR_ANONYMOUS, white);
+		set_block_color(get_anon_pid(), white);
 		forkchance = 8;
 	end
 
@@ -218,7 +218,7 @@ function build_strike(pos, forkchance)
 			break;
 		end
 
-		block_action(pos, 0, 32);
+		block_action(pos, 0, get_anon_pid());
 		-- TODO: how to deal with duplicates?
 		table.insert(strikeblocks, {x=pos.x, y=pos.y, z=pos.z});
 		--sc(string.format("{x=%u, y=%u, z=%02u}", pos.x, pos.y, pos.z));

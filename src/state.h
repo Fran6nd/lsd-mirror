@@ -10,8 +10,6 @@
 #define PRIuSIZET "zu"
 #define PRIiPID "i"
 
-/* For blocks and block lines when no player has placed them */
-#define PID_COLOR_ANONYMOUS 32
 /* TODO: merge broadcast and broadcast_except? */
 #define PID_SET_FLAG(x) ((uint32_t)(x) << 29)
 #define PID_BROADCAST PID_SET_FLAG(1)
@@ -234,6 +232,8 @@ struct Functions {
 	fvec3 (*get_spawn_position)(plid pid, struct State *st);
 	clk (*get_spawn_time)(plid pid, struct State *st);
 	int (*get_hit_damage)(plid pid, unsigned type, struct State *st);
+	plid (*get_effective_max_players)(struct State *st);
+	plid (*get_anon_pid)(struct State *st);
 	/* TODO: make name less ambiguous? refers to players dying/disconnecting/whatever but could be interpreted as block destroying */
 	void (*after_player_destroy)(plid pid, struct State *st);
 	void (*before_estimated_fire)(plid pid, struct State *st);

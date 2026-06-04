@@ -44,23 +44,23 @@ end
 
 local function paint_lines()
 	for team=1,2 do
-		set_block_color(PID_COLOR_ANONYMOUS, get_team_color(team));
+		set_block_color(get_anon_pid(), get_team_color(team));
 		for _,zone in ipairs(babel_protect_zones[team]) do
 			for x=zone[1].x,zone[2].x do
 				if (is_dash(x, zone[1].y)) then
-					block_action({x=x, y=zone[1].y, z=get_highest_z(x, zone[1].y)}, 0, PID_COLOR_ANONYMOUS);
+					block_action({x=x, y=zone[1].y, z=get_highest_z(x, zone[1].y)}, 0, get_anon_pid());
 				end
 				if (is_dash(x, zone[2].y)) then
-					block_action({x=x, y=zone[2].y, z=get_highest_z(x, zone[2].y)}, 0, PID_COLOR_ANONYMOUS);
+					block_action({x=x, y=zone[2].y, z=get_highest_z(x, zone[2].y)}, 0, get_anon_pid());
 				end
 			end
 
 			for y=zone[1].y,zone[2].y do
 				if (is_dash(zone[1].x, y)) then
-					block_action({x=zone[1].x, y=y, z=get_highest_z(zone[1].x, y)}, 0, PID_COLOR_ANONYMOUS);
+					block_action({x=zone[1].x, y=y, z=get_highest_z(zone[1].x, y)}, 0, get_anon_pid());
 				end
 				if (is_dash(zone[2].x, y)) then
-					block_action({x=zone[2].x, y=y, z=get_highest_z(zone[2].x, y)}, 0, PID_COLOR_ANONYMOUS);
+					block_action({x=zone[2].x, y=y, z=get_highest_z(zone[2].x, y)}, 0, get_anon_pid());
 				end
 			end
 		end
@@ -71,14 +71,14 @@ local function paint_lines()
 	-- Team color is borrowed from the prior incantations in this function
 	for y=zone[1].y,zone[2].y do
 		if (is_dash(zone[2].x, y)) then
-			block_action({x=zone[2].x, y=y, z=get_highest_z(zone[2].x, y)}, 0, PID_COLOR_ANONYMOUS);
+			block_action({x=zone[2].x, y=y, z=get_highest_z(zone[2].x, y)}, 0, get_anon_pid());
 		end
 	end
 
-	set_block_color(PID_COLOR_ANONYMOUS, get_team_color(1));
+	set_block_color(get_anon_pid(), get_team_color(1));
 	for y=zone[1].y,zone[2].y do
 		if (is_dash(zone[1].x, y)) then
-			block_action({x=zone[1].x, y=y, z=get_highest_z(zone[1].x, y)}, 0, PID_COLOR_ANONYMOUS);
+			block_action({x=zone[1].x, y=y, z=get_highest_z(zone[1].x, y)}, 0, get_anon_pid());
 		end
 	end
 end

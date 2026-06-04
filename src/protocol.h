@@ -13,8 +13,12 @@ extern "C" {
 #include <stdint.h>
 
 #define VARIABLE_LENGTH 1
-/* TODO: 256 */
-#define MAX_PLAYERS 32
+
+/* MAX_PLAYERS used for absolute max, 1 less than 256 so get_anon_pid() still functions
+ * DEFAULT_MAX_PLAYERS used for get_effective_max_players()
+ */
+#define MAX_PLAYERS 255
+#define DEFAULT_MAX_PLAYERS 32
 
 #ifdef PACK_GCC
 #define LIBSPADES_PACKED __attribute__((packed))

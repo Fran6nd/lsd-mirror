@@ -125,22 +125,21 @@ local function legal_pos(pos, type)
 	return true;
 end
 
-PID_COLOR_ANONYMOUS = 31
 -- TODO: don't bother with building over solid stuff (unless it's a different color -- probably block over all on load but not platform destroy)
 -- TODO: handle ridiculous blockaction queueing?
 function mod.impl.babel_build_platform(mapload, pass2)
-	set_block_color(PID_COLOR_ANONYMOUS, {b=255, g=255, r=0});
+	set_block_color(get_anon_pid(), {b=255, g=255, r=0});
 
 	if (mapload) then
 		for y=plat_start.y,plat_end.y do
 			for x=plat_start.x,plat_end.x do
-				block_action({x=x, y=y, z=plat_z}, 0, PID_COLOR_ANONYMOUS);
+				block_action({x=x, y=y, z=plat_z}, 0, get_anon_pid());
 			end
 		end
 	else
 		for y=plat_start.y,plat_end.y do
 			for x=plat_start.x,plat_end.x,50 do
-				block_line({x=x, y=y, z=plat_z}, {x=math.min(x+49, plat_end.x), y=y, z=plat_z}, PID_COLOR_ANONYMOUS);
+				block_line({x=x, y=y, z=plat_z}, {x=math.min(x+49, plat_end.x), y=y, z=plat_z}, get_anon_pid());
 			end
 		end
 	end

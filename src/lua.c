@@ -56,7 +56,7 @@ void get_color2(lua_State *l, int table, color color) {
 	lua_pop(l, 1);
 }
 
-/* TODO: replace set_color, block_action and PID_COLOR_ANONYMOUS with dedicated bulk build/destroy api */
+/* TODO: replace set_color and block_action with dedicated bulk build/destroy api? */
 plid check_plid(lua_State *l, int numArg) {
 	double val = luaL_checknumber(l, numArg);
 	if (val < 0 || val >= MAX_PLAYERS)
@@ -1634,9 +1634,6 @@ void hook_lua(const char *cfg, unsigned long port, struct State *st2) {
 
 	lua_pushnumber(l, PID_BROADCAST);
 	lua_setglobal(l, "PID_BROADCAST");
-
-	lua_pushnumber(l, PID_COLOR_ANONYMOUS);
-	lua_setglobal(l, "PID_COLOR_ANONYMOUS");
 
 	/* TODO: #define SPECTATOR 255? */
 	lua_pushnumber(l, 256);

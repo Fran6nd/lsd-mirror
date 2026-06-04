@@ -163,10 +163,30 @@ extern clk from_s_double(double ts) {
 	return ts * 1000000000;
 }
 
+static plid get_effective_max_players(struct State *st) {
+	(void)st;
+	return DEFAULT_MAX_PLAYERS;
+}
+
+/* TODO: fakepid #(MAX_PLAYERS) and get_anon_pid()==MAX_PLAYERS are probably ambiguous */
+static plid get_anon_pid(struct State *st) {
+	plid i = st->f.get_effective_max_players(st);
+
+	if (!st->p[i].connected)
+		return i;
+
+	for (i=0;i<MAX_PLAYERS;i++) {
+		if (!st->p[i].connected)
+			return i;
+	}
+
+	return MAX_PLAYERS;
+}
+
 static plid assign_new_pid(struct State *st) {
 	plid i;
 
-	for (i=0;i<MAX_PLAYERS;i++) {
+	for (i=0;i<st->f.get_effective_max_players(st);i++) {
 		if (!st->p[i].connected)
 			return i;
 	}
@@ -452,7 +472,7 @@ static void send_cull(int32_t x, int32_t y, int32_t z, int noneighbor, struct St
 		if (noneighbor)
 		for (i=0;i<MAX_PLAYERS;i++) {
 			if (pid_matches(PID_BROADCAST, i, st) && !(st->p[i].bugMask & QUIRK_OS_BACTION_CULL))
-				st->f.send_block_action(i, pos, 1, 32, st);
+				st->f.send_block_action(i, pos, 1, st->f.get_anon_pid(st), st);
 		}
 	} else {
 		if (!noneighbor) {
@@ -469,7 +489,7 @@ static void send_cull(int32_t x, int32_t y, int32_t z, int noneighbor, struct St
 				if (pos.x >= 0 && pos.x < 512 && pos.y >= 0 && pos.y < 512 && pos.z >= 0 && pos.z < 62 && !get_solid3(pos.x, pos.y, pos.z, st))
 				for (i=0;i<MAX_PLAYERS;i++) {
 					if (pid_matches(PID_BROADCAST, i, st) && st->p[i].bugMask & QUIRK_OS_BACTION_CULL)
-						st->f.send_block_action(i, pos, 1, 32, st);
+						st->f.send_block_action(i, pos, 1, st->f.get_anon_pid(st), st);
 				}
 			}
 		} else for (i=0;i<MAX_PLAYERS;i++) {
@@ -1478,6 +1498,8 @@ void set_funcs_packetrecv(struct State *st);
 void set_funcs_event(struct State *st);
 void set_funcs_send(struct State *st);
 static void set_funcs(struct State *st) {
+	st->f.get_effective_max_players = get_effective_max_players;
+	st->f.get_anon_pid = get_anon_pid;
 	st->f.assign_new_pid = assign_new_pid;
 	st->f.tick = tick;
 	st->f.before_log = before_log;

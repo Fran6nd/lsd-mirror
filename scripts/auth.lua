@@ -367,18 +367,25 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
+function mod.impl.auth_forcelogin(pid, name)
+	local vals = getpasswd(name);
+	if (vals == nil) then
+		return false;
+	end
+
+	do_login(pid, vals[1], vals[2]);
+	return true;
+end
+
 local cmd = {name="forcelogin", caps="forcelogin", fakepid=true, usage="name", desc="Barge into an account."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 
-	local vals = getpasswd(argv[1]);
-	if (vals == nil) then
+	if (not auth_forcelogin(pid, argv[1])) then
 		l10n_send_chat(pid, no_user_msg);
 		return;
 	end
 
-	-- TODO: send id?
-	do_login(pid, vals[1], vals[2]);
 	server_msg(pid, get_id_str(pid));
 end
 register_command(cmd, mod);

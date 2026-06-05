@@ -83,6 +83,12 @@ function whereami.tick()
 	server_msg(0, string.format("N%% pos: {%.3f, %.3f, %.3f}", pos.x, pos.y, pos.z));
 end
 
+myvel = init_mod();
+function myvel.after.tick()
+	local vel = get_velocity(0);
+	server_msg(0, string.format("N%% vel: {%.3f, %.3f, %.3f}", vel.x, vel.y, vel.z));
+end
+
 function nuketest()
 	local start = get_time();
 	for y=1,511+2,3 do

@@ -1155,6 +1155,12 @@ static int get_orientation(lua_State *l) {
 	return 1;
 }
 
+static int get_velocity(lua_State *l) {
+	plid pid = check_plid(l, 1);
+	push_fvec3(st->p[pid].vel);
+	return 1;
+}
+
 static int get_mouse_inputs(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
@@ -1531,6 +1537,7 @@ static const struct luaL_Reg funcs[] = {
 	{"get_intelloc", get_intelloc},
 	{"get_position", get_position},
 	{"get_orientation", get_orientation},
+	{"get_velocity", get_velocity},
 	{"get_mouse_inputs", get_mouse_inputs},
 	{"get_team", get_team},
 	{"get_gun", get_gun},

@@ -27,6 +27,11 @@ Players that are not alive return an implementation-defined value.
 fvec3 get_orientation(plid pid) ->
 Returns the player's current direction vector.
 The length of the vector may or may not alter physics if it's non-1. <!-- TODO: move to set_orientation? -->
+Players that are not alive return an implementation-defined value.
+
+fvec3 get_velocity(plid pid) ->
+Returns the player's current velocity vector.
+Players that are not alive return an implementation-defined value.
 
 <!-- TODO: s:\(input\)s:\1: -->
 integer get_mouse_inputs(plid pid) ->

@@ -146,6 +146,7 @@ void sandbox(void) {
 		"fsync", /* needed on alpine but not void */
 		"unlink",
 		"ftruncate",
+		"fchmod",
 		/* needed for linenoise */
 		"write",
 		/* needed for unixsock */

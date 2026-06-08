@@ -68,7 +68,7 @@ bplid check_bplid(lua_State *l, int numArg) {
 	return luaL_checknumber(l, numArg);
 }
 
-bplid check_nplid(lua_State *l, int numArg) {
+nplid check_nplid(lua_State *l, int numArg) {
 	double val = luaL_checknumber(l, numArg);
 	if (val < 0 || val >= 256)
 		LERR(l, "nplid is invalid (%.0f)", val);

@@ -23,6 +23,11 @@ struct MasterState {
 	uint8_t  oldmaxplayers;
 	char     oldname[32];
 	char     oldgamemode[8];
+
+	void *udata;
+	void (*on_reconnect_attempt)(uint32_t peer, void *udata);
+	void (*on_successful_connect)(uint32_t peer, void *udata);
+	void (*on_disconnect)(uint32_t peer, void *udata);
 };
 
 int masterlist_init(struct MasterState *ms);

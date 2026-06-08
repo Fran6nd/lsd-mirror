@@ -63,6 +63,10 @@ static void send_major(struct MasterState *ms) {
 
 static void on_connect(ENetPeer *peer, struct MasterState *ms) {
 	char buf[1+2+32+8+21];
+
+	if (ms->on_successful_connect)
+		ms->on_successful_connect(peer->incomingPeerID, ms->udata);
+
 	send_packet(buf, major_buf(buf, ms), peer);
 
 	if (ms->players != 0)
@@ -93,11 +97,8 @@ void masterlist_deinit(struct MasterState *ms) {
 /* Some random pointer that has a non-NULL value */
 #define AUTORECONNECT masterlist_connect
 
-#include <stdio.h>
-#define DBGLOG(x, ...) do {fprintf(stderr, x"\n\r", __VA_ARGS__);} while (0)
 uint32_t masterlist_connect(ENetAddress *addr, struct MasterState *ms) {
 	ENetPeer *peer;
-	DBGLOG("ATTEMPT CONNECT", NULL);
 
 	peer = enet_host_connect(ms->host, addr, 1, 31);
 	if (peer == NULL)
@@ -142,20 +143,24 @@ void masterlist_service(struct MasterState *ms) {
 	while (enet_host_service(ms->host, &event, 0) > 0) {
 		switch (event.type) {
 		case ENET_EVENT_TYPE_CONNECT:
-			DBGLOG("CONNECT", NULL);
 			on_connect(event.peer, ms);
 			break;
 		case ENET_EVENT_TYPE_DISCONNECT:
-			DBGLOG("DISCONNECT", NULL);
+			if (ms->on_disconnect)
+				ms->on_disconnect(event.peer->incomingPeerID, ms->udata);
 			/* TODO: log */
 			if (event.peer->data && event.data == 0) {
 				event.peer->data = NULL;
+				if (ms->on_reconnect_attempt)
+					ms->on_reconnect_attempt(event.peer->incomingPeerID, ms->udata);
 				masterlist_connect(&event.peer->address, ms);
 			}
 			break;
 		case ENET_EVENT_TYPE_RECEIVE:
-			DBGLOG("RECV?", NULL);
 			/* This is never supposed to happen. */
+			/* TODO: rip out libenet and handle errs (recv, other trash)
+			 * there -- or use intercept callback if you must
+			 */
 			enet_packet_destroy(event.packet);
 			enet_peer_reset(event.peer);
 			event.peer->data = NULL;

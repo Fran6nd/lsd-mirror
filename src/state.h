@@ -242,6 +242,9 @@ struct Functions {
 	/* TODO: just have "log" */
 	void (*before_log)(struct State *st);
 	void (*after_log)(struct State *st);
+	void (*on_masterlist_successful_connect)(uint32_t peerid, struct State *st);
+	void (*on_masterlist_reconnect_attempt)(uint32_t peerid, struct State *st);
+	void (*on_masterlist_disconnect)(uint32_t peerid, struct State *st);
 
 	/*
 	 * Actions -- set pid to PID_BROADCAST to broadcast to all players,

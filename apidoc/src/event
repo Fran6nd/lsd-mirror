@@ -172,3 +172,17 @@ void before_estimated_fire(plid pid) ->
 <strong>May be called even if get_mag_ammo() is <samp>0</samp>; check ammo yourself if it's relevant.</strong>
 Called immediately before <var>pid</var> is roughly determined to have fired a shot.
 Prone to desync.
+
+void on_masterlist_successful_connect(integer peerid) ->
+Called when a new connection is made to a masterlist after calling masterlist_connect(),
+or when automatically reconnecting to an unexpectedly-disconnected masterlist.
+
+void on_masterlist_reconnect_attempt(integer peerid) ->
+Called after on_masterlist_disconnect() if the diconnect was not initiated by masterlist_disconnect().
+on_masterlist_disconnect() may be called after this if the reconnect fails,
+otherwise on_masterlist_successful_connect() is called.
+
+void on_masterlist_disconnect(integer peerid) ->
+Called upon disconnection from a masterlist.
+If this was not triggered by masterlist_disconnect(), will attempt
+to reconnect and will call on_masterlist_reconnect_attempt().

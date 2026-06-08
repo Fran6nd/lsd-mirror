@@ -39,6 +39,8 @@ Sets the gamemode advertised.
 void masterlist_set_map(void) ->
 Sets the map name advertised.
 
-<!-- TODO: port -->
-integer masterlist_connect(string address) ->
-Publishes to a new masterlist server, on port 32886. Returns a peer ID, though you can't do much with it. <!-- TODO: do something with it -->
+integer masterlist_connect(string address, integer port) ->
+Publishes to a new masterlist server. Returns a peer ID.
+
+void masterlist_disconnect(integer peerid) ->
+Unpublishes from a masterlist server.

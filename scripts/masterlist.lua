@@ -1,5 +1,7 @@
 -- masterlist.lua -- Interface (verb, TODO) with the server's masterlist implementation
 local mod = init_mod();
+local peermap = {};
+
 getcfg("masterlist_name", "soupy server");
 getcfg("masterlist_remotes", {
 	-- Default port is 32886
@@ -7,6 +9,18 @@ getcfg("masterlist_remotes", {
 	"66.135.15.57", -- not a burner's secret masterlist
 	--"master.buildandshoot.com"
 });
+
+local masterlist_connect_log_msg = {
+	en="Connected to masterlist %(addr)"
+};
+
+local masterlist_disconnect_log_msg = {
+	en="Disconnected from masterlist %(addr)"
+};
+
+local masterlist_reconnect_log_msg = {
+	en="Reconnecting to masterlist %(addr)"
+};
 
 local function calc_players()
 	local players = 0;
@@ -28,8 +42,16 @@ function mod.on_load()
 	masterlist_set_name(masterlist_name);
 	calc_players();
 
+	-- TODO: sure hope nobody disconnects and reconnects a
+	-- different peer without the peermap updating to compensate
 	for _,y in ipairs(masterlist_remotes) do
-		masterlist_connect(y);
+		peermap[masterlist_connect(y, 32886)] = y;
+	end
+end
+
+function mod.on_unload()
+	for peer,_ in pairs(peermap) do
+		masterlist_disconnect(peer);
 	end
 end
 
@@ -51,6 +73,18 @@ end
 
 function mod.after.disconnect_now()
 	calc_players();
+end
+
+function mod.after.on_masterlist_successful_connect(peerid)
+	l10n_log(masterlist_connect_log_msg, {addr=peermap[peerid]});
+end
+
+function mod.after.on_masterlist_disconnect(peerid)
+	l10n_log(masterlist_disconnect_log_msg, {addr=peermap[peerid]});
+end
+
+function mod.after.on_masterlist_reconnect_attempt(peerid)
+	l10n_log(masterlist_reconnect_log_msg, {addr=peermap[peerid]});
 end
 
 -- TODO: actually connect to masterlist in this script, not hardcoded to magicserver

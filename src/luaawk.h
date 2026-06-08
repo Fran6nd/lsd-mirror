@@ -609,6 +609,60 @@ static void cafter_log(struct State *st) {
 }
 
 
+static int lon_masterlist_successful_connect(lua_State *l) {
+	uint32_t peerid = luaL_checknumber(l, 1);
+
+	f.on_masterlist_successful_connect(peerid, st);
+	return 0;
+}
+
+static void con_masterlist_successful_connect(uint32_t peerid, struct State *st) {
+	(void)st;
+	lua_getglobal(l, "on_masterlist_successful_connect");
+
+	lua_pushnumber(l, peerid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("on_masterlist_successful_connect: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_masterlist_reconnect_attempt(lua_State *l) {
+	uint32_t peerid = luaL_checknumber(l, 1);
+
+	f.on_masterlist_reconnect_attempt(peerid, st);
+	return 0;
+}
+
+static void con_masterlist_reconnect_attempt(uint32_t peerid, struct State *st) {
+	(void)st;
+	lua_getglobal(l, "on_masterlist_reconnect_attempt");
+
+	lua_pushnumber(l, peerid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("on_masterlist_reconnect_attempt: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lon_masterlist_disconnect(lua_State *l) {
+	uint32_t peerid = luaL_checknumber(l, 1);
+
+	f.on_masterlist_disconnect(peerid, st);
+	return 0;
+}
+
+static void con_masterlist_disconnect(uint32_t peerid, struct State *st) {
+	(void)st;
+	lua_getglobal(l, "on_masterlist_disconnect");
+
+	lua_pushnumber(l, peerid);
+
+	if (lua_pcall(l, 1, 0, 0) != 0)
+		CBAIL("on_masterlist_disconnect: %s", luaL_checkstring(l, -1));
+}
+
+
 static int ltick(lua_State *l) {
 	(void)l;
 
@@ -2112,6 +2166,9 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	st->f.on_shutdown = con_shutdown;
 	st->f.before_log = cbefore_log;
 	st->f.after_log = cafter_log;
+	st->f.on_masterlist_successful_connect = con_masterlist_successful_connect;
+	st->f.on_masterlist_reconnect_attempt = con_masterlist_reconnect_attempt;
+	st->f.on_masterlist_disconnect = con_masterlist_disconnect;
 	st->f.tick = ctick;
 	st->f.load_initial_map = cload_initial_map;
 	st->f.clear_map = cclear_map;
@@ -2212,6 +2269,9 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	{"on_shutdown", lon_shutdown}, \
 	{"before_log", lbefore_log}, \
 	{"after_log", lafter_log}, \
+	{"on_masterlist_successful_connect", lon_masterlist_successful_connect}, \
+	{"on_masterlist_reconnect_attempt", lon_masterlist_reconnect_attempt}, \
+	{"on_masterlist_disconnect", lon_masterlist_disconnect}, \
 	{"tick", ltick}, \
 	{"load_initial_map", lload_initial_map}, \
 	{"clear_map", lclear_map}, \

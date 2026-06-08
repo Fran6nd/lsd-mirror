@@ -1033,9 +1033,11 @@ static int masterlist_get_map(lua_State *l) {
 static int lmasterlist_connect(lua_State *l) {
 	uint32_t peer;
 	ENetAddress addr;
-	addr.port = 32886;
+	const char *addrstr = luaL_checkstring(l, 1);
 
-	if (enet_address_set_host(&addr, luaL_checkstring(l, 1)) < 0)
+	addr.port = luaL_checknumber(l, 2);
+
+	if (enet_address_set_host(&addr, addrstr) < 0)
 		LERR(l, "masterlist_connect: enet_address_set_host: %s", strerror(errno));
 
 	if ((peer = masterlist_connect(&addr, &st->ms)) == (uint32_t)-1)
@@ -1043,6 +1045,13 @@ static int lmasterlist_connect(lua_State *l) {
 
 	lua_pushnumber(l, peer);
 	return 1;
+}
+
+static int lmasterlist_disconnect(lua_State *l) {
+	uint32_t peer = luaL_checknumber(l, 1);
+
+	masterlist_disconnect(peer, &st->ms);
+	return 0;
 }
 
 int get_solid(ivec3 pos, struct State *st);
@@ -1502,6 +1511,7 @@ static const struct luaL_Reg funcs[] = {
 	{"masterlist_set_gamemode", masterlist_set_gamemode},
 
 	{"masterlist_connect", lmasterlist_connect},
+	{"masterlist_disconnect", lmasterlist_disconnect},
 
 	{"piditer", piditer},
 	{"teamiter_all", teamiter_all},

@@ -1270,8 +1270,27 @@ static void after_player_destroy(plid pid, struct State *st) {
 	(void)st;
 	return;
 }
+
 static void before_estimated_fire(plid pid, struct State *st) {
 	(void)pid;
+	(void)st;
+	return;
+}
+
+static void on_masterlist_successful_connect(uint32_t peerid, struct State *st) {
+	(void)peerid;
+	(void)st;
+	return;
+}
+
+static void on_masterlist_reconnect_attempt(uint32_t peerid, struct State *st) {
+	(void)peerid;
+	(void)st;
+	return;
+}
+
+static void on_masterlist_disconnect(uint32_t peerid, struct State *st) {
+	(void)peerid;
 	(void)st;
 	return;
 }
@@ -1547,6 +1566,9 @@ static void set_funcs(struct State *st) {
 	st->f.move_intel = move_intel;
 	st->f.after_player_destroy = after_player_destroy;
 	st->f.before_estimated_fire = before_estimated_fire;
+	st->f.on_masterlist_successful_connect = on_masterlist_successful_connect;
+	st->f.on_masterlist_reconnect_attempt = on_masterlist_reconnect_attempt;
+	st->f.on_masterlist_disconnect = on_masterlist_disconnect;
 	st->f.boot_players_to_limbo = boot_players_to_limbo;
 	st->f.demand_fingerprint = demand_fingerprint;
 	st->f.move_tent = move_tent;
@@ -1691,6 +1713,7 @@ static struct State *st_init(void) {
 
 	st->ms.port = addr.port;
 	st->ms.maxplayers = DEFAULT_MAX_PLAYERS;
+	st->ms.udata = st;
 
 	return st;
 }
@@ -1743,6 +1766,10 @@ int main(int argc, char **argv) {
 	hook_textcodec_late(st);
 	hook_lua(cfg, port, st);
 	hook_textcodec_early(st);
+
+	st->ms.on_successful_connect = (void (*)(uint32_t, void *))st->f.on_masterlist_successful_connect;
+	st->ms.on_reconnect_attempt = (void (*)(uint32_t, void *))st->f.on_masterlist_reconnect_attempt;
+	st->ms.on_disconnect = (void (*)(uint32_t, void *))st->f.on_masterlist_disconnect;
 
 	st->f.load_initial_map(st);
 

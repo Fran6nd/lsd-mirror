@@ -1085,7 +1085,7 @@ static int get_score(lua_State *l) {
 
 /* In host byte order */
 static int get_ipaddr(lua_State *l) {
-	plid pid = check_plid(l, 1);
+	plid pid = check_nplid(l, 1);
 
 	if (st->p[pid].peer)
 		lua_pushnumber(l, ENET_NET_TO_HOST_32(st->p[pid].peer->address.host));
@@ -1096,7 +1096,7 @@ static int get_ipaddr(lua_State *l) {
 }
 
 static int get_udp_port(lua_State *l) {
-	plid pid = check_plid(l, 1);
+	plid pid = check_nplid(l, 1);
 
 	if (st->p[pid].peer)
 		lua_pushnumber(l, st->p[pid].peer->address.port);

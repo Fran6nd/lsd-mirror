@@ -81,10 +81,10 @@ Returns the current color of the player's block tool.
 Players that are not alive return an implementation-defined value.
 
 <!-- TODO: handle v6, unspec? -->
-integer get_ipaddr(plid pid) ->
+integer get_ipaddr(nplid pid) ->
 Returns the player's IPv4 address as an integer, converted to host endianess with <a rel=noreferrer href=https://man.openbsd.org/ntohl.3><code>ntohl(3)</code></a>.
 
-integer get_udp_port(plid pid) ->
+integer get_udp_port(nplid pid) ->
 Returns the player's UDP port.
 
 number get_round_trip_time(plid pid) ->

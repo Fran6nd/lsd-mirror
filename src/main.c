@@ -1690,7 +1690,7 @@ static struct State *st_init(void) {
 		ERR("masterlist_init");
 
 	st->ms.port = addr.port;
-	st->ms.maxplayers = MAX_PLAYERS;
+	st->ms.maxplayers = DEFAULT_MAX_PLAYERS;
 
 	return st;
 }

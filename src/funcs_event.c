@@ -39,6 +39,7 @@ static void on_any_connect(plid pid, struct State *st) {
 		/* TODO: should i disconnect_now or just disconnect? if just disconnect, should i increase the amount of connections? */
 		if (st->p[pid].peer)
 			enet_peer_disconnect_now(st->p[pid].peer, 4);
+		st->p[pid].peer = NULL;
 	} else
 		st->f.on_successful_connect(pid, st);
 }

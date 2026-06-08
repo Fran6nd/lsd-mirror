@@ -952,6 +952,7 @@ static int disconnect_now(lua_State *l) {
 
 	if (st->p[pid].peer)
 		enet_peer_disconnect_now(st->p[pid].peer, reason);
+	st->p[pid].peer = NULL;
 	return 0;
 }
 

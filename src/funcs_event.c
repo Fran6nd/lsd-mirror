@@ -5,14 +5,6 @@
 clk get_time(void);
 clk from_s_double(double ts);
 
-#define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
-#define SEND(pid, data) st->f.send_packet(pid, &(data), sizeof(data), st)
-#define LOG(x, ...) do {st->f.before_log(st); fprintf(stderr, x"\n", __VA_ARGS__); st->f.after_log(st);} while (0)
-#define IP(pid) (st->p[pid].peer ? host_ip(&st->p[pid].peer->address) : "<local>")
-#define PORT(pid) (st->p[pid].peer ? st->p[pid].peer->address.port : 0)
-
-const char *host_ip(ENetAddress *addr);
-
 static void on_grenade(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st) {
 	st->f.register_grenade(pid, st->p[pid].team, pos, vel, from_s_double(fuse), st);
 	st->f.send_grenade(PID_BROADCAST_EXCEPT(pid), pos, vel, fuse, 0, st);
@@ -35,7 +27,6 @@ static void on_reload(plid pid, struct State *st) {
 
 static void on_any_connect(plid pid, struct State *st) {
 	if (pid >= MAX_PLAYERS) {
-		LOG("%s:%"PRIu16" (#%"PRIiPID") attempted to connect but server was full", IP(pid), PORT(pid), pid);
 		/* TODO: should i disconnect_now or just disconnect? if just disconnect, should i increase the amount of connections? */
 		if (st->p[pid].peer)
 			enet_peer_disconnect_now(st->p[pid].peer, 4);
@@ -47,13 +38,11 @@ static void on_any_connect(plid pid, struct State *st) {
 static void on_successful_connect(plid pid, struct State *st) {
 	st->p[pid].connected = 1;
 
-	LOG("%s:%"PRIu16" (#%"PRIiPID") connected", IP(pid), PORT(pid), pid);
 	st->f.send_map(pid, st);
 }
 
 static void on_disconnect(plid pid, struct State *st) {
 	int wasalive = st->p[pid].alive;
-	LOG("%s:%"PRIu16" (#%"PRIiPID") disconnected", IP(pid), PORT(pid), pid);
 
 	if (st->p[pid].joined)
 		st->f.send_disconnect(PID_BROADCAST, pid, st);
@@ -86,14 +75,10 @@ static void on_disconnect(plid pid, struct State *st) {
 
 /* TODO: CP437, etc. . . */
 static void on_chat(plid pid, const char *msg, unsigned type, struct State *st) {
-	LOG("(%s) %s: %s", type == ChatTypeAll ? "Global" : "Team", st->p[pid].name, msg);
-
 	st->f.player_msg(msg, type, pid, st);
 }
 
 static void on_join(plid pid, unsigned team, unsigned gun, const char *name, struct State *st) {
-	LOG("%s:%"PRIu16" (#%"PRIiPID") joined as \"%s\"", IP(pid), PORT(pid), pid, name);
-
 	st->p[pid].score = 0;
 	st->p[pid].newteam = team;
 	st->p[pid].newgun = gun;
@@ -252,9 +237,6 @@ static void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor
 			st->p[pid].bugMask |= BS_BUG_SCREWED_DISCONNECT_DATA | QUIRK_UTF8_COLOR_IMG;
 		break;
 	}
-
-	/* TODO: still have to sanitize/reencode strings */
-	LOG("%s:%"PRIu16" (#%"PRIiPID") got version: '%c' (%"PRIu8") v%"PRIu8".%"PRIu8".%"PRIu8": %s", IP(pid), PORT(pid), pid, idChar < 0x20 || idChar >= 0x7f ? '?' : idChar, idChar, major, minor, patch, st->p[pid].verMsg);
 }
 
 static void on_version_ext(plid pid, unsigned major, unsigned minor, unsigned patch, uint32_t flags, const char *cli, size_t clilen, const char *lang, size_t langlen, struct State *st) {
@@ -270,9 +252,6 @@ static void on_version_ext(plid pid, unsigned major, unsigned minor, unsigned pa
 
 	memcpy(st->p[pid].verExtLang, lang, langlen);
 	st->p[pid].verExtLang[langlen] = '\0';
-
-	/* TODO: *still* still have to sanitize/reencode strings */
-	LOG("%s:%"PRIu16" (#%"PRIiPID") got version-ext: \"%s\" v%"PRIu8".%"PRIu8".%"PRIu8", %#06"PRIx32", %s", IP(pid), PORT(pid), pid, st->p[pid].verExtCliName, major, minor, patch, flags, st->p[pid].verExtLang);
 }
 
 void set_funcs_event(struct State *st) {

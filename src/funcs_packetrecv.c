@@ -589,10 +589,17 @@ static void on_sane_packet(plid pid, const void *data, size_t length, struct Sta
 }
 
 static void on_crap_packet(plid pid, const void *data, size_t length, struct State *st) {
-	//LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\n\t%s", IP(pid), PORT(pid), pid, packet->dataLength > 0 ? packet->data[0] : -1, st->crappacketname, (unsigned long)packet->dataLength, st->crapline, st->crapcond);
-	/* TODO: remove need for \r with linenoise */
-	if (!st->crapsilence)
-		LOG("%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\r\n\t%s", IP(pid), PORT(pid), pid, length > 0 ? ((uint8_t *)data)[0] : -1, st->crappacketname, (unsigned long)length, st->crapline, st->crapcond);
+	if (!st->crapsilence) LOG(
+		"%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\n\t%s",
+		IP(pid),
+		PORT(pid),
+		pid,
+		length > 0 ? ((uint8_t *)data)[0] : -1,
+		st->crappacketname,
+		(unsigned long)length,
+		st->crapline,
+		st->crapcond
+	);
 
 	if (length > 0)
 	switch (((uint8_t *)data)[0]) {

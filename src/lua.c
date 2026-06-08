@@ -15,8 +15,8 @@ double to_s_double(clk ts);
 clk from_s_double(double ts);
 
 #define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
-#define LOG(x, ...) fprintf(stderr, x"\n", __VA_ARGS__)
-#define LOG1(x) fputs(x"\n", stderr);
+#define LOG(x, ...) do {st->f.before_log(st); fprintf(stderr, x"\n", __VA_ARGS__); st->f.after_log(st);} while (0)
+#define LOG1(x) do {st->f.before_log(st); fputs(x"\n", stderr); st->f.after_log(st);}while (0)
 #define LERR luaL_error
 #define CBAIL(x, ...) do {LOG(x, __VA_ARGS__); return;} while (0)
 #define CBAILN1(x, ...) do {LOG(x, __VA_ARGS__); return -1;} while (0)

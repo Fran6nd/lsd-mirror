@@ -244,11 +244,6 @@ function mod.late.log(fmt, ...)
 	mod.late.next.log(fmt, ...);
 end
 
-function mod.late.player_msg(msg, type, from)
-	sock_send_broadcast(sock,  cmd_tostr{[0]="PRIVMSG", irc_console_chan, string.format("(%s) %s: %s\n", type == 0 and "Global" or "Team", get_name(from), msg)});
-	mod.late.next.player_msg(msg, type, from);
-end
-
 function mod.late.server_msg(pid, msg)
 	if (pid == PID_BROADCAST or pidtonick[pid]) then
 		for line in string.gmatch(msg, "[^\n]+") do

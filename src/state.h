@@ -85,6 +85,11 @@ typedef fvec3p fvec3;
  */
 #define QUIRK_UTF8_COLOR_IMG (1 << 7)
 
+/* ZeroSpades decided CreatePlayer should be off by 2.4 instead of just 2
+ * (commit 1675f07f81327a97b180f76f19bb67f801c3c8ce)
+ */
+#define QUIRK_INSKY (1 << 8)
+
 /* TODO: BS_BUG_NODEADNADE */
 /* TODO: BS_BUG_BORKEDRELOAD */
 /* TODO: BS_BUG_MOUSEINPUTISFUCKED */

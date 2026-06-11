@@ -67,6 +67,7 @@ static void on_connect(ENetPeer *peer, struct MasterState *ms) {
 	if (ms->on_successful_connect)
 		ms->on_successful_connect(peer->incomingPeerID, ms->udata);
 
+	enet_peer_timeout(peer, 0, 0, 10000);
 	send_packet(buf, major_buf(buf, ms), peer);
 
 	if (ms->players != 0)

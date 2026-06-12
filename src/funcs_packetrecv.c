@@ -126,9 +126,9 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 
 		/* TODO: player can't be higher than a certain height without server intervention */
 		/* TODO: where did this magic 62.65 number come from? */
-		SBAD(PACKET.pos.x < 0.45 || PACKET.pos.x > 511.55);
-		SBAD(PACKET.pos.y < 0.45 || PACKET.pos.y > 511.55);
-		SBAD(PACKET.pos.z > 62.65);
+		SBAD(!isfinite(PACKET.pos.x) || PACKET.pos.x < 0.45 || PACKET.pos.x > 511.55);
+		SBAD(!isfinite(PACKET.pos.y) || PACKET.pos.y < 0.45 || PACKET.pos.y > 511.55);
+		SBAD(!isfinite(PACKET.pos.z) || PACKET.pos.z > 62.65);
 		/* TODO: make it suck less */
 		/* TODO: should it be last agreed or regular flavor? */
 		/* TODO: was_ever_not_in_a_block_since_lastagreedpos heuristic? */
@@ -314,16 +314,18 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 		//SBAD(st->p[pid].tool != ToolTypeGrenade);
 
 		/* TODO: there's some range slightly above 0 and slightly below 3 that is actually used */
+		SBAD(!isfinite(PACKET.fuseLength));
 		SBAD(PACKET.fuseLength < 0);
 		SBAD(PACKET.fuseLength > 3);
 
 		/* TODO: witchcraft position validation */
-		SBAD(PACKET.pos.x <= 0 || PACKET.pos.x >= 512);
-		SBAD(PACKET.pos.y <= 0 || PACKET.pos.y >= 512);
-		SBAD(PACKET.pos.z >= 64);
+		SBAD(!isfinite(PACKET.pos.x) || PACKET.pos.x <= 0 || PACKET.pos.x >= 512);
+		SBAD(!isfinite(PACKET.pos.y) || PACKET.pos.y <= 0 || PACKET.pos.y >= 512);
+		SBAD(!isfinite(PACKET.pos.z) || PACKET.pos.z >= 64);
 
 		/* TODO: should i bother with finding the true up/down values? betterspades ignores them. . . */
 		/* TODO: wonder if a fancily-oriented player throws fancily-velocitied nades */
+		SBAD(!isfinite(PACKET.vel.x) || !isfinite(PACKET.vel.y) || !isfinite(PACKET.vel.z));
 		SBAD(sqr_len3(PACKET.vel) > NADE_VEL_LIMIT_SQR + 1);
 		SBAD(sqr_len2(PACKET.vel) > NADE_HVEL_LIMIT_SQR + 1);
 		SBAD(PACKET.vel.z > NADE_DVEL_LIMIT_SQR + 1);

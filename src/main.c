@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
@@ -1640,13 +1641,6 @@ static void parse_args(int argc, char **argv) {
 static void atexit_server(void) {
 	size_t i;
 
-	for (i=0;i<exit_st->ms.host->peerCount;i++) {
-		if (exit_st->ms.host->peers[i].state == ENET_PEER_STATE_CONNECTED)
-			enet_peer_disconnect_now(exit_st->ms.host->peers+i, 0);
-	}
-
-	masterlist_deinit(&exit_st->ms);
-
 	exit_st->f.on_shutdown(exit_st);
 	close_lua();
 
@@ -1654,6 +1648,13 @@ static void atexit_server(void) {
 		if (exit_st->host->peers[i].state == ENET_PEER_STATE_CONNECTED)
 			enet_peer_disconnect_now(exit_st->host->peers+i, 5); /* "Server shutdown" to betterspades and maybe iv of spades */
 	}
+
+	for (i=0;i<exit_st->ms.host->peerCount;i++) {
+		if (exit_st->ms.host->peers[i].state == ENET_PEER_STATE_CONNECTED)
+			enet_peer_disconnect_now(exit_st->ms.host->peers+i, 0);
+	}
+
+	masterlist_deinit(&exit_st->ms);
 
 	free(keepSolid);
 	free(rememberedSolidity);

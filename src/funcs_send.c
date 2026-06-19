@@ -130,9 +130,9 @@ static struct isal_zstream init_deflate(void) {
 	stream.flush = NO_FLUSH;
 	stream.gzip_flag = IGZIP_ZLIB;
 	stream.end_of_stream = 0;
-	stream.level = 0;
-	stream.level_buf = malloc(ISAL_DEF_LVL0_DEFAULT);
-	stream.level_buf_size = ISAL_DEF_LVL0_DEFAULT;
+	stream.level = 2;
+	stream.level_buf = malloc(ISAL_DEF_LVL2_DEFAULT);
+	stream.level_buf_size = ISAL_DEF_LVL2_DEFAULT;
 
 	return stream;
 }

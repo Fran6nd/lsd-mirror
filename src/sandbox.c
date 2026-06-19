@@ -142,6 +142,7 @@ void sandbox(void) {
 		"pread64",
 		"geteuid",
 		"pwrite64",
+		"pwritev2",
 		"fdatasync",
 		"fsync", /* needed on alpine but not void */
 		"unlink",

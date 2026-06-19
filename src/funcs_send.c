@@ -122,19 +122,13 @@ static size_t get_vxl_chunk(void *buf, size_t coloff, size_t cols, struct State 
 	return pvx_dump_vxl(&st->globals.map, x, y, 512, 512, 64, buf, cols);
 }
 
-static struct isal_zstream init_deflate(void) {
-	struct isal_zstream stream;
+static void init_deflate(struct isal_zstream *stream) {
+	isal_deflate_init(stream);
 
-	isal_deflate_init(&stream);
-
-	stream.flush = NO_FLUSH;
-	stream.gzip_flag = IGZIP_ZLIB;
-	stream.end_of_stream = 0;
-	stream.level = 2;
-	stream.level_buf = malloc(ISAL_DEF_LVL2_DEFAULT);
-	stream.level_buf_size = ISAL_DEF_LVL2_DEFAULT;
-
-	return stream;
+	stream->flush = NO_FLUSH;
+	stream->gzip_flag = IGZIP_ZLIB;
+	stream->end_of_stream = 0;
+	stream->level = 2;
 }
 
 static void send_compressed_map_unpristine(plid pid, struct State *st) {
@@ -142,11 +136,14 @@ static void send_compressed_map_unpristine(plid pid, struct State *st) {
 	size_t cols;
 	/* TODO: determine isa-l magic numbers */
 	uint8_t outbuf[1+512*8*65*4+330];
+	uint8_t isalbuf[ISAL_DEF_LVL2_DEFAULT];
 
 	/* TODO NOTE: doesn't pyspades make a whole new copy of the map every time it wants to write something? efficiency. */
 	outbuf[0] = PacketTypeMapChunk;
 
-	stream = init_deflate();
+	init_deflate(&stream);
+	stream.level_buf = isalbuf;
+	stream.level_buf_size = sizeof(isalbuf);
 
 #pragma omp parallel for ordered
 	for (cols=0;cols<512*512;cols += 512*8) {
@@ -177,8 +174,6 @@ static void send_compressed_map_unpristine(plid pid, struct State *st) {
 			} while (stream.avail_in != 0);
 		}
 	}
-
-	free(stream.level_buf);
 }
 
 static void send_compressed_map(plid pid, struct State *st) {

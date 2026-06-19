@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 
-static uint32_t h16tobe(uint16_t num) {
+static uint16_t h16tobe(uint16_t num) {
 	uint8_t buf[2];
 
 	buf[0] = num >> 8;
@@ -11,12 +11,12 @@ static uint32_t h16tobe(uint16_t num) {
 }
 
 #define U8NUM (uint16_t)((uint8_t *)&num)
-static uint32_t be16toh(uint16_t num) {
+static uint16_t be16toh(uint16_t num) {
 	return U8NUM[0] << 8 | U8NUM[1];
 }
 #undef U8NUM
 
-static uint32_t h64tobe(uint64_t num) {
+static uint64_t h64tobe(uint64_t num) {
 	uint8_t buf[8];
 
 	buf[0] = num >> 56;
@@ -32,7 +32,7 @@ static uint32_t h64tobe(uint64_t num) {
 }
 
 #define U8NUM (uint64_t)((uint8_t *)&num)
-static uint32_t be64toh(uint16_t num) {
+static uint64_t be64toh(uint64_t num) {
 	return U8NUM[0] << 56 | U8NUM[1] << 48 | U8NUM[2] << 40 | U8NUM[3] << 32 |
 	       U8NUM[4] << 24 | U8NUM[5] << 16 | U8NUM[6] <<  8 | U8NUM[7];
 }

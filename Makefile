@@ -1,30 +1,52 @@
 .POSIX:
+.SUFFIXES:
 .SUFFIXES: .c .o
 
-CC=clang
+OPTS=-DWITH_ANYASCII
+
+# Pass DEBUG=1, NATIVE=1, etc. to make if you're too
+# lazy to manually set the CFLAGS and LDFLAGS
+DEBUG=0
+NATIVE=0
+LTO=1
+# LLVM=1 uses clang and lld instead of whatever's default --
+# builds with LLVM tend to be more optimized
+LLVM=0
+
+CC_LLVM0=$(CC)
+CC_LLVM1=clang
+CC_USED=$(CC_LLVM$(LLVM))
 AWK=awk
 
 PKGCONF_MODULES=luajit libenet libisal "$$(test "x$$(uname -s)" = "xLinux" && printf '%s\n' 'libseccomp')"
 LIBS=`pkg-config --libs $(PKGCONF_MODULES)` -lm
-OPTS=-DWITH_ANYASCII
 CPPFLAGS=`pkg-config --cflags $(PKGCONF_MODULES)` $(OPTS)
 
-CFLAGS=-Wall -Wextra -O3 -flto
-CFLAGSNATIVE=-Wall -Wextra -O3 -flto -march=native
-CFLAGSG=-Wall -Wextra -g
+CFLAGS_NATIVE0=
+CFLAGS_NATIVE1=-march=native
+CFLAGS_DEBUG0=-O3 $(CFLAGS_LTO$(LTO))
+CFLAGS_DEBUG1=-g
+CFLAGS_LTO0=
+CFLAGS_LTO1=-flto
+CFLAGS=-Wall -Wextra -Wno-type-limits $(CFLAGS_DEBUG$(DEBUG)) $(CFLAGS_NATIVE$(NATIVE))
 
-LDFLAGS=$(LIBS) -s -flto -fuse-ld=lld
-LDFLAGSNATIVE=$(LIBS) -s -flto -fuse-ld=lld
-LDFLAGSG=$(LIBS)
+LDFLAGS_DEBUG0=-s $(LDFLAGS_LTO$(LTO))
+LDFLAGS_DEBUG1=
+LDFLAGS_LLVM0=
+LDFLAGS_LLVM1=-fuse-ld=lld
+LDFLAGS_LTO0=
+LDFLAGS_LTO1=-flto
+LDFLAGS=$(LIBS) $(LDFLAGS_DEBUG$(DEBUG)) $(LDFLAGS_LLVM$(LLVM))
 LDFLAGSSTATIC=-Wl,-Bstatic -static-libgcc $(LDFLAGS) -Wl,-Bdynamic '-Wl,--export-dynamic-symbol=lua_*' '-Wl,--export-dynamic-symbol=luaL_*' -fvisibility=hidden
 
-OBJECTS=src/budgetvxl.o src/cull.o src/demoncore.o src/funcs_event.o src/funcs_packetrecv.o src/funcs_send.o src/lua.o src/main.o src/masterlist.o src/sandbox.o src/textcodec.o src/pvx/src/vxl.o
-INCL=src/bitmask.h src/budgetvxl.h src/cull.h src/demoncore.h src/luaawk.h src/masterlist.h src/protocol.h src/sandbox.h src/state.h src/textcodec_cp437.h src/textcodec_utf8.h
+OBJECTS=src/budgetvxl.o src/cull.o src/demoncore.o src/funcs_event.o \
+	src/funcs_packetrecv.o src/funcs_send.o src/lua.o src/main.o \
+	src/masterlist.o src/sandbox.o src/textcodec.o src/pvx/src/vxl.o
 
 all: server exec/libunixsock.so
 
-server: $(OBJECTS) $(INCL)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o server $(OBJECTS) $(LDFLAGS)
+server: $(OBJECTS)
+	$(CC_USED) -o server $(OBJECTS) $(LDFLAGS)
 
 src/budgetvxl.o: src/budgetvxl.c
 src/cull.o: src/cull.c src/bitmask.h
@@ -38,40 +60,32 @@ src/masterlist.o: src/masterlist.c src/masterlist.h
 src/sandbox.o: src/sandbox.c
 src/textcodec.o: src/textcodec.c src/state.h src/protocol.h src/bitmask.h src/masterlist.h src/textcodec_utf8.h src/textcodec_cp437.h
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 # Not really static, musl doesn't like dlopen with static
 # See https://www.openwall.com/lists/musl/2021/09/24/6
 # You could definitely make a truly static build if you
 # don't bother loading anything in the exec dir, though.
-serverstatic: $(OBJECTS) $(INCL)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
+serverstatic: $(OBJECTS)
+	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
 
-serverstatic-crust: $(OBJECTS) $(INCL)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DNO_DEFAULT_SANDBOX -DWITH_LIBSECCOMP -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
-
-servernative: $(OBJECTS) $(INCL)
-	$(CC) $(CFLAGSNATIVE) $(CPPFLAGS) -o servernative $(OBJECTS) $(LDFLAGSNATIVE)
-
-serverg: $(OBJECTS) $(INCL)
-	$(CC) $(CFLAGSG) $(CPPFLAGS) -g -o serverg $(OBJECTS) $(LDFLAGSG)
+serverstatic-crust: $(OBJECTS)
+	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -DNO_DEFAULT_SANDBOX -DWITH_LIBSECCOMP -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
 
 exec/libunixsock.so: src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c
 	# TODO: remove getaddrinfo malloc from unixsock tcp
 	mkdir -p exec
-	$(CC) $(CFLAGS) $(CPPFLAGS) --shared -o exec/libunixsock.so src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c -Wl,--exclude-libs,ALL $(LDFLAGS)
+	$(CC_USED) $(CFLAGS) $(CPPFLAGS) --shared -o exec/libunixsock.so src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c -Wl,--exclude-libs,ALL $(LDFLAGS)
 
-dist.tar.gz: serverstatic exec/libunixsock.so aloha.lua exec scripts maps dirty
+dist.tar.gz: serverstatic exec/libunixsock.so config.lua exec scripts dirty
 	rm -fR dist/
-	mkdir -p dist/exec dist/scripts dist/maps
+	mkdir -p dist/exec dist/scripts dist/maps dist/rw
 	cp serverstatic dist/server
 	cp /lib/ld-musl-x86_64.so.1 dist/
 	patchelf --set-interpreter './ld-musl-x86_64.so.1' dist/server
-	printf '%s\n' 'log("You probably want to run this as ./server -c babel.lua");' > dist/config.lua
-	ln aloha.lua dist/babel.lua
+	ln config.lua dist/
 	ln exec/* dist/exec/
-	ln scripts/* dist/scripts/
-	find maps -maxdepth 1 -type f -exec ln {} dist/maps/ \;
+	find scripts -maxdepth 1 -type f -exec ln {} dist/scripts/ \;
 	bsdtar cf - dist | libdeflate-gzip -c12 - > dist.tar.gz
 	rm -fR dist
 

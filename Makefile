@@ -42,7 +42,7 @@ LDFLAGS_LLVM1=-fuse-ld=lld
 LDFLAGS_LTO0=
 LDFLAGS_LTO1=-flto
 LDFLAGS=$(LDFLAGS_DEBUG$(DEBUG)) $(LDFLAGS_LLVM$(LLVM))
-LDFLAGSSTATIC=-Wl,-Bstatic -static-libgcc $(LDFLAGS) -Wl,-Bdynamic '-Wl,--export-dynamic-symbol=lua_*' '-Wl,--export-dynamic-symbol=luaL_*' -fvisibility=hidden
+LDFLAGSSTATIC=-Wl,-Bstatic -static-libgcc $(LIBS) $(LDFLAGS) -Wl,-Bdynamic '-Wl,--export-dynamic-symbol=lua_*' '-Wl,--export-dynamic-symbol=luaL_*' -fvisibility=hidden
 
 OBJECTS=src/budgetvxl.o src/cull.o src/demoncore.o src/funcs_event.o \
 	src/funcs_packetrecv.o src/funcs_send.o src/lua.o src/main.o \
@@ -72,10 +72,10 @@ src/textcodec.o: src/textcodec.c src/state.h src/protocol.h src/bitmask.h src/ma
 # You could definitely make a truly static build if you
 # don't bother loading anything in the exec dir, though.
 serverstatic: $(OBJECTS)
-	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -o serverstatic $(OBJECTS) $(LIBS) $(LDFLAGSSTATIC)
+	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
 
 serverstatic-crust: $(OBJECTS)
-	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -DNO_DEFAULT_SANDBOX -DWITH_LIBSECCOMP -o serverstatic $(OBJECTS) $(LIBS) $(LDFLAGSSTATIC)
+	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -DNO_DEFAULT_SANDBOX -DWITH_LIBSECCOMP -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
 
 exec/libunixsock.so: src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c
 	# TODO: remove getaddrinfo malloc from unixsock tcp
@@ -85,10 +85,8 @@ exec/libunixsock.so: src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/ex
 dist.tar.gz: serverstatic exec/libunixsock.so config.lua exec scripts dirty
 	rm -fR dist/
 	mkdir -p dist/exec dist/scripts dist/maps dist/rw
-	cp serverstatic dist/server
-	cp -p /lib/ld-musl-x86_64.so.1 dist/
-	$(STRIP) -p dist/ld-musl-x86_64.so.1
-	patchelf --set-interpreter 'ld-musl-x86_64.so.1' dist/server
+	$(STRIP) -po dist/ld-musl-x86_64.so.1 /lib/ld-musl-x86_64.so.1
+	patchelf --set-interpreter 'ld-musl-x86_64.so.1' --output dist/server serverstatic
 	touch -r serverstatic dist/server
 	ln config.lua dist/
 	ln exec/* dist/exec/

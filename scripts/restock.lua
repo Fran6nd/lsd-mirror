@@ -8,6 +8,10 @@ end
 
 -- TODO: near_tent call or something like that
 local function within_cylinder(pos, cylinderpos, radius, bottom, top)
+	if (cylinderpos == nil) then
+		return false;
+	end
+
 	pos.x = pos.x - cylinderpos.x;
 	pos.y = pos.y - cylinderpos.y;
 	pos.z = pos.z - cylinderpos.z;

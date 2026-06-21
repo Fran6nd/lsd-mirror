@@ -16,6 +16,11 @@ LLVM=0
 CC_LLVM0=$(CC)
 CC_LLVM1=clang
 CC_USED=$(CC_LLVM$(LLVM))
+
+STRIP_LLVM0=strip
+STRIP_LLVM1=llvm-strip
+STRIP=$(STRIP_LLVM$(LLVM))
+
 AWK=awk
 
 PKGCONF_MODULES=luajit libenet libisal "$$(test "x$$(uname -s)" = "xLinux" && printf '%s\n' 'libseccomp')"
@@ -81,12 +86,14 @@ dist.tar.gz: serverstatic exec/libunixsock.so config.lua exec scripts dirty
 	rm -fR dist/
 	mkdir -p dist/exec dist/scripts dist/maps dist/rw
 	cp serverstatic dist/server
-	cp /lib/ld-musl-x86_64.so.1 dist/
-	patchelf --set-interpreter './ld-musl-x86_64.so.1' dist/server
+	cp -p /lib/ld-musl-x86_64.so.1 dist/
+	$(STRIP) -p dist/ld-musl-x86_64.so.1
+	patchelf --set-interpreter 'ld-musl-x86_64.so.1' dist/server
+	touch -r serverstatic dist/server
 	ln config.lua dist/
 	ln exec/* dist/exec/
 	find scripts -maxdepth 1 -type f -exec ln {} dist/scripts/ \;
-	bsdtar cf - dist | libdeflate-gzip -c12 - > dist.tar.gz
+	bsdtar --owner :0 --group :0 --format ustar -cf - dist | libdeflate-gzip -c12 - > dist.tar.gz
 	rm -fR dist
 
 src/luaawk.h: gen_lua_binding.awk src/state.h

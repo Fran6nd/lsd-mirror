@@ -154,9 +154,15 @@ local function destroy_cat(chain, tbl, chainname)
 end
 server.register = register;
 
+local batch_loaded = 0;
 function register(module)
 	-- TODO: force modules to return tables
-	log("Loaded %s", module.name or module);
+	if (batch_loaded ~= nil) then
+		io.stderr:write((batch_loaded == 0 and "Loaded " or ", ")..(module.name or tostring(module)));
+		batch_loaded = 1;
+	else
+		log("Loaded %s", module.name or module);
+	end
 
 	table.insert(modules, module);
 
@@ -212,7 +218,9 @@ function unregister(module, no_rm)
 	destroy_cat(callchain_std, module);
 	destroy_cat(callchain_early, module.early, "early");
 
-	log("Unloaded %s", module.name or module);
+	if (not no_rm) then
+		log("Unloaded %s", module.name or module);
+	end
 
 	-- If module.unload threw an error, throw it again after it's unregistered
 	if (not status) then
@@ -244,8 +252,20 @@ end
 local nextshutdown = on_shutdown;
 function on_shutdown()
 	for i=#modules,1,-1 do
-		unregister(modules[i], true);
+		local status, err = pcall(unregister, modules[i], true);
+		if (not status) then
+			log("Error while unloading module at exit: %s", err);
+		end
 	end
 	nextshutdown();
 end
 server.on_shutdown = on_shutdown;
+
+local mod = {before={},next={}};
+function mod.before.load_initial_map()
+	if (batch_loaded ~= 0) then
+		io.stderr:write("\n");
+	end
+	batch_loaded = nil;
+end
+add_cat(callchain_std, mod);

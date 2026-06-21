@@ -1,58 +1,62 @@
--- Of course, all of this can be overridden by scripts, right?
-masterlist_name = "[LS2] democracy24"
-team_name = {"bread", "cowboys"}
-team_color = {
-	{r=0, g=32, b=255},
-	{r=255, g=32, b=0}
-}
-fog = {r=32, g=64, b=128}
-max_score = 24
+-- config.lua -- Lua script executed on server start
+-- Pass the -c option on the command line to use a
+-- different path for the config file
+masterlist_name = "untitled LSd server"
 
-load "pid_tables"
-load "lib_l10n"
-load "commands"
-load "command_exec"
-load "command_modutils"
-load "command_cmds"
-load "command_kill"
-load "command_say"
-load "command_caps"
-
---load "motd"
-motd = [[
-HIIIIIIIIIIIIIIIII!
-THIS IS A MOTD
-WHO COULD HAVE EXPECTED THAT
-IT'S MADE IN LUA TOO
-have i burned your ears off yet?
+map_queue = [[
+	hallway
+	bridgewars
+	pinpoint
 ]]
 
---load "tip_spam"
+set_team_name (1, "Blue")
+set_team_color(1, {r=  0, g=  0, b=196})
+
+set_team_name (2, "Green")
+set_team_color(2, {r=  0, g=196, b=0  })
+
+set_max_score(10);
+
+fog = {r=128, g=232, b=255}
+set_fog(fog);
+
+load "group_deps"
+load "group_commands"
+load "group_moderation"
+load "group_feature"
+
+-- Don't load masterlist if you don't want your server to be public
+load "masterlist"
+
+load "stdio_console"
+load "sock_console"
+
+-- maptime is exposed by trashheap
+load "trashheap"
+register(maptime);
+
+motd = [[
+This server runs LSd.
+Remind the server operator to put something more useful in here.
+]]
+load "motd"
+
 tips = {
 	"This is a worthless tip.",
 	"Did you learn something new today?",
-	"Use /APOC to die.",
-	function() for i in piditer(PID_BROADCAST) do server_msg(i, "Press the "..(get_client_char(i) == string.byte('o') and "L" or "comma/dot").." key to change team/gun."); end end,
+	"Use /kill to die.",
+	function() for i in piditer(PID_BROADCAST) do
+		server_msg(i, string.format(
+			"Press the %s key to change team/gun.",
+			get_client_char(i) == string.byte('o') and "L" or "comma/dot"
+		));
+	end end,
 	"Block color won't change? Try the arrow keys and E.",
 	"This is not Build and Shoot. This is ACE OF SPADES.",
 	"Some day I'll add a /tutor"
 }
 tip_frequency = 5*60
+load "tip_spam"
 
---load "team_block_colors"
-load "masterlist"
-load "map_queue"
-load "map_meta"
-load "mapscripts"
-load "fall_damage"
---load "babel"
-load "noclip"
-load "jp"
-load "trashheap"
-load "caps"
-register(maptime);
-load "lib_sock"
-load "stdio_console"
-load "sock_console"
-load "websock_console"
---load "purgatory"
+-- Also try "arena", "babel"
+load "ctf"

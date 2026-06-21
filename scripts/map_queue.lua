@@ -4,12 +4,21 @@ local nextqueue = {};
 -- TODO: list dirs in lua?
 -- TODO: hook into initial map load
 getcfg("map_queue", {
-	"maps/hallway.vxl",
-	"maps/hallweeb.vxl",
-	"maps/normandie.vxl",
-	"maps/war.vxl",
+	"hallway",
+	"hallweeb",
+	"normandie",
+	"war",
 });
 local map_queue_idx = 1;
+
+local function tr_map_queue()
+	if (type(map_queue) == "string") then
+		local str = map_queue;
+		map_queue = {};
+
+		for x in string.gmatch(str, "[^\n\t]+") do table.insert(map_queue, x); end
+	end
+end
 
 local function get_next_map()
 	local map;
@@ -19,6 +28,7 @@ local function get_next_map()
 	end
 
 	-- TODO: support *clean* push/pull from map_queue -- should start at the map after the last played one, even if the last played one's index changes
+	tr_map_queue();
 	map = map_queue[map_queue_idx];
 
 	map_queue_idx = map_queue_idx + 1;
@@ -49,6 +59,7 @@ local cmd = {name={"showrotation", "mapqueue"}, fakepid=true, desc="List the def
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
 
+	tr_map_queue();
 	for _,y in ipairs(map_queue) do
 		server_msg(pid, y);
 	end

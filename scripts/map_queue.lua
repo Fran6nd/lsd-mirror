@@ -48,7 +48,7 @@ function mod.on_game_end()
 	load_map(get_next_map());
 end
 
-function mod.load_initial_map()
+function mod.late.load_initial_map()
 	load_map(get_next_map());
 end
 

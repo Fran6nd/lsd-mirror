@@ -1,14 +1,5 @@
 -- command_modutils.lua -- Manipulate loaded modules
 local mod = init_mod();
--- TODO: remove command_ prefix?
-
--- TODO: set package.cpath
-local function unreg(name)
-	if (package.loaded[name]) then
-		unregister(package.loaded[name]);
-	end
-	package.loaded[name] = nil;
-end
 
 local cmd = {name="unloadall", caps="modutils", fakepid=true, desc="Unregister all the modules."};
 function cmd.func()
@@ -32,7 +23,7 @@ function cmd.func(pid, argv)
 			log("reloadall: %s has no name, cannot reload", tostring(modules[i]));
 			unregister(modules[i]);
 		else
-			unreg(unregd[i]);
+			unload(unregd[i]);
 		end
 	end
 
@@ -55,14 +46,16 @@ register_command(cmd, mod);
 
 local cmd = {name="load", caps="modutils", fakepid=true, usage="module", desc="Dynamically load a module."};
 function cmd.func(pid, argv)
-	unreg(argv[1]);
+	if (package.loaded[argv[1]]) then
+		unload(argv[1]);
+	end
 	load(argv[1]);
 end
 register_command(cmd, mod);
 
 local cmd = {name="unload", caps="modutils", fakepid=true, usage="module", desc="Dynamically unload a module."};
 function cmd.func(pid, argv)
-	unreg(argv[1]);
+	unload(argv[1]);
 end
 register_command(cmd, mod);
 

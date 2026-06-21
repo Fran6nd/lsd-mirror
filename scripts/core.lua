@@ -201,6 +201,12 @@ function unregister(module, no_rm)
 		return;
 	end
 
+	-- TODO:
+	-- impl
+	-- preimpl
+	-- std (what is this?)
+	-- cancel
+	-- precancel
 	destroy_cat(callchain_impl, module.impl, "impl");
 	destroy_cat(callchain_late, module.late, "late");
 	destroy_cat(callchain_std, module);
@@ -222,6 +228,11 @@ function load(modname)
 		mod.name = modname;
 		register(mod);
 	end
+end
+
+function unload(modname)
+	unregister(package.loaded[modname] or {name=modname});
+	package.loaded[modname] = nil;
 end
 
 -- Just sets boilerplate

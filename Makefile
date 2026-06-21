@@ -41,7 +41,7 @@ LDFLAGS_LLVM0=
 LDFLAGS_LLVM1=-fuse-ld=lld
 LDFLAGS_LTO0=
 LDFLAGS_LTO1=-flto
-LDFLAGS=$(LIBS) $(LDFLAGS_DEBUG$(DEBUG)) $(LDFLAGS_LLVM$(LLVM))
+LDFLAGS=$(LDFLAGS_DEBUG$(DEBUG)) $(LDFLAGS_LLVM$(LLVM))
 LDFLAGSSTATIC=-Wl,-Bstatic -static-libgcc $(LDFLAGS) -Wl,-Bdynamic '-Wl,--export-dynamic-symbol=lua_*' '-Wl,--export-dynamic-symbol=luaL_*' -fvisibility=hidden
 
 OBJECTS=src/budgetvxl.o src/cull.o src/demoncore.o src/funcs_event.o \
@@ -51,7 +51,7 @@ OBJECTS=src/budgetvxl.o src/cull.o src/demoncore.o src/funcs_event.o \
 all: server exec/libunixsock.so
 
 server: $(OBJECTS)
-	$(CC_USED) -o server $(OBJECTS) $(LDFLAGS)
+	$(CC_USED) -o server $(OBJECTS) $(LIBS) $(LDFLAGS)
 
 src/budgetvxl.o: src/budgetvxl.c
 src/cull.o: src/cull.c src/bitmask.h
@@ -72,10 +72,10 @@ src/textcodec.o: src/textcodec.c src/state.h src/protocol.h src/bitmask.h src/ma
 # You could definitely make a truly static build if you
 # don't bother loading anything in the exec dir, though.
 serverstatic: $(OBJECTS)
-	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
+	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -o serverstatic $(OBJECTS) $(LIBS) $(LDFLAGSSTATIC)
 
 serverstatic-crust: $(OBJECTS)
-	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -DNO_DEFAULT_SANDBOX -DWITH_LIBSECCOMP -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
+	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -DNO_DEFAULT_SANDBOX -DWITH_LIBSECCOMP -o serverstatic $(OBJECTS) $(LIBS) $(LDFLAGSSTATIC)
 
 exec/libunixsock.so: src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c
 	# TODO: remove getaddrinfo malloc from unixsock tcp
@@ -100,7 +100,7 @@ src/luaawk.h: gen_lua_binding.awk src/state.h
 	$(AWK) -f ./gen_lua_binding.awk src/state.h > src/luaawk.h
 
 clean:
-	rm -f ./server exec/libunixsock.so src/*.o src/pvx/src/*.o
+	rm -f server serverstatic serverstatic-crust exec/libunixsock.so src/*.o src/pvx/src/*.o dist.tar.gz
 
 dirty:
 

@@ -262,7 +262,7 @@ end
 function sock_new_unix(file)
 	-- If file already exists make an attempt to remove it
 	ffi.C.unlink(file);
-	fd = un.create_unix_sock(file);
+	local fd = un.create_unix_sock(file);
 	if (fd == -1) then
 		-- TODO: return errno?
 		error("socket: <some error>");
@@ -274,7 +274,7 @@ function sock_new_unix(file)
 end
 
 function sock_new_tcp(listenaddr, port)
-	fd = un.create_tcp_sock(listenaddr, tostring(port));
+	local fd = un.create_tcp_sock(listenaddr, tostring(port));
 	if (fd == -1) then
 		-- TODO: return errno?
 		error("socket: <some error>");
@@ -287,7 +287,7 @@ end
 
 function sock_new_tcp_client(connectaddr, port, funcs)
 	funcs = funcs or {};
-	fd = un.create_tcp_client_sock(connectaddr, tostring(port));
+	local fd = un.create_tcp_client_sock(connectaddr, tostring(port));
 	if (fd == -1) then
 		-- TODO: return errno?
 		error("socket: <some error>");

@@ -10,7 +10,7 @@ function mod.load_map(name)
 		-- TODO: dofile/loadfile instead of require? limit scope of visible functions?
 		-- TODO: make load() use dofile instead of require?
 		package.path="./?.lua";
-		status, script = pcall(require, string.sub(name, 1, -5));
+		local status, script = pcall(require, string.sub(name, 1, -5));
 		package.path = oldpath;
 
 		if (not status) then
@@ -19,7 +19,7 @@ function mod.load_map(name)
 		end
 
 		prepare_map_load();
-		status, err = pcall(script.generate, math.random());
+		local status, err = pcall(script.generate, math.random());
 		math.randomseed();
 		boot_players_to_limbo();
 		finish_map_load();

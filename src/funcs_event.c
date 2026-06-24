@@ -96,6 +96,7 @@ static void on_switch(plid pid, unsigned team, unsigned gun, struct State *st) {
 	/* TODO: should spectators haven't a respawn timer? */
 	/* TODO: how to only switch after spawn? */
 	if (st->p[pid].team == 255) {
+		/* TODO: *should* this check against NOSHORTPLAYER? */
 		if (!(st->p[pid].bugMask & QUIRK_NOSHORTPLAYER) || team != 255) {
 			st->f.spawn_player(pid, st->f.get_spawn_position(pid, st), st);
 			if (st->p[pid].alive)

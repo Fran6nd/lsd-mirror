@@ -53,12 +53,31 @@ typedef int bint;
 typedef ivec3p ivec3;
 typedef fvec3p fvec3;
 
-/* Work around buggerspades bugs */
+/* BetterSpades likes to handle CreatePlayer's position verbatim,
+ * as opposed to having a Z offset of 2.
+ */
 #define QUIRK_INFLOOR (1 << 0)
+
+/* BetterSpades uses individual Team/Gun switch instead of
+ * ShortPlayerData when switching team out of spectator.
+ */
 #define QUIRK_NOSHORTPLAYER (1 << 1)
+
+/* a new "TOO_MANY_CONNECTIONS" takes the place of KICKED (2),
+ * KICKED now lives at 10, and INVALID_NAME newly exists
+ * at 20.
+ *
+ * notafile got confused by broken code and broke it further,
+ * then BetterSpades trusted piqueserver like God's word,
+ * then it spread to some of the fancy OpenSpades forks.
+ * Ordinary tuesday.
+ * (commit 3b037a042b34738a99bbec43f3db3f193eef6c90)
+ */
 #define QUIRK_SCREWED_DISCONNECT_DATA (1 << 2)
 
-/* OpenSpades CP-437 takes 0x0a as lf, 0x0d as cr, beta as sharp s, gamma as tua */
+/* OpenSpades CP-437 takes 0x0a as lf, 0x0d as cr,
+ * beta as sharp s, gamma as tua
+ */
 #define QUIRK_OS_CP437 (1 << 3)
 
 /* These ones may send either CP-437, or UTF-8 if prefixed with '\xff';

@@ -313,7 +313,7 @@ static void send_spawn_player(plid pid, fvec3 pos, unsigned gun, unsigned team, 
 			 * BetterSpades is not sane, since it was based on piqueserver.
 			 * The +0.4 can be blamed on ZeroSpades.
 			 */
-			if      (st->p[i].bugMask & BS_BUG_INFLOOR)
+			if      (st->p[i].bugMask & QUIRK_INFLOOR)
 				cr.pos.z = pos.z - 2;
 			else if (st->p[i].bugMask & QUIRK_INSKY)
 				cr.pos.z = pos.z + 0.4;

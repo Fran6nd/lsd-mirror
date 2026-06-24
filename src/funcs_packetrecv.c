@@ -250,7 +250,7 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 		SEXACT();
 		SPID();
 
-		SBAD(!(st->p[pid].bugMask & BS_BUG_NOSHORTPLAYER) && st->p[pid].team == 255);
+		SBAD(!(st->p[pid].bugMask & QUIRK_NOSHORTPLAYER) && st->p[pid].team == 255);
 
 		SBAD(PACKET.team > 1 && PACKET.team != 255);
 
@@ -261,7 +261,7 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 		SEXACT();
 		SPID();
 
-		SBAD(!(st->p[pid].bugMask & BS_BUG_NOSHORTPLAYER) && st->p[pid].team == 255);
+		SBAD(!(st->p[pid].bugMask & QUIRK_NOSHORTPLAYER) && st->p[pid].team == 255);
 
 		SBAD(PACKET.gun > 2);
 

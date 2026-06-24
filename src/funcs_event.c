@@ -96,7 +96,7 @@ static void on_switch(plid pid, unsigned team, unsigned gun, struct State *st) {
 	/* TODO: should spectators haven't a respawn timer? */
 	/* TODO: how to only switch after spawn? */
 	if (st->p[pid].team == 255) {
-		if (!(st->p[pid].bugMask & BS_BUG_NOSHORTPLAYER) || team != 255) {
+		if (!(st->p[pid].bugMask & QUIRK_NOSHORTPLAYER) || team != 255) {
 			st->f.spawn_player(pid, st->f.get_spawn_position(pid, st), st);
 			if (st->p[pid].alive)
 				st->f.kill(pid, KillTypeTeamChange, pid, st);
@@ -226,7 +226,7 @@ static void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor
 	case 'B':
 	case 'K':
 		/* Tigerspades usually identifies as >=0.1.6, though was 0.1.5 when UTF-8 was introduced */
-		st->p[pid].bugMask |= BS_BUG_INFLOOR | BS_BUG_NOSHORTPLAYER | BS_BUG_SCREWED_DISCONNECT_DATA | QUIRK_OS_CP437 |
+		st->p[pid].bugMask |= QUIRK_INFLOOR | QUIRK_NOSHORTPLAYER | QUIRK_SCREWED_DISCONNECT_DATA | QUIRK_OS_CP437 |
 		(major >= 0 && minor >= 1 && patch >= 6 ? QUIRK_UTF8 : QUIRK_ASCII);
 		break;
 	case 'o':
@@ -234,9 +234,9 @@ static void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor
 		st->p[pid].bugMask |= QUIRK_UTF8 | QUIRK_OS_CP437 | QUIRK_OS_BACTION_CULL;
 
 		if (strstr(st->p[pid].verMsg, "ZeroSpades"))
-			st->p[pid].bugMask |= BS_BUG_SCREWED_DISCONNECT_DATA | QUIRK_UTF8_COLOR_IMG | QUIRK_INSKY;
+			st->p[pid].bugMask |= QUIRK_SCREWED_DISCONNECT_DATA | QUIRK_UTF8_COLOR_IMG | QUIRK_INSKY;
 		else if (strstr(st->p[pid].verMsg, "IV of Spades"))
-			st->p[pid].bugMask |= BS_BUG_SCREWED_DISCONNECT_DATA | QUIRK_UTF8_COLOR_IMG;
+			st->p[pid].bugMask |= QUIRK_SCREWED_DISCONNECT_DATA | QUIRK_UTF8_COLOR_IMG;
 		break;
 	}
 }

@@ -54,9 +54,9 @@ typedef ivec3p ivec3;
 typedef fvec3p fvec3;
 
 /* Work around buggerspades bugs */
-#define BS_BUG_INFLOOR (1 << 0)
-#define BS_BUG_NOSHORTPLAYER (1 << 1)
-#define BS_BUG_SCREWED_DISCONNECT_DATA (1 << 2)
+#define QUIRK_INFLOOR (1 << 0)
+#define QUIRK_NOSHORTPLAYER (1 << 1)
+#define QUIRK_SCREWED_DISCONNECT_DATA (1 << 2)
 
 /* OpenSpades CP-437 takes 0x0a as lf, 0x0d as cr, beta as sharp s, gamma as tua */
 #define QUIRK_OS_CP437 (1 << 3)
@@ -90,35 +90,34 @@ typedef fvec3p fvec3;
  */
 #define QUIRK_INSKY (1 << 8)
 
-/* TODO: BS_BUG_NODEADNADE */
-/* TODO: BS_BUG_BORKEDRELOAD */
-/* TODO: BS_BUG_MOUSEINPUTISFUCKED */
-/* TODO: BS_BUG_INCOMPATIBLE_CHAT_STANDARD */
+/* TODO: QUIRK_NODEADNADE */
+/* TODO: QUIRK_BORKEDRELOAD */
+/* TODO: QUIRK_MOUSEINPUTISFUCKED */
+/* TODO: QUIRK_INCOMPATIBLE_CHAT_STANDARD */
 /* TODO: wonder how to handle sprintcrouching */
 
 /* TODO: consider the version stuff an ext too? */
 /* TODO: consider the *other* version packet an ext? */
 /* TODO: do i have to bother with that mapCached thing? */
-/* TODO: EXT_COMPATIBLE_CHAT_STANDARD */
-/* TODO: EXT_76WUPD */
-/* TODO: EXT_BMASKUPD -- for this one you MUST have some way to clear the velocity of a player so you don't have to send redundant data if the velocity gets desynchronized */
+/* TODO: QUIRK_COMPATIBLE_CHAT_STANDARD */
+/* TODO: QUIRK_76WUPD */
+/* TODO: QUIRK_BMASKUPD -- for this one you MUST have some way to clear the velocity of a player so you don't have to send redundant data if the velocity gets desynchronized */
 /* TODO: combine the latter two, or go to 10 Hz? */
-/* TODO: EXT_12HzPOSRATE */
-/* TODO: EXT_60HzPOSRATE */
-/* TODO: EXT_csUTF8 */
+/* TODO: QUIRK_12HzPOSRATE */
+/* TODO: QUIRK_60HzPOSRATE */
 /* Like chat macros but superpowered. . . should probably allow using them as fallback though */
-/* TODO: EXT_BINDKEYS */
+/* TODO: QUIRK_BINDKEYS */
 /* With my little research into how ENet deals with its datagrams I
  * think it should be possible for the client to send some early data
  * down the wire, before map transfer does anything
  * TODO: get libpvx2 into a usable state already
  */
-/* TODO: EXT_PVX */
+/* TODO: QUIRK_PVX */
 /* At least the stats */
-/* TODO: EXT_CUSTOMGUN */
+/* TODO: QUIRK_CUSTOMGUN */
 /* TODO: go find your scattered notes for that gamma protocol */
-/* TODO: EXT_BS_PLAYERPROP */
-/* TODO: EXT_PUBKEY_AUTHN -- should this one be handled more generically and by lua? */
+/* TODO: QUIRK_BS_PLAYERPROP */
+/* TODO: QUIRK_PUBKEY_AUTHN -- should this one be handled more generically and by lua? */
 /* TODO: play with enet channels -- all clients i've looked into have
  * a max of 1, but we can change that for at least my private client
  * TODO: play with alternate transports, libenetproto

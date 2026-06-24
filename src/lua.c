@@ -935,7 +935,7 @@ static int disconnect(lua_State *l) {
 	plid pid = check_plid(l, 1);
 	unsigned reason = luaL_checknumber(l, 2);
 
-	if (reason == 2 && st->p[pid].bugMask & BS_BUG_SCREWED_DISCONNECT_DATA)
+	if (reason == 2 && st->p[pid].bugMask & QUIRK_SCREWED_DISCONNECT_DATA)
 		reason = 10;
 
 	if (st->p[pid].peer)
@@ -947,7 +947,7 @@ static int disconnect_now(lua_State *l) {
 	plid pid = check_plid(l, 1);
 	unsigned reason = luaL_checknumber(l, 2);
 
-	if (reason == 2 && st->p[pid].bugMask & BS_BUG_SCREWED_DISCONNECT_DATA)
+	if (reason == 2 && st->p[pid].bugMask & QUIRK_SCREWED_DISCONNECT_DATA)
 		reason = 10;
 
 	if (st->p[pid].peer)

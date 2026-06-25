@@ -50,6 +50,7 @@ callchain_impl = {};
 callchain_late = {};
 callchain_std = {};
 callchain_early = {};
+callchain_xearly = {};
 
 modules = {};
 
@@ -88,9 +89,10 @@ local function init_chains(name)
 	callchain_late[name] = {function(...) return callchain_impl[name][#callchain_impl[name]](...); end};
 	callchain_std[name] = {function(...) return callchain_late[name][#callchain_late[name]](...); end};
 	callchain_early[name] = {function(...) return callchain_std[name][#callchain_std[name]](...); end};
+	callchain_xearly[name] = {function(...) return callchain_early[name][#callchain_early[name]](...); end};
 
 	_G[name] = function(...)
-		local status, err = pcall(callchain_early[name][#callchain_early[name]], ...);
+		local status, err = pcall(callchain_xearly[name][#callchain_xearly[name]], ...);
 
 		if (not status) then
 			error(err, 2);
@@ -170,6 +172,7 @@ function register(module)
 	add_cat(callchain_late, module.late);
 	add_cat(callchain_std, module);
 	add_cat(callchain_early, module.early);
+	add_cat(callchain_xearly, module.xearly);
 
 	if (module.on_load ~= nil) then
 		local status, err = pcall(module.on_load);
@@ -217,6 +220,7 @@ function unregister(module, no_rm)
 	destroy_cat(callchain_late, module.late, "late");
 	destroy_cat(callchain_std, module);
 	destroy_cat(callchain_early, module.early, "early");
+	destroy_cat(callchain_xearly, module.xearly, "xearly");
 
 	if (not no_rm) then
 		log("Unloaded %s", module.name or module);
@@ -245,7 +249,7 @@ end
 
 -- Just sets boilerplate
 function init_mod()
-	return {impl={next={}}, late={before={}, after={}, next={}}, early={before={}, after={}, next={}}, before={}, after={}, next={}};
+	return {impl={next={}}, late={before={}, after={}, next={}}, early={before={}, after={}, next={}}, xearly={before={}, after={}, next={}}, before={}, after={}, next={}};
 end
 
 -- Unregister everything on_shutdown -- most importantly this calls on_unload

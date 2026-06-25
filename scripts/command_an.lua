@@ -156,9 +156,16 @@ function mod.after.on_crap_packet(pid, data)
 	handle_hit(pid, type, target, delta, true);
 end
 
--- TODO: need xearly, and rebrand it all to be semantic
--- TODO: display if it's been canceled
-function mod.early.after.on_hit(pid, type, hitPlayer)
+local on_hit_called = false;
+function mod.after.on_hit(pid, type, hitPlayer)
+	on_hit_called = true;
+end
+
+function mod.xearly.before.on_hit(pid, type, hitPlayer)
+	on_hit_called = false;
+end
+
+function mod.xearly.after.on_hit(pid, type, hitPlayer)
 	local now = get_time();
 
 	if (last_hit_time[pid] == nil) then
@@ -168,7 +175,7 @@ function mod.early.after.on_hit(pid, type, hitPlayer)
 	local delta = math.floor((now - last_hit_time[pid]) * 1000);
 	last_hit_time[pid] = now;
 
-	handle_hit(pid, type, hitPlayer, delta, false);
+	handle_hit(pid, type, hitPlayer, delta, not on_hit_called);
 end
 
 return mod;

@@ -111,11 +111,18 @@ static int neighboring_voxels(ivec3 pos, struct State *st) {
 }
 
 static int on_any_packet(plid pid, const void *data, size_t length, struct State *st) {
+	uint16_t packetID;
 	st->crappacketname = "?";
 
 	SBAD(length < 1);
 
-	switch (((uint8_t *)data)[0]) {
+	if (((uint8_t *)data)[0] & 128) {
+		SBAD(length < 2);
+		memcpy(&packetID, data, 2);
+	} else
+		packetID = ((uint8_t *)data)[0];
+
+	switch (packetID) {
 #define PCKT PositionData
 		SCASEALIVE
 		SEXACT();
@@ -591,12 +598,21 @@ static void on_sane_packet(plid pid, const void *data, size_t length, struct Sta
 }
 
 static void on_crap_packet(plid pid, const void *data, size_t length, struct State *st) {
+	int32_t packetID;
+
+	if (length > 1 && ((uint8_t *)data)[0] & 128)
+		memcpy(&packetID, data, 2);
+	else if (length > 0 && !(((uint8_t *)data)[0] & 128))
+		packetID = ((uint8_t *)data)[0];
+	else
+		packetID = -1;
+
 	if (!st->crapsilence) LOG(
 		"%s:%u (#%u) sent crap packet, ID %i, name %s, len %lu, __LINE__: %i\n\t%s",
 		IP(pid),
 		PORT(pid),
 		pid,
-		length > 0 ? ((uint8_t *)data)[0] : -1,
+		packetID,
 		st->crappacketname,
 		(unsigned long)length,
 		st->crapline,

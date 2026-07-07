@@ -41,8 +41,6 @@ typedef struct Player PlayerType;
 #define FALL_DAMAGE_VELOCITY 0.58f
 #define FALL_DAMAGE_SCALAR 4096
 
-#define FOG_DISTANCE 128
-
 /* isvoxelsolid() but water is nonsolid and out of bounds returns true. */
 int clip_player(float ox, float oy, float oz, const uint8_t *solidData, int wrap) {
 	/* Flooring is important here; default is trunc which is probably hazardous for the world borders. */
@@ -98,7 +96,6 @@ int clip_grenade(uint32_t x, uint32_t y, int32_t z, const uint8_t *solidData, in
 	return pvx_voxel_get_solidity4(solidData, CALC_I(x, y), z);
 }
 
-#if 1
 /* Hey, this raycaster actually works properly! */
 /* Relevant:
  * https://www.cs.yorku.ca/~amana/research/grid.pdf
@@ -119,17 +116,6 @@ int cast2(const uint8_t *solidData, float startX, float startY, float startZ, fl
 	offx = endX - startX;
 	offy = endY - startY;
 	offz = endZ - startZ;
-
-#if 0
-	/* Normalize that relative position. This is only needed if hypot ends up as a really small value
-	 * -- multiplying offx,y,z by a really large number would have a similar effect.
-	 * The need for this could probably be mitigated with double precision, too.
-	 */
-	hypot = sqrtf(offx*offx + offy*offy + offz*offz);
-	offx /= hypot;
-	offy /= hypot;
-	offz /= hypot;
-#endif
 
 	/* Direction in each axis the ray travels */
 	stepx = offx < 0 ? -1 : 1;
@@ -191,129 +177,11 @@ int cast2(const uint8_t *solidData, float startX, float startY, float startZ, fl
 		}
 	}
 }
-#endif
-
-/* Silly VOXLAP function that either rounds or floors depending on your chosen branch of PySnip. */
-static int32_t ftol(float f) {
-	return f;
-}
-
-/* Trash raycaster pyspades uses for grenade explosions. */
-static int cast(const uint8_t *solidData, float startX, float startY, float startZ, float endX, float endY,
-                float endZ, float length, int32_t *x, int32_t *y, int32_t *z) {
-	Vector f, g;
-	Vector32 cursor, end, step, p, i;
-	uint32_t cnt = 0;
-
-	cursor.x = ftol(startX - .5f);
-	cursor.y = ftol(startY - .5f);
-	cursor.z = ftol(startZ - .5f);
-
-	end.x = ftol(endX - .5f);
-	end.y = ftol(endY - .5f);
-	end.z = ftol(endZ - .5f);
-
-	step.x = endX < startX ? -1 : 1;
-	step.y = endY < startY ? -1 : 1;
-	step.z = endZ < startZ ? -1 : 1;
-
-	f.x = fabsf(startX - cursor.x) + (end.x > cursor.x);
-	f.y = fabsf(startY - cursor.y) + (end.y > cursor.y);
-	f.z = fabsf(startZ - cursor.z) + (end.z > cursor.z);
-
-	/* The multiplication by 1024 here is to deal with problems caused by too-small floats */
-	g.x = fabsf(startX - endX) * 1024;
-	g.y = fabsf(startY - endY) * 1024;
-	g.z = fabsf(startZ - endZ) * 1024;
-
-	cnt = abs(cursor.x - end.x) + abs(cursor.y - end.y) + abs(cursor.z - end.z);
-
-	if (cursor.x == end.x)
-		f.x = g.x = 0;
-	if (cursor.y == end.y)
-		f.y = g.y = 0;
-	if (cursor.z == end.z)
-		f.z = g.z = 0;
-
-	p.x = ftol(f.x * g.z - f.z * g.x);
-	p.y = ftol(f.y * g.z - f.z * g.y);
-	p.z = ftol(f.y * g.x - f.x * g.y);
-
-	i.x = ftol(g.x);
-	i.y = ftol(g.y);
-	i.z = ftol(g.z);
-
-	if (cnt > length)
-		cnt = length;
-
-	while (cnt) {
-		/* The use of bitwise OR here scares me. Wonder if it's not supposed to be there at all. (Probably yes, it isn't.) */
-		if ((p.x | p.y) >= 0 && cursor.z != end.z) {
-			cursor.z += step.z;
-			p.x -= i.x;
-			p.y -= i.y;
-		} else if (p.z >= 0 && cursor.x != end.x) {
-			cursor.x += step.x;
-			p.x += i.z;
-			p.z -= i.y;
-		} else { /* Of course this one doesn't bother with end checking. */
-			cursor.y += step.y;
-			p.y += i.z;
-			p.z += i.x;
-		}
-
-		if (isvoxelsolidwrap(cursor.x, cursor.y, cursor.z, solidData)) {
-			*x = cursor.x;
-			*y = cursor.y;
-			*z = cursor.z;
-			return 1;
-		}
-
-		cnt--;
-	}
-
-	return 0;
-}
-
-int can_see(const uint8_t *solidData, float x0, float y0, float z0, float x1, float y1, float z1) {
-	int32_t trash;
-
-	return !cast(solidData, x0, y0, z0, x1, y1, z1, FOG_DISTANCE, &trash, &trash, &trash);
-}
-
-#if 0
-int cast_ray(const uint8_t *solidData, float x0, float y0, float z0, float x1, float y1,
-			  float z1, float length, int32_t *x, int32_t *y, int32_t *z) {
-	x1 = x0 + x1 * length;
-	y1 = y0 + y1 * length;
-	z1 = z0 + z1 * length;
-
-	return cast(solidData, x0, y0, z0, x1, y1, z1, length, x, y, z);
-}
-#else
-int cast_ray(const uint8_t *solidData, float x0, float y0, float z0, float x1, float y1,
-			  float z1, float length, int32_t *x, int32_t *y, int32_t *z) {
-	x1 = x0 + x1;
-	y1 = y0 + y1;
-	z1 = z0 + z1;
-
-	return cast2(solidData, x0, y0, z0, x1, y1, z1, length, x, y, z, 0);
-}
 
 int cast_ray2(const uint8_t *solidData, fvec3p start, fvec3p end) {
 	int32_t trash;
 	return cast2(solidData, start.x, start.y, start.z, end.x, end.y, end.z, 0, &trash, &trash, &trash, 0);
 }
-
-int cast_ray_last(const uint8_t *solidData, float x0, float y0, float z0, float x1, float y1,
-			  float z1, float length, int32_t *x, int32_t *y, int32_t *z) {
-	x1 = x0 + x1;
-	y1 = y0 + y1;
-	z1 = z0 + z1;
-
-	return cast2(solidData, x0, y0, z0, x1, y1, z1, length, x, y, z, 1);
-}
-#endif
 
 void dcore_block_line(int32_t startX, int32_t startY, int32_t startZ, int32_t endX, int32_t endY, int32_t endZ, struct BitmaskUData *map, const uint8_t *color) {
 	/* d. . . di. . . diamonds?! */

@@ -19,9 +19,7 @@ struct Grenade {
 };
 
 int clip_player(float ox, float oy, float oz, const uint8_t *solidData, int wrap);
-int can_see(const uint8_t *solidData, float x0, float y0, float z0, float x1, float y1, float z1);
 int cast2(const uint8_t *solidData, float startX, float startY, float startZ, float endX, float endY, float endZ, float length, int32_t *x, int32_t *y, int32_t *z, int last);
-int cast_ray(const uint8_t *solidData, float x0, float y0, float z0, float x1, float y1, float z1, float length, int32_t *x, int32_t *y, int32_t *z);
 int cast_ray2(const uint8_t *solidData, fvec3p start, fvec3p end);
 void dcore_block_line(int32_t startX, int32_t startY, int32_t startZ, int32_t endX, int32_t endY, int32_t endZ, struct BitmaskUData *map, const uint8_t *color);
 void change_crouch(int crouching, struct Player *p, const uint8_t *solidData, int wrap);

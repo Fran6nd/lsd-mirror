@@ -214,7 +214,6 @@ Sets <var>from</var>'s held block color.
 void send_set_tool(bplid pid, unsigned tool) ->
 Switches <var>pid</var>'s held tool.
 Switch time may vary by client.
-Calls send_set_tool().
 
 <!-- Yuck! -->
 void send_state_ctf(bplid pid, nplid from, string teamname[2], color teamcolor[2], color fog, unsigned teamscore[2], unsigned maxscore, plid holders[2], fvec3 intelpos[2], fvec3 tentpos[2]) ->

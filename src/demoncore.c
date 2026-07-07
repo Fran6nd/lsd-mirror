@@ -592,10 +592,10 @@ int32_t move_player(PlayerType *p, float secondsSinceLastUpdate, const uint8_t *
 			return oldZVelocity * oldZVelocity * FALL_DAMAGE_SCALAR;
 		}
 
-		return -1; /* No fall damage but play inaudible fall sound. */
+		return 0;
 	}
 
-	return 0; /* No fall damage. */
+	return -1; /* No fall damage, no fall sound. */
 }
 
 /* Returns 1 if the grenade collides with something, otherwise 0. */

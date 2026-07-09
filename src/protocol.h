@@ -620,6 +620,13 @@ struct LIBSPADES_PACKED PacketMapCached {
 
 /* extension packet structs */
 
+/** not a burner's experimental attempt at networking quirks @ingroup packets
+ */
+struct LIBSPADES_PACKED PacketQuirks {
+	uint8_t packetID; /**< 48 `(Client<->Server)` */
+	uint8_t quirks[VARIABLE_LENGTH]; /**< Bitmask of supported quirks. */
+};
+
 /** Extension entries for @ref PacketExtensionInfo */
 struct LIBSPADES_PACKED ExtensionInfoEntry {
 	uint8_t extensionID;      /**< The extension's ID. */
@@ -723,8 +730,8 @@ struct LIBSPADES_PACKED PacketVersionResponse {
 
 /** Informs the client about stats of a player. @ingroup packets */
 struct LIBSPADES_PACKED PacketPlayerProperties {
-	uint8_t packetID;     /**< 64 */
-	uint8_t subPacketID;  /**< 0 `(Client<--Server)` */
+	uint8_t packetID;     /**< 64 `(Client<--Server)` */
+	uint8_t subPacketID;  /**< 0 */
 	uint8_t playerID;     /**< The ID of the player to inform the client about. */
 	uint8_t HP;           /**< The HP of the player. */
 	uint8_t blocks;       /**< The amount of blocks the player has. */
@@ -732,49 +739,6 @@ struct LIBSPADES_PACKED PacketPlayerProperties {
 	uint8_t magazineAmmo; /**< The amount of magazine ammunition the player has. */
 	uint8_t reserveAmmo;  /**< The amount of reserve ammunition the player has. */
 	uint32_t score;       /**< The score the player has. */
-};
-
-/** Requests the client to start an authentication transaction. @ingroup packets
- * The server MUST NOT allow the client to skip ahead in the transaction, or start it by itself.
- * Looking at you, piqueserver.
- */
-struct LIBSPADES_PACKED PacketRequestAuthentication {
-	uint8_t packetID;    /**< 65 */
-	uint8_t subPacketID; /**< 0 `(Client<--Server)` */
-};
-
-/** Ends the authentication transaction and tells the client its permission level. @ingroup packets */
-struct LIBSPADES_PACKED PacketEndAuthentication {
-	uint8_t packetID;    /**< 65 */
-	uint8_t subPacketID; /**< 1 `(Client<--Server)` */
-	uint8_t success;     /**< Equal to 1 if the client was successfully authenticated. Equal to 0 otherwise. */
-	char permissionLevel[VARIABLE_LENGTH]; /**< NULL-terminated string encoded with UTF-8 that contains the
-	                                          permission level granted. For example, "Player", "Trusted", "Admin"
-	                                        */
-};
-
-/** Sends the clients's public key to the server in response to the request for authentication. @ingroup packets */
-struct LIBSPADES_PACKED PacketSendPublicKey {
-	uint8_t packetID;      /**< 65 */
-	uint8_t subPacketID;   /**< 2 `(Client-->Server)` */
-	uint8_t publicKey[32]; /**< Ed25519 public key to be used for authentication. */
-};
-
-/** Sends the client a nonce to sign after receiving its public key. @ingroup packets
- * The nonce MUST NEVER be re-used, and should be from a secure random source.
- * At least 32 bytes is recommended.
- */
-struct LIBSPADES_PACKED PacketSendNonce {
-	uint8_t packetID;               /**< 65 */
-	uint8_t subPacketID;            /**< 3 `(Client<--Server)` */
-	uint8_t nonce[VARIABLE_LENGTH]; /**< Data to be signed with the client's secret key. */
-};
-
-/** Sends the server back the nonce sent the client, signed with the client's secret key. @ingroup packets */
-struct LIBSPADES_PACKED PacketSendSignature {
-	uint8_t packetID;      /**< 65 */
-	uint8_t subPacketID;   /**< 4 `(Client-->Server)` */
-	uint8_t signature[64]; /**< The nonce sent by the server, signed with the client's secret key. */
 };
 
 #ifndef PACK_GCC
@@ -811,9 +775,9 @@ enum PacketType {
 	PacketTypeIntelDrop = 25,        /* Client<--Server */
 	PacketTypeRestock = 26,          /* Client<--Server */
 	PacketTypeFogColor = 27,         /* Client<--Server */
-	PacketTypeGunReload = 28,     /* Client<->Server */
+	PacketTypeGunReload = 28,        /* Client<->Server */
 	PacketTypeChangeTeam = 29,       /* Client-->Server */
-	PacketTypeChangeGun = 30,     /* Client<->Server */
+	PacketTypeChangeGun = 30,        /* Client<->Server */
 	PacketTypeMapCached = 31,        /* Client-->Server */
 
 	/* extension packets. NOTE: for most servers, you must complete the
@@ -825,23 +789,10 @@ enum PacketType {
 	PacketTypeVersionResponse = 34,
 	/* Client-->Server */ /* sendable before extension info is provided */
 
+	PacketTypeQuirks = 48,        /* Client<->Server */
 	PacketTypeExtensionInfo = 60, /* Client<->Server */
 
 	PacketTypePlayerProperties = 64,
-	PacketTypeEd25519Authentication = 65
-	/* I wonder if it would just be better to have all the subpackets for this? */
-};
-
-enum SubPacketType {
-	/* PacketTypePlayerProperties */
-	SubPacketTypePlayerProperties = 0, /* Client<--Server */
-
-	/* PacketTypeEd25519Authentication */
-	SubPacketTypeRequestAuthentication = 0, /* Client<--Server */
-	SubPacketTypeEndAuthentication = 1,     /* Client<--Server */
-	SubPacketTypeSendPublicKey = 2,         /* Client-->Server */
-	SubPacketTypeSendNonce = 3,             /* Client<--Server */
-	SubPacketTypeSendSignature = 4          /* Client-->Server */
 };
 
 enum GunType { GunTypeRifle = 0, GunTypeSMG = 1, GunTypeShotgun = 2 };

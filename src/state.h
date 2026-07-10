@@ -53,61 +53,90 @@ typedef int bint;
 typedef ivec3p ivec3;
 typedef fvec3p fvec3;
 
-/* BetterSpades likes to handle CreatePlayer's position verbatim,
- * as opposed to having a Z offset of 2.
- */
-#define QUIRK_INFLOOR (1 << 0)
+enum Quirks {
+	/* BetterSpades likes to handle CreatePlayer's position verbatim,
+	 * as opposed to having a Z offset of 2.
+	 */
+	QUIRK_INFLOOR = 0,
 
-/* BetterSpades uses individual Team/Gun switch instead of
- * ShortPlayerData when switching team out of spectator.
- */
-#define QUIRK_NOSHORTPLAYER (1 << 1)
+	/* BetterSpades uses individual Team/Gun switch instead of
+	 * ShortPlayerData when switching team out of spectator.
+	 */
+	QUIRK_NOSHORTPLAYER,
 
-/* a new "TOO_MANY_CONNECTIONS" takes the place of KICKED (2),
- * KICKED now lives at 10, and INVALID_NAME newly exists
- * at 20.
- *
- * notafile got confused by broken code and broke it further,
- * then BetterSpades trusted piqueserver like God's word,
- * then it spread to some of the fancy OpenSpades forks.
- * Ordinary tuesday.
- * (commit 3b037a042b34738a99bbec43f3db3f193eef6c90)
- */
-#define QUIRK_SCREWED_DISCONNECT_DATA (1 << 2)
+	/* a new "TOO_MANY_CONNECTIONS" takes the place of KICKED (2),
+	 * KICKED now lives at 10, and INVALID_NAME newly exists
+	 * at 20.
+	 *
+	 * notafile got confused by broken code and broke it further,
+	 * then BetterSpades trusted piqueserver like God's word,
+	 * then it spread to some of the fancy OpenSpades forks.
+	 * Ordinary tuesday.
+	 * (commit 3b037a042b34738a99bbec43f3db3f193eef6c90)
+	 */
+	QUIRK_SCREWED_DISCONNECT_DATA,
 
-/* OpenSpades CP-437 takes 0x0a as lf, 0x0d as cr,
- * beta as sharp s, gamma as tua
- */
-#define QUIRK_OS_CP437 (1 << 3)
+	/* OpenSpades CP-437 takes 0x0a as lf, 0x0d as cr,
+	 * beta as sharp s, gamma as tua
+	 */
+	QUIRK_OS_CP437,
 
-/* These ones may send either CP-437, or UTF-8 if prefixed with '\xff';
- * They will also unconditionally be sent UTF-8 messages to hammer out
- * deficiencies in shitty CP-437 codecs.
- */
-#define QUIRK_UTF8 (1 << 4)
+	/* These ones may send either CP-437, or UTF-8 if prefixed with '\xff';
+	 * They will also unconditionally be sent UTF-8 messages to hammer out
+	 * deficiencies in shitty CP-437 codecs.
+	 */
+	QUIRK_UTF8,
 
-/* BetterSpades doesn't understand UTF-8 *or* CP-437, so messages sent to it
- * must be transcoded into ASCII.
- */
-#define QUIRK_ASCII (1 << 5)
+	/* BetterSpades doesn't understand UTF-8 *or* CP-437, so messages sent to it
+	 * must be transcoded into ASCII.
+	 */
+	QUIRK_ASCII,
 
-/* Voxlap and BetterSpades cull floating voxels for spade 3x and grenade on
- * all sides of the shape, even on sides with no adjacent removed solid voxel.
- * OpenSpades only culls where voxels have been removed.
- *
- * Did that make sense?
- */
-#define QUIRK_OS_BACTION_CULL (1 << 6)
+	/* Voxlap and BetterSpades cull floating voxels for spade 3x and grenade on
+	 * all sides of the shape, even on sides with no adjacent removed solid voxel.
+	 * OpenSpades only culls where voxels have been removed.
+	 *
+	 * Did that make sense?
+	 */
+	QUIRK_OS_BACTION_CULL,
 
-/* IV of Spades and ZeroSpades move the Gray color to '\x08' from '\x07' for
- * some reason and put an image-prefix-code-thing in its place.
- */
-#define QUIRK_UTF8_COLOR_IMG (1 << 7)
+	/* IV of Spades and ZeroSpades move the Gray color to '\x08' from '\x07' for
+	 * some reason and put an image-prefix-code-thing in its place.
+	 */
+	QUIRK_UTF8_COLOR_IMG,
 
-/* ZeroSpades decided CreatePlayer should be off by 2.4 instead of just 2
- * (commit 1675f07f81327a97b180f76f19bb67f801c3c8ce)
- */
-#define QUIRK_INSKY (1 << 8)
+	/* ZeroSpades decided CreatePlayer should be off by 2.4 instead of just 2
+	 * (commit 1675f07f81327a97b180f76f19bb67f801c3c8ce)
+	 */
+	QUIRK_INSKY,
+
+	/* Not an actual quirk, just 1 plus the last quirk. */
+	QUIRK_MAX
+};
+
+/* These operate on the server-to-client wire quirks bitformat */
+#define QBIT(quirk, enabled) ((2|(enabled)) << ((quirk) % 4) * 2)
+#define QIDX(quirk) ((quirk) / 4)
+
+/* These operate on the internal quirks bitformat */
+#define QENABLED 1
+#define QMUTABLE 2
+#define QHEURISTIC 4
+#define QUNUSED 8
+
+static const uint8_t quirk_prefs[] = {
+	QBIT(QUIRK_INFLOOR,                 0) |
+	QBIT(QUIRK_NOSHORTPLAYER,           0) |
+	QBIT(QUIRK_SCREWED_DISCONNECT_DATA, 0) |
+	QBIT(QUIRK_OS_CP437,                1),
+
+	QBIT(QUIRK_UTF8,                    1) |
+	QBIT(QUIRK_ASCII,                   0) |
+	/* QUIRK_OS_BACTION_CULL is automatically set to the current cull personality before sending */
+	QBIT(QUIRK_UTF8_COLOR_IMG,          1),
+
+	QBIT(QUIRK_INSKY,                   0),
+};
 
 /* TODO: QUIRK_NODEADNADE */
 /* TODO: QUIRK_BORKEDRELOAD */
@@ -193,12 +222,13 @@ struct Player {
 	uint8_t verMajor;
 	int connected;
 	int initStateSent;
-	uint64_t bugMask;
-	uint64_t extMask;
+	uint8_t quirks[(QUIRK_MAX+1)/2];
 	/* 0 if unwanted, 1 if only verExt wanted, 2 if only ver wanted, 3 if handshake or ver wanted --
 	 * it starts at 3, then becomes 2 or 1, then becomes 1, then becomes 0.
 	 */
 	int wantFingerprint;
+	/* 0 if unwanted, 1 if heuristics wanted, 3 if client-provided quirks or heuristics wanted. */
+	int wantQuirks;
 	/* TODO: is checking for handshake whatnot really necessary? */
 	int handshaked;
 	int hasverext;
@@ -248,6 +278,7 @@ struct Functions {
 	void (*on_hit)(plid pid, unsigned type, plid hitPlayer, struct State *st);
 	void (*on_grenade)(plid pid, fvec3 pos, fvec3 vel, float fuse, struct State *st);
 	void (*on_reload)(plid pid, struct State *st);
+	void (*on_quirks)(plid pid, const char *data, size_t len, struct State *st);
 	void (*on_handshake)(plid pid, struct State *st);
 	void (*on_version)(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, const char *msg, size_t msglen, struct State *st);
 	void (*on_version_ext)(plid pid, unsigned major, unsigned minor, unsigned patch, uint32_t flags, const char *cli, size_t clilen, const char *lang, size_t langlen, struct State *st);
@@ -325,6 +356,8 @@ struct Functions {
 	/* TODO: figure out how to log chat properly -- just on send_chat? */
 	/* also, what about logging /login? */
 	void (*send_chat)(bplid pid, const char *msg, unsigned type, nplid from, struct State *st);
+	void (*send_quirks)(bplid pid, const char *data, size_t len, struct State *st);
+	void (*send_quirks_off)(bplid pid, const char *data, size_t len, struct State *st);
 	void (*send_block_action)(bplid pid, ivec3 pos, unsigned type, nplid from, struct State *st);
 	/* Try to limit sent block lines to 50 blocks or openspades will eat you. */
 	void (*send_block_line)(bplid pid, ivec3 start, ivec3 end, nplid from, struct State *st);
@@ -376,6 +409,12 @@ struct Functions {
 	void (*drop_intel)(plid pid, fvec3 pos, struct State *st);
 	void (*move_intel)(gteamid team, fvec3 pos, struct State *st);
 	void (*move_tent)(gteamid team, fvec3 pos, struct State *st);
+
+	/* Quirks that I haphazardly shoved at the end */
+	bint (*has_quirk)(plid pid, unsigned quirk, struct State *st);
+	bint (*is_quirk_mutable)(plid pid, unsigned quirk, struct State *st);
+	bint (*is_quirk_heuristic)(plid pid, unsigned quirk, struct State *st);
+	void (*set_quirk)(plid pid, unsigned quirk, bint enabled, struct State *st);
 };
 
 #define CULL_PERSONALITY_VOXLAP 0

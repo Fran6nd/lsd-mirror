@@ -935,7 +935,7 @@ static int disconnect(lua_State *l) {
 	plid pid = check_plid(l, 1);
 	unsigned reason = luaL_checknumber(l, 2);
 
-	if (reason == 2 && st->p[pid].bugMask & QUIRK_SCREWED_DISCONNECT_DATA)
+	if (reason == 2 && st->f.has_quirk(pid, QUIRK_SCREWED_DISCONNECT_DATA, st))
 		reason = 10;
 
 	if (st->p[pid].peer)
@@ -947,7 +947,7 @@ static int disconnect_now(lua_State *l) {
 	plid pid = check_plid(l, 1);
 	unsigned reason = luaL_checknumber(l, 2);
 
-	if (reason == 2 && st->p[pid].bugMask & QUIRK_SCREWED_DISCONNECT_DATA)
+	if (reason == 2 && st->f.has_quirk(pid, QUIRK_SCREWED_DISCONNECT_DATA, st))
 		reason = 10;
 
 	if (st->p[pid].peer)
@@ -1647,11 +1647,9 @@ void hook_lua(const char *cfg, unsigned long port, struct State *st2) {
 	luaL_openlibs(l);
 	register_functions(l, st);
 
-	lua_pushnumber(l, MAX_PLAYERS);
-	lua_setglobal(l, "MAX_PLAYERS");
-
-	lua_pushnumber(l, PID_BROADCAST);
-	lua_setglobal(l, "PID_BROADCAST");
+	#define SETMACRO(macro) do {lua_pushnumber(l, macro); lua_setglobal(l, #macro);} while (0)
+	SETMACRO(MAX_PLAYERS);
+	SETMACRO(PID_BROADCAST);
 
 	/* TODO: #define SPECTATOR 255? */
 	lua_pushnumber(l, 256);
@@ -1660,11 +1658,18 @@ void hook_lua(const char *cfg, unsigned long port, struct State *st2) {
 	lua_pushnumber(l, port);
 	lua_setglobal(l, "ENET_PORT");
 
-	lua_pushnumber(l, CULL_PERSONALITY_VOXLAP);
-	lua_setglobal(l, "CULL_PERSONALITY_VOXLAP");
+	SETMACRO(CULL_PERSONALITY_VOXLAP);
+	SETMACRO(CULL_PERSONALITY_OPENSPADES);
 
-	lua_pushnumber(l, CULL_PERSONALITY_OPENSPADES);
-	lua_setglobal(l, "CULL_PERSONALITY_OPENSPADES");
+	SETMACRO(QUIRK_INFLOOR);
+	SETMACRO(QUIRK_NOSHORTPLAYER);
+	SETMACRO(QUIRK_SCREWED_DISCONNECT_DATA);
+	SETMACRO(QUIRK_OS_CP437);
+	SETMACRO(QUIRK_UTF8);
+	SETMACRO(QUIRK_ASCII);
+	SETMACRO(QUIRK_OS_BACTION_CULL);
+	SETMACRO(QUIRK_UTF8_COLOR_IMG);
+	SETMACRO(QUIRK_INSKY);
 
 	if (luaL_loadfile(l, "scripts/core.lua") || lua_pcall(l, 0, 0, 0))
 		LERR(l, "Can't load scripts/core.lua: %s", lua_tostring(l, -1));

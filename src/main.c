@@ -472,7 +472,7 @@ static void send_cull(int32_t x, int32_t y, int32_t z, int noneighbor, struct St
 	if (st->globals.cullPersonality == CULL_PERSONALITY_OPENSPADES) {
 		if (noneighbor)
 		for (i=0;i<MAX_PLAYERS;i++) {
-			if (pid_matches(PID_BROADCAST, i, st) && !(st->p[i].bugMask & QUIRK_OS_BACTION_CULL))
+			if (pid_matches(PID_BROADCAST, i, st) && !st->f.has_quirk(i, QUIRK_OS_BACTION_CULL, st))
 				st->f.send_block_action(i, pos, 1, st->f.get_anon_pid(st), st);
 		}
 	} else {
@@ -489,12 +489,12 @@ static void send_cull(int32_t x, int32_t y, int32_t z, int noneighbor, struct St
 
 				if (pos.x >= 0 && pos.x < 512 && pos.y >= 0 && pos.y < 512 && pos.z >= 0 && pos.z < 62 && !get_solid3(pos.x, pos.y, pos.z, st))
 				for (i=0;i<MAX_PLAYERS;i++) {
-					if (pid_matches(PID_BROADCAST, i, st) && st->p[i].bugMask & QUIRK_OS_BACTION_CULL)
+					if (pid_matches(PID_BROADCAST, i, st) && st->f.has_quirk(i, QUIRK_OS_BACTION_CULL, st))
 						st->f.send_block_action(i, pos, 1, st->f.get_anon_pid(st), st);
 				}
 			}
 		} else for (i=0;i<MAX_PLAYERS;i++) {
-			if (pid_matches(PID_BROADCAST, i, st) && st->p[i].bugMask & QUIRK_OS_BACTION_CULL)
+			if (pid_matches(PID_BROADCAST, i, st) && st->f.has_quirk(i, QUIRK_OS_BACTION_CULL, st))
 				st->f.send_block_action(i, pos, 1, 32, st);
 		}
 	}
@@ -591,7 +591,7 @@ static uint32_t block_action_rm(ivec3 pos, unsigned type, plid from, struct Stat
 			st->f.send_block_action(PID_BROADCAST, pos, type, from, st);
 		else for (i=0;i<MAX_PLAYERS;i++) {
 			/* This also handles OpenSpades decreasing its block count on packet recv */
-			if (pid_matches(PID_BROADCAST, i, st) && st->p[i].bugMask & QUIRK_OS_BACTION_CULL)
+			if (pid_matches(PID_BROADCAST, i, st) && st->f.has_quirk(i, QUIRK_OS_BACTION_CULL, st))
 				st->f.send_block_action(i, pos, type, from, st);
 		}
 	}
@@ -1466,6 +1466,38 @@ static void move_tent(unsigned team, fvec3 pos, struct State *st) {
 	st->f.send_move_object(PID_BROADCAST, pos, 2|team, 0, st);
 }
 
+static int has_quirk(plid pid, unsigned quirk, struct State *st) {
+	if (quirk >= QUIRK_MAX)
+		return 0;
+	return st->p[pid].quirks[quirk/2] & (QENABLED << (quirk % 2 * 4));
+}
+
+static int is_quirk_mutable(plid pid, unsigned quirk, struct State *st) {
+	if (quirk >= QUIRK_MAX)
+		return 0;
+	return st->p[pid].quirks[quirk/2] & (QMUTABLE << (quirk % 2 * 4));
+}
+
+static int is_quirk_heuristic(plid pid, unsigned quirk, struct State *st) {
+	if (quirk >= QUIRK_MAX)
+		return 1;
+	return st->p[pid].quirks[quirk/2] & (QHEURISTIC << (quirk % 2 * 4));
+}
+
+static void set_quirk(plid pid, unsigned quirk, bint enabled, struct State *st) {
+	uint8_t buf[2];
+
+	if (!!st->f.has_quirk(pid, quirk, st) == !!enabled || !st->f.is_quirk_mutable(pid, quirk, st))
+		return;
+
+	st->p[pid].quirks[quirk/2] ^= QENABLED << (quirk % 2 * 4);
+
+	buf[0] = QIDX(quirk);
+	buf[1] = QBIT(quirk, enabled);
+
+	st->f.send_quirks_off(pid, buf, 2, st);
+}
+
 static void load_initial_map(struct State *st) {
 	st->f.load_map("map", st);
 }
@@ -1577,6 +1609,10 @@ static void set_funcs(struct State *st) {
 	st->f.spawn_grenade = spawn_grenade;
 	st->f.load_initial_map = load_initial_map;
 	st->f.set_orientation = set_orientation;
+	st->f.has_quirk = has_quirk;
+	st->f.is_quirk_mutable = is_quirk_mutable;
+	st->f.is_quirk_heuristic = is_quirk_heuristic;
+	st->f.set_quirk = set_quirk;
 }
 
 static void set_defaults(struct State *st) {

@@ -76,7 +76,7 @@ function largs(argv) {
 	}
 }
 
-function do_func(ret, type) {
+function do_func(ret, type, rettype) {
 	match($0, /\(\*[a-z_]*\)/);
 	name = substr($0, RSTART+2, RLENGTH-3);
 
@@ -90,7 +90,7 @@ function do_func(ret, type) {
 	printf(pad"static int l%s(lua_State *l) {\n", name);
 	largs(argv);
 
-	printf("\n\t%sf.%s(", ret ? "lua_pushnumber(l, " : "", name);
+	printf("\n\t%sf.%s(", ret ? "lua_push"rettype"(l, " : "", name);
 	argsep = "";
 	for (i=1;i<=argc;i++) {
 		printf(argsep"%s", extract_name(argv[i]));
@@ -144,7 +144,7 @@ function do_func(ret, type) {
 	}
 
 	printf("\n\tif (lua_pcall(l, %i, %i, 0) != 0)\n\t\tCBAIL%s(\"%s: %%s\", luaL_checkstring(l, -1));\n%s}\n", argc-1, ret, ret ? "N1" : "", name, \
-	       ret ? "\n\tif (!lua_isnumber(l, -1))\n\t\tCBAIL1N1(\""name": should return a number\");\n\n\tret = lua_tonumber(l, -1);\n\tlua_pop(l, 1);\n\treturn ret;\n" : "");
+	       ret ? "\n\tif (!lua_is"rettype"(l, -1))\n\t\tCBAIL1N1(\""name": should return a "rettype"\");\n\n\tret = lua_to"rettype"(l, -1);\n\tlua_pop(l, 1);\n\treturn ret;\n" : "");
 
 	pad = "\n\n";
 }
@@ -161,9 +161,10 @@ function do_func(ret, type) {
 	if (match($0, /_from_mem/)) next;
 	# TODO: automate typing
 	if (match($0, /void \(\*/)) do_func(0, "void");
-	if (match($0, /int \(\*/)) do_func(1, "int");
-	if (match($0, /clk \(\*/)) do_func(1, "clk");
-	if (match($0, /uint32_t \(\*/)) do_func(1, "uint32_t");
-	if (match($0, /size_t \(\*/)) do_func(1, "size_t");
-	if (match($0, /plid \(\*/)) do_func(1, "plid");
+	if (match($0, /bint \(\*/)) do_func(1, "bint", "boolean");
+	else if (match($0, /int \(\*/)) do_func(1, "int", "number");
+	if (match($0, /clk \(\*/)) do_func(1, "clk", "number");
+	if (match($0, /uint32_t \(\*/)) do_func(1, "uint32_t", "number");
+	if (match($0, /size_t \(\*/)) do_func(1, "size_t", "number");
+	if (match($0, /plid \(\*/)) do_func(1, "plid", "number");
 }

@@ -379,6 +379,28 @@ static void con_reload(plid pid, struct State *st) {
 }
 
 
+static int lon_quirks(lua_State *l) {
+	plid pid = check_plid(l, 1);
+	const char *data = luaL_checkstring(l, 2);
+	size_t len = luaL_checknumber(l, 3);
+
+	f.on_quirks(pid, data, len, st);
+	return 0;
+}
+
+static void con_quirks(plid pid, const char *data, size_t len, struct State *st) {
+	(void)st;
+	lua_getglobal(l, "on_quirks");
+
+	lua_pushnumber(l, pid);
+	lua_pushstring(l, data);
+	lua_pushnumber(l, len);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("on_quirks: %s", luaL_checkstring(l, -1));
+}
+
+
 static int lon_handshake(lua_State *l) {
 	plid pid = check_plid(l, 1);
 
@@ -1221,6 +1243,50 @@ static void csend_chat(bplid pid, const char *msg, unsigned type, nplid from, st
 
 	if (lua_pcall(l, 4, 0, 0) != 0)
 		CBAIL("send_chat: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_quirks(lua_State *l) {
+	bplid pid = check_bplid(l, 1);
+	const char *data = luaL_checkstring(l, 2);
+	size_t len = luaL_checknumber(l, 3);
+
+	f.send_quirks(pid, data, len, st);
+	return 0;
+}
+
+static void csend_quirks(bplid pid, const char *data, size_t len, struct State *st) {
+	(void)st;
+	lua_getglobal(l, "send_quirks");
+
+	lua_pushnumber(l, pid);
+	lua_pushstring(l, data);
+	lua_pushnumber(l, len);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("send_quirks: %s", luaL_checkstring(l, -1));
+}
+
+
+static int lsend_quirks_off(lua_State *l) {
+	bplid pid = check_bplid(l, 1);
+	const char *data = luaL_checkstring(l, 2);
+	size_t len = luaL_checknumber(l, 3);
+
+	f.send_quirks_off(pid, data, len, st);
+	return 0;
+}
+
+static void csend_quirks_off(bplid pid, const char *data, size_t len, struct State *st) {
+	(void)st;
+	lua_getglobal(l, "send_quirks_off");
+
+	lua_pushnumber(l, pid);
+	lua_pushstring(l, data);
+	lua_pushnumber(l, len);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("send_quirks_off: %s", luaL_checkstring(l, -1));
 }
 
 
@@ -2135,6 +2201,115 @@ static void cmove_tent(gteamid team, fvec3 pos, struct State *st) {
 		CBAIL("move_tent: %s", luaL_checkstring(l, -1));
 }
 
+
+static int lhas_quirk(lua_State *l) {
+	plid pid = check_plid(l, 1);
+	unsigned quirk = luaL_checknumber(l, 2);
+
+	lua_pushboolean(l, f.has_quirk(pid, quirk, st));
+	return 1;
+}
+
+static bint chas_quirk(plid pid, unsigned quirk, struct State *st) {
+	bint ret;
+
+	(void)st;
+	lua_getglobal(l, "has_quirk");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, quirk);
+
+	if (lua_pcall(l, 2, 1, 0) != 0)
+		CBAILN1("has_quirk: %s", luaL_checkstring(l, -1));
+
+	if (!lua_isboolean(l, -1))
+		CBAIL1N1("has_quirk: should return a boolean");
+
+	ret = lua_toboolean(l, -1);
+	lua_pop(l, 1);
+	return ret;
+}
+
+
+static int lis_quirk_mutable(lua_State *l) {
+	plid pid = check_plid(l, 1);
+	unsigned quirk = luaL_checknumber(l, 2);
+
+	lua_pushboolean(l, f.is_quirk_mutable(pid, quirk, st));
+	return 1;
+}
+
+static bint cis_quirk_mutable(plid pid, unsigned quirk, struct State *st) {
+	bint ret;
+
+	(void)st;
+	lua_getglobal(l, "is_quirk_mutable");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, quirk);
+
+	if (lua_pcall(l, 2, 1, 0) != 0)
+		CBAILN1("is_quirk_mutable: %s", luaL_checkstring(l, -1));
+
+	if (!lua_isboolean(l, -1))
+		CBAIL1N1("is_quirk_mutable: should return a boolean");
+
+	ret = lua_toboolean(l, -1);
+	lua_pop(l, 1);
+	return ret;
+}
+
+
+static int lis_quirk_heuristic(lua_State *l) {
+	plid pid = check_plid(l, 1);
+	unsigned quirk = luaL_checknumber(l, 2);
+
+	lua_pushboolean(l, f.is_quirk_heuristic(pid, quirk, st));
+	return 1;
+}
+
+static bint cis_quirk_heuristic(plid pid, unsigned quirk, struct State *st) {
+	bint ret;
+
+	(void)st;
+	lua_getglobal(l, "is_quirk_heuristic");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, quirk);
+
+	if (lua_pcall(l, 2, 1, 0) != 0)
+		CBAILN1("is_quirk_heuristic: %s", luaL_checkstring(l, -1));
+
+	if (!lua_isboolean(l, -1))
+		CBAIL1N1("is_quirk_heuristic: should return a boolean");
+
+	ret = lua_toboolean(l, -1);
+	lua_pop(l, 1);
+	return ret;
+}
+
+
+static int lset_quirk(lua_State *l) {
+	plid pid = check_plid(l, 1);
+	unsigned quirk = luaL_checknumber(l, 2);
+	bint enabled = lua_toboolean(l, 3);
+
+	f.set_quirk(pid, quirk, enabled, st);
+	return 0;
+}
+
+static void cset_quirk(plid pid, unsigned quirk, bint enabled, struct State *st) {
+	(void)st;
+	lua_getglobal(l, "set_quirk");
+
+	lua_pushnumber(l, pid);
+	lua_pushnumber(l, quirk);
+	lua_pushboolean(l, enabled);
+
+	if (lua_pcall(l, 3, 0, 0) != 0)
+		CBAIL("set_quirk: %s", luaL_checkstring(l, -1));
+}
+
 static void register_luaawk(lua_State *l, struct State *st) {
 	(void)l;
 	st->f.assign_new_pid = cassign_new_pid;
@@ -2155,6 +2330,7 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	st->f.on_hit = con_hit;
 	st->f.on_grenade = con_grenade;
 	st->f.on_reload = con_reload;
+	st->f.on_quirks = con_quirks;
 	st->f.on_handshake = con_handshake;
 	st->f.get_spawn_time = cget_spawn_time;
 	st->f.get_hit_damage = cget_hit_damage;
@@ -2195,6 +2371,8 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	st->f.send_state = csend_state;
 	st->f.send_connected_players = csend_connected_players;
 	st->f.send_chat = csend_chat;
+	st->f.send_quirks = csend_quirks;
+	st->f.send_quirks_off = csend_quirks_off;
 	st->f.send_block_action = csend_block_action;
 	st->f.send_block_line = csend_block_line;
 	st->f.send_set_block_color = csend_set_block_color;
@@ -2237,6 +2415,10 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	st->f.drop_intel = cdrop_intel;
 	st->f.move_intel = cmove_intel;
 	st->f.move_tent = cmove_tent;
+	st->f.has_quirk = chas_quirk;
+	st->f.is_quirk_mutable = cis_quirk_mutable;
+	st->f.is_quirk_heuristic = cis_quirk_heuristic;
+	st->f.set_quirk = cset_quirk;
 }
 
 #define LUA_CALLS \
@@ -2258,6 +2440,7 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	{"on_hit", lon_hit}, \
 	{"on_grenade", lon_grenade}, \
 	{"on_reload", lon_reload}, \
+	{"on_quirks", lon_quirks}, \
 	{"on_handshake", lon_handshake}, \
 	{"get_spawn_time", lget_spawn_time}, \
 	{"get_hit_damage", lget_hit_damage}, \
@@ -2298,6 +2481,8 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	{"send_state", lsend_state}, \
 	{"send_connected_players", lsend_connected_players}, \
 	{"send_chat", lsend_chat}, \
+	{"send_quirks", lsend_quirks}, \
+	{"send_quirks_off", lsend_quirks_off}, \
 	{"send_block_action", lsend_block_action}, \
 	{"send_block_line", lsend_block_line}, \
 	{"send_set_block_color", lsend_set_block_color}, \
@@ -2339,6 +2524,10 @@ static void register_luaawk(lua_State *l, struct State *st) {
 	{"pickup_intel", lpickup_intel}, \
 	{"drop_intel", ldrop_intel}, \
 	{"move_intel", lmove_intel}, \
-	{"move_tent", lmove_tent},
+	{"move_tent", lmove_tent}, \
+	{"has_quirk", lhas_quirk}, \
+	{"is_quirk_mutable", lis_quirk_mutable}, \
+	{"is_quirk_heuristic", lis_quirk_heuristic}, \
+	{"set_quirk", lset_quirk},
 
 #endif

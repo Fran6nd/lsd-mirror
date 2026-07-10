@@ -37,6 +37,9 @@ static void on_any_connect(plid pid, struct State *st) {
 
 static void on_successful_connect(plid pid, struct State *st) {
 	st->p[pid].connected = 1;
+	st->p[pid].wantQuirks = 3;
+
+	memset(st->p[pid].quirks, (QHEURISTIC << 4) | QHEURISTIC, sizeof(st->p[pid].quirks));
 
 	st->f.send_map(pid, st);
 }
@@ -51,10 +54,9 @@ static void on_disconnect(plid pid, struct State *st) {
 	st->p[pid].joined = 0;
 	st->p[pid].alive = 0;
 
-	st->p[pid].bugMask = 0;
-	st->p[pid].extMask = 0;
 	st->p[pid].initStateSent = 0;
 	st->p[pid].wantFingerprint = 0;
+	st->p[pid].wantQuirks = 0;
 	st->p[pid].handshaked = 0;
 	st->p[pid].hasverext = 0;
 	st->p[pid].idChar = 0;
@@ -97,7 +99,7 @@ static void on_switch(plid pid, unsigned team, unsigned gun, struct State *st) {
 	/* TODO: how to only switch after spawn? */
 	if (st->p[pid].team == 255) {
 		/* TODO: *should* this check against NOSHORTPLAYER? */
-		if (!(st->p[pid].bugMask & QUIRK_NOSHORTPLAYER) || team != 255) {
+		if (!(st->f.has_quirk(pid, QUIRK_NOSHORTPLAYER, st)) || team != 255) {
 			st->f.spawn_player(pid, st->f.get_spawn_position(pid, st), st);
 			if (st->p[pid].alive)
 				st->f.kill(pid, KillTypeTeamChange, pid, st);
@@ -208,6 +210,50 @@ static void on_block_line(plid pid, ivec3 start, ivec3 end, struct State *st) {
 	st->f.block_line(start, end, pid, st);
 }
 
+static void on_quirks(plid pid, const char *data, size_t len, struct State *st) {
+	size_t i, max;
+	uint8_t prefs[sizeof(quirk_prefs)];
+	uint8_t byte;
+
+	memcpy(prefs, quirk_prefs, sizeof(quirk_prefs));
+	prefs[QIDX(QUIRK_OS_BACTION_CULL)] |=
+		QBIT(QUIRK_OS_BACTION_CULL, st->globals.cullPersonality);
+
+	max = sizeof(st->p[pid].quirks) > len ? len : sizeof(st->p[pid].quirks);
+
+	/* Clear the QHEURISTIC bit that's implicitly set around on_successful_connect() */
+	memset(st->p[pid].quirks, 0, max * 2);
+
+	for (i=0;i<max*4;i++) {
+		uint8_t bitpair;
+
+		if (i % 4 == 0)
+			byte = data[QIDX(i)];
+
+		bitpair = byte & 3;
+		byte >>= 2;
+
+		switch (bitpair) {
+		case 0:
+			st->p[pid].quirks[i/2] |= (QHEURISTIC) << (i % 2 * 4);
+			break;
+		case 1:
+			/* This is what you would do if you didn't actually have all quirk prefs set:
+			 * st->p[pid].quirks[i/2] |= (QHEURISTIC | QMUTABLE) << (i % 2 * 4); */
+			st->p[pid].quirks[i/2] |= (((prefs[QIDX(i)] >> (i % 4 * 2)) & QENABLED) | QMUTABLE) << (i % 2 * 4);
+			break;
+		case 2:
+			/* All bits are left unset. */
+			break;
+		case 3:
+			st->p[pid].quirks[i/2] |= (QENABLED) << (i % 2 * 4);
+			break;
+		}
+	}
+
+	st->f.send_quirks(pid, prefs, sizeof(prefs), st);
+}
+
 static void on_handshake(plid pid, struct State *st) {
 	st->p[pid].handshaked = 1;
 	st->p[pid].wantFingerprint = 2;
@@ -223,22 +269,42 @@ static void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor
 	memcpy(st->p[pid].verMsg, msg, msglen);
 	st->p[pid].verMsg[msglen] = '\0';
 
-	switch (st->p[pid].idChar) {
-	case 'B':
-	case 'K':
-		/* Tigerspades usually identifies as >=0.1.6, though was 0.1.5 when UTF-8 was introduced */
-		st->p[pid].bugMask |= QUIRK_INFLOOR | QUIRK_NOSHORTPLAYER | QUIRK_SCREWED_DISCONNECT_DATA | QUIRK_OS_CP437 |
-		(major >= 0 && minor >= 1 && patch >= 6 ? QUIRK_UTF8 : QUIRK_ASCII);
-		break;
-	case 'o':
-		/* TODO: do i want to unset QUIRK_UTF8 if not set in version-ext? */
-		st->p[pid].bugMask |= QUIRK_UTF8 | QUIRK_OS_CP437 | QUIRK_OS_BACTION_CULL;
+	if (st->p[pid].wantQuirks) {
+		st->p[pid].wantQuirks = 0;
 
-		if (strstr(st->p[pid].verMsg, "ZeroSpades"))
-			st->p[pid].bugMask |= QUIRK_SCREWED_DISCONNECT_DATA | QUIRK_UTF8_COLOR_IMG | QUIRK_INSKY;
-		else if (strstr(st->p[pid].verMsg, "IV of Spades"))
-			st->p[pid].bugMask |= QUIRK_SCREWED_DISCONNECT_DATA | QUIRK_UTF8_COLOR_IMG;
-		break;
+		#define ENABLE_QUIRK(quirk) do { \
+			if (st->f.is_quirk_heuristic(pid, quirk, st)) \
+				st->p[pid].quirks[(quirk)/2] |= QENABLED << (quirk)%2*4; \
+			} while (0)
+
+		switch (st->p[pid].idChar) {
+		case 'B':
+		case 'K':
+			ENABLE_QUIRK(QUIRK_INFLOOR);
+			ENABLE_QUIRK(QUIRK_NOSHORTPLAYER);
+			ENABLE_QUIRK(QUIRK_SCREWED_DISCONNECT_DATA);
+			ENABLE_QUIRK(QUIRK_OS_CP437);
+
+			/* Tigerspades usually identifies as >=0.1.6, though was 0.1.5 when UTF-8 was introduced */
+			ENABLE_QUIRK(major >= 0 && minor >= 1 && patch >= 6 ? QUIRK_UTF8 : QUIRK_ASCII);
+			break;
+		case 'o':
+			/* TODO: do i want to unset QUIRK_UTF8 if not set in version-ext? */
+			ENABLE_QUIRK(QUIRK_UTF8);
+			ENABLE_QUIRK(QUIRK_OS_CP437);
+			ENABLE_QUIRK(QUIRK_OS_BACTION_CULL);
+
+			if (strstr(st->p[pid].verMsg, "ZeroSpades")) {
+				ENABLE_QUIRK(QUIRK_SCREWED_DISCONNECT_DATA);
+				ENABLE_QUIRK(QUIRK_UTF8_COLOR_IMG);
+				ENABLE_QUIRK(QUIRK_INSKY);
+			} else if (strstr(st->p[pid].verMsg, "IV of Spades")) {
+				ENABLE_QUIRK(QUIRK_SCREWED_DISCONNECT_DATA);
+				ENABLE_QUIRK(QUIRK_UTF8_COLOR_IMG);
+			}
+
+			break;
+		}
 	}
 }
 
@@ -272,6 +338,7 @@ void set_funcs_event(struct State *st) {
 	st->f.on_mouse_input = on_mouse_input;
 	st->f.on_color_change = on_color_change;
 	st->f.on_block_line = on_block_line;
+	st->f.on_quirks = on_quirks;
 	st->f.on_hit = on_hit;
 	st->f.on_grenade = on_grenade;
 	st->f.on_reload = on_reload;

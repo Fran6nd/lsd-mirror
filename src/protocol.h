@@ -627,6 +627,16 @@ struct LIBSPADES_PACKED PacketQuirks {
 	uint8_t quirks[VARIABLE_LENGTH]; /**< Bitmask of supported quirks. */
 };
 
+/** not a burner's other experimental attempt at networking quirks @ingroup packets
+ */
+struct LIBSPADES_PACKED PacketQuirksOff {
+	uint8_t packetID; /**< 49 `(Client<--Server)` */
+	struct {
+		uint8_t offset; /**< Byte offset of the quirks member */
+		uint8_t quirks; /**< Bitmask of supported quirks. */
+	} arr[VARIABLE_LENGTH];
+};
+
 /** Extension entries for @ref PacketExtensionInfo */
 struct LIBSPADES_PACKED ExtensionInfoEntry {
 	uint8_t extensionID;      /**< The extension's ID. */
@@ -790,6 +800,7 @@ enum PacketType {
 	/* Client-->Server */ /* sendable before extension info is provided */
 
 	PacketTypeQuirks = 48,        /* Client<->Server */
+	PacketTypeQuirksOff = 49,     /* Client<--Server */
 	PacketTypeExtensionInfo = 60, /* Client<->Server */
 
 	PacketTypePlayerProperties = 64,

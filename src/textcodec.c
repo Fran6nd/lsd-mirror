@@ -148,7 +148,7 @@ static void send_chat(plid pid, const char *msg, unsigned type, plid from, struc
 	for (i=0;i<MAX_PLAYERS;i++) {if (pid_matches(pid, i, st)) {
 		const char *sendmsg = msg;
 
-		if (st->p[i].bugMask & QUIRK_UTF8_COLOR_IMG) {
+		if (st->f.has_quirk(i, QUIRK_UTF8_COLOR_IMG, st)) {
 			if (utf8img == NULL) {
 				size_t len = strlen(msg);
 				size_t j;
@@ -163,7 +163,7 @@ static void send_chat(plid pid, const char *msg, unsigned type, plid from, struc
 			}
 
 			sendmsg = utf8img;
-		} else if (st->p[i].bugMask & QUIRK_UTF8) {
+		} else if (st->f.has_quirk(i, QUIRK_UTF8, st)) {
 			if (utf8 == NULL) {
 				size_t msglen = strlen(msg)+1;
 
@@ -176,7 +176,7 @@ static void send_chat(plid pid, const char *msg, unsigned type, plid from, struc
 			}
 
 			sendmsg = utf8;
-		} else if (st->p[i].bugMask & QUIRK_ASCII) {
+		} else if (st->f.has_quirk(i, QUIRK_ASCII, st)) {
 			if (ascii == NULL) {
 				/* 1 byte for the NUL terminator */
 				size_t len = 1;
@@ -237,8 +237,8 @@ static void on_chat(plid pid, const char *msg, unsigned type, struct State *st) 
 	char *utf8, *ptr;
 	size_t len, i;
 
-	if (st->p[pid].bugMask & QUIRK_UTF8 && msg[0] == '\xff' && is_utf8_valid(msg+1)) {
-		if (!(st->p[pid].bugMask & QUIRK_UTF8_COLOR_IMG))
+	if (st->f.has_quirk(pid, QUIRK_UTF8, st) && msg[0] == '\xff' && is_utf8_valid(msg+1)) {
+		if (!(st->f.has_quirk(pid, QUIRK_UTF8_COLOR_IMG, st)))
 			return next_on_chat(pid, msg+1, type, st);
 
 		len = strlen(msg);
@@ -261,7 +261,7 @@ static void on_chat(plid pid, const char *msg, unsigned type, struct State *st) 
 
 	ptr = utf8;
 
-	if (st->p[pid].bugMask & QUIRK_OS_CP437) {
+	if (st->f.has_quirk(pid, QUIRK_OS_CP437, st)) {
 		for (i=0;i<len+1;i++)
 			ptr = utf8_encode(ptr, openspades_cp437_to_unicode[(unsigned char)msg[i]]);
 	} else {

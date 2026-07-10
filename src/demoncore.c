@@ -164,6 +164,7 @@ int cast2(const uint8_t *solidData, float startX, float startY, float startZ, fl
 		lastvoxy = voxy;
 		lastvoxz = voxz;
 
+		/* TODO: just <, not <=? */
 		if (tmaxz <= tmaxx && tmaxz <= tmaxy) {
 			voxz += stepz;
 			tmaxz += deltaz;

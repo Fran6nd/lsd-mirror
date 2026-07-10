@@ -119,6 +119,11 @@ Calls send_set_tool().
 <!-- TODO: mention reload effects? -->
 
 
+void on_quirks(plid pid, string data) ->
+Called by fancy clients immediately after connecting.
+Sets the player's client quirks based on bitpairs in <var>data</var>.
+
+
 <!-- TODO: wonder how on_crap_packet() overridden by lua works with all the random vars in the state that are normally set -->
 void on_version(plid pid, unsigned idChar, unsigned major, unsigned minor, unsigned patch, string msg) ->
 Called by most clients (not Voxlap) in response to demand_fingerprint().

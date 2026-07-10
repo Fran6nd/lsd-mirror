@@ -112,6 +112,8 @@ static int neighboring_voxels(ivec3 pos, struct State *st) {
 
 static int on_any_packet(plid pid, const void *data, size_t length, struct State *st) {
 	uint16_t packetID;
+	int wantQuirks;
+
 	st->crappacketname = "?";
 
 	SBAD(length < 1);
@@ -121,6 +123,13 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 		memcpy(&packetID, data, 2);
 	} else
 		packetID = ((uint8_t *)data)[0];
+
+	/* This must be &'d with 1 on receipt of *any* packet,
+	 * but the Quirks packet needs to know the state of
+	 * it before it was reset, so we keep a local copy.
+	 */
+	wantQuirks = st->p[pid].wantQuirks;
+	st->p[pid].wantQuirks &= 1;
 
 	switch (packetID) {
 #define PCKT PositionData
@@ -257,7 +266,7 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 		SEXACT();
 		SPID();
 
-		SBAD(!(st->p[pid].bugMask & QUIRK_NOSHORTPLAYER) && st->p[pid].team == 255);
+		SBAD(!(st->f.has_quirk(pid, QUIRK_NOSHORTPLAYER, st)) && st->p[pid].team == 255);
 
 		SBAD(PACKET.team > 1 && PACKET.team != 255);
 
@@ -268,7 +277,7 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 		SEXACT();
 		SPID();
 
-		SBAD(!(st->p[pid].bugMask & QUIRK_NOSHORTPLAYER) && st->p[pid].team == 255);
+		SBAD(!(st->f.has_quirk(pid, QUIRK_NOSHORTPLAYER, st)) && st->p[pid].team == 255);
 
 		SBAD(PACKET.gun > 2);
 
@@ -463,6 +472,13 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 
 		return 0;
 #undef PCKT
+#define PCKT Quirks
+		SCASEANY
+		/* There is no invalid size for this packet */
+
+		SBAD(wantQuirks != 3);
+		return 0;
+#undef PCKT
 	}
 
 	st->crapcond = "Unknown packet ID";
@@ -593,6 +609,11 @@ static void on_sane_packet(plid pid, const void *data, size_t length, struct Sta
 #define PCKT VersionResponse
 		PCASE
 		st->f.on_version(pid, PACKET.client, PACKET.versionMajor, PACKET.versionMinor, PACKET.versionRevision, PACKET.operatingSystemInfo, length-5, st);
+		break;
+#undef PCKT
+#define PCKT Quirks
+		PCASE
+		st->f.on_quirks(pid, ((char *)data)+1, length-1, st);
 		break;
 	}
 }

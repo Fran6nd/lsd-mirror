@@ -313,9 +313,9 @@ static void send_spawn_player(plid pid, fvec3 pos, unsigned gun, unsigned team, 
 			 * BetterSpades is not sane, since it was based on piqueserver.
 			 * The +0.4 can be blamed on ZeroSpades.
 			 */
-			if      (st->p[i].bugMask & QUIRK_INFLOOR)
+			if      (st->f.has_quirk(i, QUIRK_INFLOOR, st))
 				cr.pos.z = pos.z - 2;
-			else if (st->p[i].bugMask & QUIRK_INSKY)
+			else if (st->f.has_quirk(i, QUIRK_INSKY, st))
 				cr.pos.z = pos.z + 0.4;
 			else
 				cr.pos.z = pos.z;
@@ -395,6 +395,34 @@ static void send_chat(plid pid, const char *msg, unsigned type, plid from, struc
 	st->f.send_packet(pid, chat, 3 + msglen + 1, st);
 
 	free(chat);
+}
+
+static void send_quirks(plid pid, const char *data, size_t len, struct State *st) {
+	uint8_t *packet = malloc(1 + len);
+
+	if (packet == NULL)
+		ERR("malloc");
+
+	packet[0] = PacketTypeQuirks;
+	memcpy(packet+1, data, len);
+
+	st->f.send_packet(pid, packet, 1 + len, st);
+
+	free(packet);
+}
+
+static void send_quirks_off(plid pid, const char *data, size_t len, struct State *st) {
+	uint8_t *packet = malloc(1 + len);
+
+	if (packet == NULL)
+		ERR("malloc");
+
+	packet[0] = PacketTypeQuirksOff;
+	memcpy(packet+1, data, len);
+
+	st->f.send_packet(pid, packet, 1 + len, st);
+
+	free(packet);
 }
 
 static void send_restock(plid pid, plid from, struct State *st) {
@@ -523,6 +551,8 @@ void set_funcs_send(struct State *st) {
 	st->f.send_map = send_map;
 	st->f.send_state = send_state;
 	st->f.send_chat = send_chat;
+	st->f.send_quirks = send_quirks;
+	st->f.send_quirks_off = send_quirks_off;
 	st->f.send_block_action = send_block_action;
 	st->f.send_connected_players = send_connected_players;
 	st->f.send_player_update = send_player_update;

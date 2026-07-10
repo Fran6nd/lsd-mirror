@@ -16,3 +16,36 @@ Voxlap-type cull personality used with set_cull_personality().
 
 CULL_PERSONALITY_OPENSPADES ->
 OpenSpades-type cull personality used with set_cull_personality().
+
+QUIRK_INFLOOR ->
+Handles <var>pos</var>.z of the spawn player packet with no offset instead of &minus;2.
+
+QUIRK_NOSHORTPLAYER ->
+The short player data packet is not used; change team and change gun are used separately instead.
+
+QUIRK_SCREWED_DISCONNECT_DATA ->
+``Too many connections'' takes the place of disconnect code 2, which is normally ``Kicked''.
+
+QUIRK_OS_CP437 ->
+OpenSpades' variant of CP-437 is used instead of Voxlap's variant.
+
+QUIRK_UTF8 ->
+Sent and received strings may begin with a <code>&apos;\xff&apos;</code> byte and be followed by valid
+UTF-8, in which case that UTF-8 is used directly instead of the whole thing (including
+<code>&apos;\xff&apos;</code> being decoded as CP-437.
+
+QUIRK_ASCII ->
+The printable subset of ASCII (including the space) is used in place of sent and received CP-437.
+Bytes not present in that subset are handled as if they weren't present to begin with.
+
+QUIRK_OS_BACTION_CULL ->
+Sent destroying block action packets do not process gravity on nonsolid voxels within the destroyed shape;
+behaves like CULL_PERSONALITY_OPENSPADES instead of CULL_PERSONALITY_VOXLAP.
+
+QUIRK_UTF8_COLOR_IMG ->
+The gray UTF-8 color moves from <code>&apos;\x07&apos;</code> to <code>&apos;\x08&apos;</code>;
+<code>&apos;\x07&apos;</code> is now used to display specific images inline with text when
+coupled with a lowercase letter immediately after it.
+
+QUIRK_INSKY ->
+Handles <var>pos</var>.z of the spawn player packet with an offset of &minus;2.4 instead of &minus;2.

@@ -1,0 +1,18 @@
+boolean has_quirk(plid pid, unsigned quirk) ->
+Returns <samp>true</samp> if <var>quirk</var>
+is enabled for <var>pid</var>.
+
+boolean is_quirk_mutable(plid pid, unsigned quirk) ->
+Returns <samp>true</samp> if <var>quirk</var>
+may be changed by set_quirk() for <var>pid</var>.
+
+boolean is_quirk_heuristic(plid pid, unsigned quirk) ->
+Returns <samp>true</samp> if the enabledness of
+<var>quirk</var> for <var>pid</var> was determined
+by heuristics instead of client self-reporting
+via on_quirks().
+
+void set_quirk(plid pid, unsigned quirk, bint enabled) ->
+If <var>quirk</var> is mutable for <var>pid</var>, sets
+its enabledness state to <var>enabled</var> and requests
+the client to reflect that.

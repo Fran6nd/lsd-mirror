@@ -219,12 +219,12 @@ static void on_quirks(plid pid, const char *data, size_t len, struct State *st) 
 	prefs[QIDX(QUIRK_OS_BACTION_CULL)] |=
 		QBIT(QUIRK_OS_BACTION_CULL, st->globals.cullPersonality);
 
-	max = sizeof(st->p[pid].quirks) > len ? len : sizeof(st->p[pid].quirks);
+	max = len*4 > QUIRK_MAX ? QUIRK_MAX : len*4;
 
 	/* Clear the QHEURISTIC bit that's implicitly set around on_successful_connect() */
-	memset(st->p[pid].quirks, 0, max * 2);
+	memset(st->p[pid].quirks, 0, (max+1) / 2);
 
-	for (i=0;i<max*4;i++) {
+	for (i=0;i<max;i++) {
 		uint8_t bitpair;
 
 		if (i % 4 == 0)

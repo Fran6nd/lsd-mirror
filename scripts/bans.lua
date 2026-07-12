@@ -41,7 +41,7 @@ function mod.after.on_cap_grant(pid, cap)
 	end
 end
 
-local data_ver, sel, ban, revoke, unrevoke, queryaddr, queryname;
+local data_ver, sel, ban, revoke, unrevoke, queryaddr, queryname, querycomment;
 
 local bans = pid_connected_table(function() return {}; end);
 local function add_ban(pid, id, tbl)
@@ -227,6 +227,7 @@ DROP TABLE ArchivedBans;
 
 	queryaddr = ldb.prepare_xret(db, "queryaddr", "SELECT id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps FROM "..tbl.." WHERE ? BETWEEN startaddr AND endaddr OR ? BETWEEN startaddr AND endaddr OR startaddr BETWEEN ? and ? OR endaddr BETWEEN ? and ?;");
 	queryname = ldb.prepare_xret(db, "queryname", "SELECT id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps FROM "..tbl.." WHERE playername = ?;");
+	querycomment = ldb.prepare_xret(db, "queryname", "SELECT id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps FROM "..tbl.." WHERE comment = ?;");
 
 	for i in piditer(PID_BROADCAST) do
 		check_bans(i);
@@ -486,6 +487,20 @@ function cmd.func(pid, argv, msg)
 end
 register_command(cmd, mod);
 
+local cmd = {name="querybancomment", caps="bans", fakepid=true, usage="comment", desc="Query all unexpired, unrevoked bans matching a given comment (case-insensitive)."};
+function cmd.func(pid, argv, msg)
+	cmd_assert(pid, cmd, #argv == 1);
+	local comment = argv[1];
+	local now = os.time();
+
+	for id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps in querycomment(comment) do
+		if (revoked == 0 and now < expires) then
+			print_query(pid, now, id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps);
+		end
+	end
+end
+register_command(cmd, mod);
+
 local cmd = {name="queryallbanaddr", caps="bans", fakepid=true, usage="range", desc="Query all bans matching a given IPv4 address or CIDR range."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
@@ -505,6 +520,18 @@ function cmd.func(pid, argv, msg)
 	local now = os.time();
 
 	for id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps in queryname(name) do
+		print_query(pid, now, id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps);
+	end
+end
+register_command(cmd, mod);
+
+local cmd = {name="queryallbancomment", caps="bans", fakepid=true, usage="comment", desc="Query all bans matching a given comment (case-insensitive)."};
+function cmd.func(pid, argv, msg)
+	cmd_assert(pid, cmd, #argv == 1);
+	local comment = argv[1];
+	local now = os.time();
+
+	for id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps in querycomment(comment) do
 		print_query(pid, now, id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps);
 	end
 end

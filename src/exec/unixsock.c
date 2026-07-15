@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 202405L
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>

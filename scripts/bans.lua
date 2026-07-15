@@ -1,6 +1,7 @@
 -- bans.lua -- Add (bad)caps to IP address ranges retrieved from an sqlite3 database
 local mod = init_mod();
-local ldb = require "lib_db";
+local ldb = require("lib_db");
+local bit = require("bit");
 local db;
 
 getcfg("bans_db",           "rw/bans.db");
@@ -13,15 +14,15 @@ local banned_msg = {
 };
 
 local query_msg = {
-	en="#%(id): <%(name)>, %(date) by %(banner): %(comment) (caps: %(caps))"
+	en="#%(id): <%(name)>, %(addr), %(date) by %(banner): %(comment) (caps: %(caps))"
 };
 
 local query_msg_expired = {
-	en="#%(id): <%(name)>, expired, %(date) by %(banner): %(comment) (caps: %(caps))"
+	en="#%(id): <%(name)>, %(addr), expired, %(date) by %(banner): %(comment) (caps: %(caps))"
 };
 
 local query_msg_revoked = {
-	en="#%(id): <%(name)>, revoked, %(date) by %(banner): %(comment) (caps: %(caps))"
+	en="#%(id): <%(name)>, %(addr), revoked, %(date) by %(banner): %(comment) (caps: %(caps))"
 };
 
 local ban_id_msg = {
@@ -441,6 +442,29 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
+local function fmt_addr(startaddr, endaddr)
+	local str = string.format(
+		"%u.%u.%u.%u",
+		bit.rshift(startaddr, 24),
+		bit.band(bit.rshift(startaddr, 16), 255),
+		bit.band(bit.rshift(startaddr, 8), 255),
+		bit.band(startaddr, 255)
+	);
+
+	if (startaddr == endaddr) then
+		return str;
+	end
+
+	local mask = bit.bnot(bit.bxor(startaddr, endaddr));
+	local masklen = 0;
+	while (mask ~= 0) do
+		mask = bit.band(mask, mask-1);
+		masklen = masklen + 1;
+	end
+
+	return str.."/"..masklen;
+end
+
 -- TODO: print addr range?
 local function print_query(pid, now, id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps)
 	l10n_send_chat(
@@ -451,6 +475,7 @@ local function print_query(pid, now, id, startaddr, endaddr, expires, revoked, b
 		{
 			id=id,
 			name=playername or "",
+			addr=fmt_addr(startaddr, endaddr),
 			date=os.date("!%Y-%m-%dT%H:%M:%SZ", bantime),
 			banner=bannedby,
 			comment=comment,

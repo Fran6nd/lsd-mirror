@@ -711,7 +711,7 @@ static int simulate_grenade_physics(lua_State *l) {
 	grenade.vel = get_fvec3(l, 2);
 	delta = luaL_checknumber(l, 3);
 
-	collided = move_grenade(&grenade, delta, st->globals.map.solidData, 1);
+	collided = move_grenade(&grenade, delta, st->globals.map.solidData);
 
 	push_fvec3(grenade.pos);
 	push_fvec3(grenade.vel);

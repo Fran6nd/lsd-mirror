@@ -29,7 +29,7 @@ const char *host_ip(ENetAddress *addr);
 #define SNUL() SBAD(((uint8_t *)data)[length-1] != '\0')
 #define SPID() SBAD(((uint8_t *)data)[1] != pid)
 
-#define SCLIP(xoff, yoff, zoff, vec) clip_player(vec.x + (xoff), vec.y + (yoff), vec.z + (zoff), st->globals.map.solidData, 0)
+#define SCLIP(xoff, yoff, zoff, vec) clip_phys(vec.x + (xoff), vec.y + (yoff), vec.z + (zoff), st->globals.map.solidData, 0)
 #define SCLIPB(zoff, vec) (SCLIP(-0.44, -0.44, zoff, vec) || SCLIP (-0.44, 0.44, zoff, vec) || SCLIP(0.44, -0.44, zoff, vec) || SCLIP(0.44, 0.44, zoff, vec))
 static int stuck_in_a_block(fvec3 pos, struct State *st) {
 		return SCLIPB(1.34, pos) || SCLIPB(0.45, pos) || SCLIPB(-0.44, pos);

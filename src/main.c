@@ -826,7 +826,7 @@ static void tick(struct State *st) {
 			continue;
 		}
 
-		move_grenade(st->globals.grenades+i, (double)st->tickrate/1000000000, st->globals.map.solidData, 1);
+		move_grenade(st->globals.grenades+i, (double)st->tickrate/1000000000, st->globals.map.solidData);
 	}
 
 	st->f.send_player_update(PID_BROADCAST, st);

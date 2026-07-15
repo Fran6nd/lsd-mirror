@@ -35,65 +35,53 @@ struct Vector32u {uint32_t x, y, z;};
 typedef struct Vector Vector;
 typedef struct Vector32 Vector32;
 typedef struct Vector32u Vector32u;
-typedef struct Player PlayerType;
 
 #define FALL_SLOW_DOWN 0.24f
 #define FALL_DAMAGE_VELOCITY 0.58f
 #define FALL_DAMAGE_SCALAR 4096
 
-/* isvoxelsolid() but water is nonsolid and out of bounds returns true. */
-int clip_player(float ox, float oy, float oz, const uint8_t *solidData, int wrap) {
-	/* Flooring is important here; default is trunc which is probably hazardous for the world borders. */
-	uint32_t x = floorf(ox), y = floorf(oy);
-	int32_t z = floorf(oz);
+static float fmodulof(float x, float y) {
+	x = fmodf(x, y);
+	if (x < 0)
+		return x + y;
+
+	return x;
+}
+
+static int phys_solid(float x, float y, float z, const uint8_t *solidData) {
+	if (z < 0)
+		return 0;
+	if (z >= 64)
+		return 1;
+
+	return pvx_voxel_get_solidity4(solidData, CALC_I(x, y), z);
+}
+
+int clip_phys(float x, float y, float z, const uint8_t *solidData, int wrap) {
+	x = floorf(x);
+	y = floorf(y);
+	z = floorf(z);
 
 	if (wrap) {
-		x %= 512;
-		y %= 512;
-	} else if (x >= 512 || y >= 512)
-		return 1;
+		x = fmodulof(x, 512);
+		y = fmodulof(y, 512);
+	}
 
-	if (z >= 64)
-		return 1;
-
-	if (z < 0)
-		return 0;
-
-	if (z == 63)
-		z = 62;
-
-	return pvx_voxel_get_solidity4(solidData, CALC_I(x, y), z);
-}
-
-/* isvoxelsolid() but with wrapping. Seems hazardous. */
-int isvoxelsolidwrap(uint32_t x, uint32_t y, int32_t z, const uint8_t *solidData) {
-	if (z < 0)
-		return 0;
-
-	if (z >= 64)
-		return 1;
-
-	return pvx_voxel_get_solidity4(solidData, CALC_I(x & 511, y & 511), z);
-}
-
-/* isvoxelsolid() but water is nonsolid? What even is isvoxelsolid(), anyway? */
-int clip_grenade(uint32_t x, uint32_t y, int32_t z, const uint8_t *solidData, int correct) {
-	if (correct) {
-		x %= 512;
-		y %= 512;
-	} else if (x >= 512 || y >= 512)
-		return 0;
-
-	if (z < 0)
-		return 0;
-
-	if (z >= 64)
+	if (x < 0 || x >= 512 || y < 0 || y >= 512)
 		return 1;
 
 	if (z == 63)
 		z = 62;
 
-	return pvx_voxel_get_solidity4(solidData, CALC_I(x, y), z);
+	return phys_solid(x, y, z, solidData);
+}
+
+static int clip_grenade_explode(float x, float y, float z, const uint8_t *solidData) {
+	x = fmodulof(floorf(x), 512);
+	y = fmodulof(floorf(y), 512);
+	z = floorf(z);
+
+	return phys_solid(x, y, z, solidData);
 }
 
 /* Hey, this raycaster actually works properly! */
@@ -143,8 +131,7 @@ int cast2(const uint8_t *solidData, float startX, float startY, float startZ, fl
 		if (stepz == -1 && voxz < 0)
 			return 0;
 
-		/* NOTE: this should be floored and probably modulo'd (not remaindered) */
-		if (isvoxelsolidwrap(voxx, voxy, voxz, solidData)) {
+		if (clip_grenade_explode(voxx, voxy, voxz, solidData)) {
 			if (last) {
 				*x = lastvoxx;
 				*y = lastvoxy;
@@ -247,7 +234,7 @@ void dcore_block_line(int32_t startX, int32_t startY, int32_t startZ, int32_t en
 	}
 }
 
-void try_uncrouch(PlayerType *p, const uint8_t *solidData, int wrap) {
+void try_uncrouch(struct Player *p, const uint8_t *solidData, int wrap) {
 	float x1 = p->pos.x + 0.45f;
 	float x2 = p->pos.x - 0.45f;
 	float y1 = p->pos.y + 0.45f;
@@ -255,14 +242,14 @@ void try_uncrouch(PlayerType *p, const uint8_t *solidData, int wrap) {
 	float z1 = p->pos.z + 2.25f;
 
 	/* First check if player can lower feet if in midair. */
-	if (p->airborne && !(clip_player(x1, y1, z1, solidData, wrap) || clip_player(x1, y2, z1, solidData, wrap) || clip_player(x2, y1, z1, solidData, wrap) || clip_player(x2, y2, z1, solidData, wrap)))
+	if (p->airborne && !(clip_phys(x1, y1, z1, solidData, wrap) || clip_phys(x1, y2, z1, solidData, wrap) || clip_phys(x2, y1, z1, solidData, wrap) || clip_phys(x2, y2, z1, solidData, wrap)))
 		return;
 
 	/* By the time this has been reached, the player cannot lower feet, so the best option is to raise the head instead. */
 	p->pos.z -= 0.9f;
 }
 
-int try_uncrouch_me(PlayerType *p, const uint8_t *solidData, int wrap) {
+int try_uncrouch_me(struct Player *p, const uint8_t *solidData, int wrap) {
 	float x1 = p->pos.x + 0.45f;
 	float x2 = p->pos.x - 0.45f;
 	float y1 = p->pos.y + 0.45f;
@@ -271,11 +258,11 @@ int try_uncrouch_me(PlayerType *p, const uint8_t *solidData, int wrap) {
 	float z2 = p->pos.z - 1.35f;
 
 	/* First check if player can lower feet if in midair. */
-	if (p->airborne && !(clip_player(x1, y1, z1, solidData, wrap) || clip_player(x1, y2, z1, solidData, wrap) || clip_player(x2, y1, z1, solidData, wrap) || clip_player(x2, y2, z1, solidData, wrap)))
+	if (p->airborne && !(clip_phys(x1, y1, z1, solidData, wrap) || clip_phys(x1, y2, z1, solidData, wrap) || clip_phys(x2, y1, z1, solidData, wrap) || clip_phys(x2, y2, z1, solidData, wrap)))
 		return 1;
 
 	/* By the time this has been reached, the player cannot lower feet, so raise the head instead if possible. */
-	if (!(clip_player(x1, y1, z2, solidData, wrap) || clip_player(x1, y2, z2, solidData, wrap) || clip_player(x2, y1, z2, solidData, wrap) || clip_player(x2, y2, z2, solidData, wrap))) {
+	if (!(clip_phys(x1, y1, z2, solidData, wrap) || clip_phys(x1, y2, z2, solidData, wrap) || clip_phys(x2, y1, z2, solidData, wrap) || clip_phys(x2, y2, z2, solidData, wrap))) {
 		p->pos.z -= 0.9f;
 		return 1;
 	}
@@ -285,14 +272,14 @@ int try_uncrouch_me(PlayerType *p, const uint8_t *solidData, int wrap) {
 }
 
 /* Don't call this unless crouch state is actually changing. */
-void change_crouch(int crouching, PlayerType *p, const uint8_t *solidData, int wrap) {
+void change_crouch(int crouching, struct Player *p, const uint8_t *solidData, int wrap) {
 	if (crouching && !p->airborne)
 		p->pos.z += 0.9;
 	else
 		try_uncrouch(p, solidData, wrap);
 }
 
-int change_crouch_me(int crouching, PlayerType *p, const uint8_t *solidData, int wrap) {
+int change_crouch_me(int crouching, struct Player *p, const uint8_t *solidData, int wrap) {
 	if (crouching && !p->airborne) {
 		p->pos.z += 0.9;
 		return 1;
@@ -300,14 +287,28 @@ int change_crouch_me(int crouching, PlayerType *p, const uint8_t *solidData, int
 	return try_uncrouch_me(p, solidData, wrap);
 }
 
-static int satan(float z, float zgreaterequal, float x1, float y1, float x2, float y2, float ztest, const uint8_t *solidData, int wrap) {
-	for (; z >= zgreaterequal && !clip_player(x1, y1, ztest + z, solidData, wrap) && !clip_player(x2, y2, ztest + z, solidData, wrap); z -= 0.9);
+static int satan(float z, float zgreaterequal, float x1, float x2, float y1, float y2, float ztest, const uint8_t *solidData, int wrap) {
+	for (; z >= zgreaterequal && !clip_phys(x1, y1, ztest + z, solidData, wrap) && !clip_phys(x2, y2, ztest + z, solidData, wrap); z -= 0.9);
 	return z < zgreaterequal;
 }
 
+#define SATANIC_LOOP(zstart, zgreaterequal, x1, x2, y1, y2) satan(zstart, zgreaterequal, x1, x2, y1, y2, nz, solidData, wrap)
+#define MYSTERY_LOOP_OVER_AXIS(axis, x1, x2, y1, y2) do {\
+	nextp = f * p->vel.axis + p->pos.axis; \
+	testp = nextp + copysignf(0.45, p->vel.axis); \
+	if (SATANIC_LOOP(m, -1.36, x1, x2, y1, y2)) \
+		p->pos.axis = nextp; \
+	else if (!climb) { \
+		if (canclimb && SATANIC_LOOP(0.35, -2.36, x1, x2, y1, y2)) { \
+			p->pos.axis = nextp; \
+			climb = 1; \
+		} else \
+			p->vel.axis = 0; \
+	} \
+} while (0);
+
 /* Like the demon core, but for player movement. */
-#define SATANIC_LOOP(zstart, zgreaterequal, x1, y1, x2, y2) satan(zstart, zgreaterequal, x1, y1, x2, y2, nz, solidData, wrap)
-static void boxclipmove(PlayerType *p, float secondsSinceLastUpdate, const uint8_t *solidData, int wrap) {
+static void boxclipmove(struct Player *p, float secondsSinceLastUpdate, const uint8_t *solidData, int wrap) {
 	float f = secondsSinceLastUpdate * 32;
 	float nextp, testp;
 	float nz;
@@ -325,43 +326,23 @@ static void boxclipmove(PlayerType *p, float secondsSinceLastUpdate, const uint8
 
 	nz = p->pos.z + offset;
 
-	nextp = f * p->vel.x + p->pos.x;
-	testp = nextp + (p->vel.x < 0 ? -0.45 : 0.45);
-	if (SATANIC_LOOP(m, -1.36, testp, p->pos.y - 0.45, testp, p->pos.y + 0.45))
-		p->pos.x = nextp;
-	else if (canclimb && SATANIC_LOOP(0.35, -2.36, testp, p->pos.y - 0.45, testp, p->pos.y + 0.45)) {
-		p->pos.x = nextp;
-		climb = 1;
-	} else
-		p->vel.x = 0;
-
-	nextp = f * p->vel.y + p->pos.y;
-	testp = nextp + (p->vel.y < 0 ? -0.45 : 0.45);
-	if (SATANIC_LOOP(m, -1.36, p->pos.x - 0.45, testp, p->pos.x + 0.45, testp))
-		p->pos.y = nextp;
-	else if (!climb) {
-		if (canclimb && SATANIC_LOOP(0.35, -2.36, p->pos.x - 0.45, testp, p->pos.x + 0.45, testp)) {
-			p->pos.y = nextp;
-			climb = 1;
-		} else
-			p->vel.y = 0;
-	}
+	MYSTERY_LOOP_OVER_AXIS(x, testp, testp, p->pos.y - 0.45, p->pos.y + 0.45);
+	MYSTERY_LOOP_OVER_AXIS(y, p->pos.x - 0.45, p->pos.x + 0.45, testp, testp);
 
 	if (climb) {
-		p->vel.x *= 0.5;
-		p->vel.y *= 0.5;
+		p->vel.x /= 2;
+		p->vel.y /= 2;
 		nz--;
 		m = -1.35;
 	} else {
-		if (p->vel.z < 0)
-			m = -m;
-
-		/* Since multiplication is evaluated left-to-right, I'm not sure if replacing this with f * p->vel.z would be safe. */
 		nz += p->vel.z * secondsSinceLastUpdate * 32;
+		m = copysignf(m, p->vel.z);
 	}
 
-#define SCLIP(xoff, yoff) clip_player(p->pos.x + (xoff), p->pos.y + (yoff), nz + m, solidData, wrap)
-	/* secondsSinceLastUpdate not being 1/60 can screw with some calculations here (see nz). Makes players nice and jittery. Wonder if I can (should) force it, somehow, to 1/60 for just the Z axis? */
+#define SCLIP(xoff, yoff) clip_phys(p->pos.x + (xoff), p->pos.y + (yoff), nz + m, solidData, wrap)
+	/* secondsSinceLastUpdate not being 1/60 can screw with some calculations
+	 * here (see nz). Makes players nice and jittery. Wonder if I can (should)
+	 * force it, somehow, to 1/60 for just the Z axis? */
 	p->airborne = 1;
 	if (SCLIP(-0.45, -0.45) || SCLIP (-0.45, 0.45) || SCLIP(0.45, -0.45) || SCLIP(0.45, 0.45)) {
 		if (p->vel.z >= 0) {
@@ -374,7 +355,7 @@ static void boxclipmove(PlayerType *p, float secondsSinceLastUpdate, const uint8
 		p->pos.z = nz - offset;
 }
 
-static float calc_acceleration(PlayerType *p, float secondsSinceLastUpdate, int diagonal) {
+static float calc_acceleration(struct Player *p, float secondsSinceLastUpdate, int diagonal) {
 	float acceleration = secondsSinceLastUpdate;
 
 	/* Affect horizontal movement acceleration based on airborne/inputs. */
@@ -399,7 +380,7 @@ static float calc_acceleration(PlayerType *p, float secondsSinceLastUpdate, int 
 }
 
 /* Does physics and crunches bones when applicable. */
-int32_t move_player(PlayerType *p, float secondsSinceLastUpdate, const uint8_t *solidData, int wrap) {
+int32_t move_player(struct Player *p, float secondsSinceLastUpdate, const uint8_t *solidData, int wrap) {
 	float horizontalHypotenuse, acceleration, friction, oldZVelocity, verticalMove, horizontalMove;
 	Vector rightSide;
 
@@ -450,25 +431,26 @@ int32_t move_player(PlayerType *p, float secondsSinceLastUpdate, const uint8_t *
 			p->pos.y += 512;
 	}
 
-	if (p->vel.z == 0 && (oldZVelocity > FALL_SLOW_DOWN)) {
-		/* Player went from an airborne state to a grounded one, and had enough velocity to slow down. */
-		p->vel.x *= 0.5;
-		p->vel.y *= 0.5;
+	if (!(p->vel.z == 0 && (oldZVelocity > FALL_SLOW_DOWN)))
+		return -1;
 
-		if (oldZVelocity > FALL_DAMAGE_VELOCITY) {
-			/* Player also had enough velocity to be damaged. */
-			oldZVelocity -= FALL_DAMAGE_VELOCITY;
-			return oldZVelocity * oldZVelocity * FALL_DAMAGE_SCALAR;
-		}
+	p->vel.x /= 2;
+	p->vel.y /= 2;
 
+	if (oldZVelocity <= FALL_DAMAGE_VELOCITY)
 		return 0;
-	}
 
-	return -1; /* No fall damage, no fall sound. */
+	oldZVelocity -= FALL_DAMAGE_VELOCITY;
+
+	/* Wouldn't want an integer to overflow. */
+	if (oldZVelocity >= 724.0774)
+		return 2147483647;
+
+	return oldZVelocity * oldZVelocity * FALL_DAMAGE_SCALAR;
 }
 
 /* Returns 1 if the grenade collides with something, otherwise 0. */
-int move_grenade(struct Grenade *g, float secondsSinceLastUpdate, const uint8_t *solidData, int correct) {
+int move_grenade(struct Grenade *g, float secondsSinceLastUpdate, const uint8_t *solidData) {
 	Vector32 newPos;
 	fvec3 fpos = g->pos;
 
@@ -483,7 +465,7 @@ int move_grenade(struct Grenade *g, float secondsSinceLastUpdate, const uint8_t 
 	newPos.y = floor(g->pos.y);
 	newPos.z = floor(g->pos.z);
 
-	if (!clip_grenade(newPos.x, newPos.y, newPos.z, solidData, correct))
+	if (!clip_phys(newPos.x, newPos.y, newPos.z, solidData, 1))
 		return 0; /* Grenade does not bounce. It's still in the air. */
 	else { /* Grenade *does* bounce. It smacked into something. */
 		Vector32 oldPos;
@@ -502,11 +484,11 @@ int move_grenade(struct Grenade *g, float secondsSinceLastUpdate, const uint8_t 
 		 * (newPos.a != oldPos.a && theOtherOnesAreUnchanged) || didNotTakeTimeToParseThisOne
 		 * If two faces change, things turn funny. Reminds me of that corner bug that was mentioned in a comment I ripped out.
 		 */
-		if      (newPos.z != oldPos.z && ((newPos.x == oldPos.x && newPos.y == oldPos.y) || !clip_grenade(newPos.x, newPos.y, oldPos.z, solidData, correct)))
+		if      (newPos.z != oldPos.z && ((newPos.x == oldPos.x && newPos.y == oldPos.y) || !clip_phys(newPos.x, newPos.y, oldPos.z, solidData, 1)))
 			g->vel.z = -g->vel.z;
-		else if (newPos.x != oldPos.x && ((newPos.y == oldPos.y && newPos.z == oldPos.z) || !clip_grenade(oldPos.x, newPos.y, newPos.z, solidData, correct)))
+		else if (newPos.x != oldPos.x && ((newPos.y == oldPos.y && newPos.z == oldPos.z) || !clip_phys(oldPos.x, newPos.y, newPos.z, solidData, 1)))
 			g->vel.x = -g->vel.x;
-		else if (newPos.y != oldPos.y && ((newPos.x == oldPos.x && newPos.z == oldPos.z) || !clip_grenade(newPos.x, oldPos.y, newPos.z, solidData, correct)))
+		else if (newPos.y != oldPos.y && ((newPos.x == oldPos.x && newPos.z == oldPos.z) || !clip_phys(newPos.x, oldPos.y, newPos.z, solidData, 1)))
 			g->vel.y = -g->vel.y;
 
 		return 1;

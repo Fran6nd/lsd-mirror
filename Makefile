@@ -29,7 +29,7 @@ CPPFLAGS=`pkg-config --cflags $(PKGCONF_MODULES)` $(OPTS)
 
 CFLAGS_NATIVE0=
 CFLAGS_NATIVE1=-march=native
-CFLAGS_DEBUG0=-O3 $(CFLAGS_LTO$(LTO))
+CFLAGS_DEBUG0=-O3 -fno-asynchronous-unwind-tables -fomit-frame-pointer $(CFLAGS_LTO$(LTO))
 CFLAGS_DEBUG1=-g
 CFLAGS_LTO0=
 CFLAGS_LTO1=-flto
@@ -44,6 +44,11 @@ LDFLAGS_LTO1=-flto
 LDFLAGS=$(LDFLAGS_DEBUG$(DEBUG)) $(LDFLAGS_LLVM$(LLVM))
 LDFLAGSSTATIC=-Wl,-Bstatic -static-libgcc $(LIBS) $(LDFLAGS) -Wl,-Bdynamic '-Wl,--export-dynamic-symbol=lua_*' '-Wl,--export-dynamic-symbol=luaL_*' -fvisibility=hidden
 
+# The strip command can nuke a few things that -s can't.
+STRIPBIN_DEBUG0=$(STRIP)
+STRIPBIN_DEBUG1=:
+STRIPBIN=$(STRIPBIN_DEBUG$(DEBUG))
+
 OBJECTS=src/budgetvxl.o src/cull.o src/demoncore.o src/funcs_event.o \
 	src/funcs_packetrecv.o src/funcs_send.o src/lua.o src/main.o \
 	src/masterlist.o src/sandbox.o src/textcodec.o src/pvx/src/vxl.o
@@ -52,6 +57,7 @@ all: server exec/libunixsock.so rw
 
 server: $(OBJECTS)
 	$(CC_USED) -o server $(OBJECTS) $(LIBS) $(LDFLAGS)
+	$(STRIPBIN) server
 
 src/budgetvxl.o: src/budgetvxl.c
 src/cull.o: src/cull.c src/bitmask.h
@@ -73,14 +79,17 @@ src/textcodec.o: src/textcodec.c src/state.h src/protocol.h src/bitmask.h src/ma
 # don't bother loading anything in the exec dir, though.
 serverstatic: $(OBJECTS)
 	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
+	$(STRIPBIN) serverstatic
 
 serverstatic-crust: $(OBJECTS)
 	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -DNO_DEFAULT_SANDBOX -DWITH_LIBSECCOMP -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
+	$(STRIPBIN) serverstatic
 
 exec/libunixsock.so: src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c
 	# TODO: remove getaddrinfo malloc from unixsock tcp
 	mkdir -p exec
 	$(CC_USED) $(CFLAGS) $(CPPFLAGS) --shared -o exec/libunixsock.so src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c -Wl,--exclude-libs,ALL $(LDFLAGS)
+	$(STRIPBIN) exec/libunixsock.so
 
 rw:
 	mkdir -p rw

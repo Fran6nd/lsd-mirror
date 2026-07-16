@@ -48,7 +48,7 @@ OBJECTS=src/budgetvxl.o src/cull.o src/demoncore.o src/funcs_event.o \
 	src/funcs_packetrecv.o src/funcs_send.o src/lua.o src/main.o \
 	src/masterlist.o src/sandbox.o src/textcodec.o src/pvx/src/vxl.o
 
-all: server exec/libunixsock.so
+all: server exec/libunixsock.so rw
 
 server: $(OBJECTS)
 	$(CC_USED) -o server $(OBJECTS) $(LIBS) $(LDFLAGS)
@@ -81,6 +81,9 @@ exec/libunixsock.so: src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/ex
 	# TODO: remove getaddrinfo malloc from unixsock tcp
 	mkdir -p exec
 	$(CC_USED) $(CFLAGS) $(CPPFLAGS) --shared -o exec/libunixsock.so src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c -Wl,--exclude-libs,ALL $(LDFLAGS)
+
+rw:
+	mkdir -p rw
 
 dist.tar.gz: serverstatic exec/libunixsock.so config.lua exec scripts dirty
 	rm -fR dist/

@@ -18,25 +18,25 @@ Returns the gamemode advertised.
 string masterlist_get_map(void) ->
 Returns the map name advertised.
 
-void masterlist_set_port(void) ->
+void masterlist_set_port(integer port) ->
 <NOAUTOLINK>
 Sets the port advertised to any connected masterlists.
 The LSd implementation batches sending all masterlist changes into the next tick().
 <AUTOLINK>
 
-void masterlist_set_players(void) ->
+void masterlist_set_players(integer count) ->
 Sets the connected player count advertised.
 
-void masterlist_set_max_players(void) ->
+void masterlist_set_max_players(integer capacity) ->
 Sets the maximum player capacity advertised.
 
-void masterlist_set_name(void) ->
+void masterlist_set_name(string name) ->
 Sets the server name advertised.
 
-void masterlist_set_gamemode(void) ->
+void masterlist_set_gamemode(string gamemode) ->
 Sets the gamemode advertised.
 
-void masterlist_set_map(void) ->
+void masterlist_set_map(string map) ->
 Sets the map name advertised.
 
 integer masterlist_connect(string address, integer port) ->

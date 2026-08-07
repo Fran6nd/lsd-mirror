@@ -88,7 +88,7 @@ serverstatic-crust: $(OBJECTS)
 exec/libunixsock.so: src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c
 	# TODO: remove getaddrinfo malloc from unixsock tcp
 	mkdir -p exec
-	$(CC_USED) $(CFLAGS) $(CPPFLAGS) --shared -o exec/libunixsock.so src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c -Wl,--exclude-libs,ALL $(LDFLAGS)
+	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -fPIC --shared -o exec/libunixsock.so src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c -Wl,--exclude-libs,ALL $(LDFLAGS)
 	$(STRIPBIN) exec/libunixsock.so
 
 rw:

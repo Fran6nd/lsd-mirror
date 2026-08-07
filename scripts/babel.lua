@@ -218,13 +218,14 @@ end
 -- TODO: end game, also redo babel
 function mod.after.capture_intel(pid)
 	move_intel(1, {x=256, y=256, z=plat_z});
-	local team = get_team(pid);
-	if (team == 1) then
+
+	if (get_team(pid) == 1) then
 		move_intel(2, {x=math.huge, y=math.huge, z=math.huge});
 	end
-		-- TODO: special handling for intel 1,2 and their positions. . .
-		-- TODO: probably don't need to move #2 back? except for recently-connected players. . .
-		-- TODO: how do recently-connected players handle that?
+
+	-- TODO: special handling for intel 1,2 and their positions. . .
+	-- TODO: probably don't need to move #2 back? except for recently-connected players. . .
+	-- TODO: how do recently-connected players handle that?
 end
 
 local function get_1intel()

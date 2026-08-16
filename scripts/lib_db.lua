@@ -63,8 +63,9 @@ function mod.open(path, creat)
 	]]..(creat or ""));
 
 	if (code ~= sql.OK) then
+		local err = "con:exec: "..con:errmsg()..": "..fmt_code(code);
 		con:close();
-		error("con:exec: "..db.con:errmsg()..": "..fmt_code(code));
+		error(err);
 	end
 
 	-- Try to avoid memory errors by preparing statements up front

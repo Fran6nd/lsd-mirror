@@ -5,7 +5,7 @@ local ldb = require "lib_db";
 local buffer = require("string.buffer");
 local mod = init_mod();
 local sock;
-local getname, setnick, rmnick;
+local db, getname, setnick, rmnick;
 
 -- irc_console_db used to map auth names to irc nicks
 getcfg("irc_console_db", "rw/auth.db");

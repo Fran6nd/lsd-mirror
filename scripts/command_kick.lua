@@ -5,7 +5,7 @@ local kicked_msg = {
 	en="%(name) was kicked"
 }
 
-local cmd = {name="kick", caps="kick", fakepid=true, desc="player", usage="Remove a silly player."};
+local cmd = {name="kick", caps="kick", fakepid=true, usage="player", desc="Remove a silly player."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 	local who = get_arg_pid("player", pid, cmd, argv[1]);

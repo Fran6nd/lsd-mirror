@@ -1,7 +1,8 @@
 #include "state.h"
-#include "budgetvxl.h"
 #include <isa-l.h>
 #include <stdio.h>
+
+#include "libpvx2/src/write.c"
 
 clk get_time(void);
 clk to_s(clk ts);
@@ -47,6 +48,7 @@ static void send_fog(plid pid, color color, struct State *st) {
 
 	cf.packetID = PacketTypeFogColor;
 	cf.a = 0;
+
 	cf.color[0] = color[0];
 	cf.color[1] = color[1];
 	cf.color[2] = color[2];
@@ -111,15 +113,7 @@ static void send_map_start(plid pid, unsigned size, struct State *st) {
 
 /* buf should be cols*65*4 bytes */
 static size_t get_vxl_chunk(void *buf, size_t coloff, size_t cols, struct State *st) {
-	uint_fast32_t x, y;
-
-	if (cols > 512*512-coloff)
-		cols = 512*512-coloff;
-
-	x = coloff % 512;
-	y = coloff / 512;
-
-	return pvx_dump_vxl(&st->globals.map, x, y, 512, 512, 64, buf, cols);
+	return vxl_write(buf, st->globals.map, coloff, cols);
 }
 
 static void init_deflate(struct isal_zstream *stream) {

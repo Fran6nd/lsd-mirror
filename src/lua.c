@@ -6,9 +6,10 @@
 #include <lualib.h>
 #include "state.h"
 #include "demoncore.h"
-#include "budgetvxl.h"
 #include <poll.h>
 #include <setjmp.h>
+
+#include "libpvx2/src/write.h"
 
 clk get_time(void);
 double to_s_double(clk ts);
@@ -681,16 +682,16 @@ static int teamiter_ingame(lua_State *l) {
 
 static int do_dump_vxl(lua_State *l) {
 	size_t off = lua_tointeger(l, lua_upvalueindex(1));
-	if (off >= 512*512)
+	if (off >= MAP_X * MAP_Y)
 		return 0;
 
 	{
-		uint8_t buf[512*8*65*4];
-		size_t buflen = pvx_dump_vxl(&st->globals.map, off % 512, off / 512, 512, 512, 64, buf, 512*8);
+		char buf[65*4 * MAP_X * 8];
+		size_t buflen = vxl_write(buf, st->globals.map, off, MAP_X * 8);
 
-		lua_pushlstring(l, (const char *)buf, buflen);
+		lua_pushlstring(l, buf, buflen);
 
-		lua_pushinteger(l, off+512*8);
+		lua_pushinteger(l, off + MAP_X * 8);
 		lua_replace(l, lua_upvalueindex(1));
 		return 1;
 	}
@@ -711,7 +712,7 @@ static int simulate_grenade_physics(lua_State *l) {
 	grenade.vel = get_fvec3(l, 2);
 	delta = luaL_checknumber(l, 3);
 
-	collided = move_grenade(&grenade, delta, st->globals.map.solidData);
+	collided = move_grenade(&grenade, delta, st->globals.map);
 
 	push_fvec3(grenade.pos);
 	push_fvec3(grenade.vel);
@@ -814,7 +815,7 @@ static int raycast(lua_State *l) {
 	int32_t x, y, z;
 	int hit;
 
-	hit = cast2(st->globals.map.solidData, start.x, start.y, start.z, end.x, end.y, end.z, 0, &x, &y, &z, last);
+	hit = cast2(st->globals.map, start.x, start.y, start.z, end.x, end.y, end.z, 0, &x, &y, &z, last);
 	if (!hit)
 		return 0;
 
@@ -1271,11 +1272,10 @@ static int get_block_color(lua_State *l) {
 	return 1;
 }
 
-/* TODO: you going to finish libpvx2 yet? */
 static int get_map_block_color(lua_State *l) {
 	ivec3 pos = get_ivec3(l, 1, 1);
 
-	push_color(st->globals.map.colorData+(CALC_I(pos.x, pos.y)+pos.z)*3);
+	push_color(map_get_color(st->globals.map, pos.x, pos.y, pos.z));
 	return 1;
 }
 

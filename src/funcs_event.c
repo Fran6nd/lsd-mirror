@@ -153,7 +153,7 @@ static void on_orientation(plid pid, fvec3 ori, struct State *st) {
 static void on_move_input(plid pid, unsigned bitmask, struct State *st) {
 	/* TODO: validate uncrouch? handle openspades jump */
 	if ((bitmask & KeyStateTypeCrouch) ^ (st->p[pid].inputs & KeyStateTypeCrouch))
-		change_crouch(bitmask & KeyStateTypeCrouch, st->p+pid, st->globals.map.solidData, 0);
+		change_crouch(bitmask & KeyStateTypeCrouch, st->p+pid, st->globals.map, 0);
 
 	if (bitmask & KeyStateTypeJump && st->p[pid].airborne)
 		bitmask &= ~KeyStateTypeJump;

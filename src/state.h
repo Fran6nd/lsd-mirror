@@ -2,8 +2,9 @@
 #define LS2_SERVER_STATE_H
 #include <enet/enet.h>
 #include "protocol.h"
-#include "bitmask.h"
 #include "masterlist.h"
+
+#include "libpvx2/src/cull.h"
 
 /* Some printf format constants */
 #include <inttypes.h>
@@ -417,11 +418,12 @@ struct Functions {
 	void (*set_quirk)(plid pid, unsigned quirk, bint enabled, struct State *st);
 };
 
-#define CULL_PERSONALITY_VOXLAP 0
+#define CULL_PERSONALITY_VOXLAP     0
 #define CULL_PERSONALITY_OPENSPADES 1
 
 struct Globals {
-	struct BitmaskUData map;
+	Map map;
+	CullState cullbuf;
 	/* pristineBuf points to some zlib-compressed map data if:
 	 * the current map was loaded with load_map(),
 	 * a PATH.zlib file existed at that time,

@@ -49,9 +49,9 @@ STRIPBIN_DEBUG0=$(STRIP)
 STRIPBIN_DEBUG1=:
 STRIPBIN=$(STRIPBIN_DEBUG$(DEBUG))
 
-OBJECTS=src/budgetvxl.o src/cull.o src/demoncore.o src/funcs_event.o \
-	src/funcs_packetrecv.o src/funcs_send.o src/lua.o src/main.o \
-	src/masterlist.o src/sandbox.o src/textcodec.o src/pvx/src/vxl.o
+OBJECTS=src/demoncore.o src/funcs_event.o src/funcs_packetrecv.o \
+	src/funcs_send.o src/lua.o src/main.o src/masterlist.o \
+	src/sandbox.o src/textcodec.o
 
 all: server exec/libunixsock.so rw
 
@@ -59,17 +59,32 @@ server: $(OBJECTS)
 	$(CC_USED) -o server $(OBJECTS) $(LIBS) $(LDFLAGS)
 	$(STRIPBIN) server
 
-src/budgetvxl.o: src/budgetvxl.c
-src/cull.o: src/cull.c src/bitmask.h
-src/demoncore.o: src/demoncore.c src/demoncore.h src/bitmask.h src/protocol.h src/state.h src/masterlist.h
-src/funcs_event.o: src/funcs_event.c src/state.h src/protocol.h src/bitmask.h src/masterlist.h src/demoncore.h
-src/funcs_packetrecv.o: src/funcs_packetrecv.c src/state.h src/protocol.h src/bitmask.h src/masterlist.h src/demoncore.h
-src/funcs_send.o: src/funcs_send.c src/state.h src/protocol.h src/bitmask.h src/masterlist.h src/budgetvxl.h
-src/lua.o: src/lua.c src/state.h src/protocol.h src/bitmask.h src/masterlist.h src/demoncore.h src/budgetvxl.h src/luaawk.h
-src/main.o: src/main.c src/cull.h src/demoncore.h src/bitmask.h src/protocol.h src/state.h src/masterlist.h src/pvx/src/vxl.h src/sandbox.h
+src/demoncore.o: src/demoncore.c src/demoncore.h src/protocol.h \
+	src/state.h src/masterlist.h src/libpvx2/src/cull.h \
+	src/libpvx2/src/map.h src/libpvx2/src/map.c
+src/funcs_event.o: src/funcs_event.c src/state.h \
+	src/protocol.h src/masterlist.h src/libpvx2/src/cull.h \
+	src/libpvx2/src/map.h src/libpvx2/src/map.c src/demoncore.h
+src/funcs_packetrecv.o: src/funcs_packetrecv.c src/state.h \
+	src/protocol.h src/masterlist.h src/libpvx2/src/cull.h \
+	src/libpvx2/src/map.h src/libpvx2/src/map.c src/demoncore.h
+src/funcs_send.o: src/funcs_send.c src/state.h src/protocol.h \
+	src/masterlist.h src/libpvx2/src/cull.h src/libpvx2/src/map.h \
+	src/libpvx2/src/map.c src/libpvx2/src/write.c src/libpvx2/src/write.h
+src/lua.o: src/lua.c src/state.h \
+	src/protocol.h src/masterlist.h src/libpvx2/src/cull.h \
+	src/libpvx2/src/map.h src/libpvx2/src/map.c src/demoncore.h \
+	src/libpvx2/src/write.h src/luaawk.h
+src/main.o: src/main.c src/demoncore.h src/protocol.h src/state.h \
+	src/masterlist.h src/libpvx2/src/cull.h \
+	src/libpvx2/src/map.h src/libpvx2/src/map.c src/sandbox.h \
+	src/libpvx2/src/cull.c src/libpvx2/src/read.c src/libpvx2/src/read.h
 src/masterlist.o: src/masterlist.c src/masterlist.h
 src/sandbox.o: src/sandbox.c
-src/textcodec.o: src/textcodec.c src/state.h src/protocol.h src/bitmask.h src/masterlist.h src/textcodec_utf8.h src/textcodec_cp437.h
+src/textcodec.o: src/textcodec.c src/state.h src/protocol.h \
+	src/masterlist.h src/libpvx2/src/cull.h src/libpvx2/src/map.h \
+	src/libpvx2/src/map.c src/textcodec_utf8.h src/textcodec_cp437.h
+
 .c.o:
 	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
@@ -110,7 +125,7 @@ src/luaawk.h: gen_lua_binding.awk src/state.h
 	$(AWK) -f ./gen_lua_binding.awk src/state.h > src/luaawk.h
 
 clean:
-	rm -f server serverstatic serverstatic-crust exec/libunixsock.so src/*.o src/pvx/src/*.o dist.tar.gz
+	rm -f server serverstatic serverstatic-crust exec/libunixsock.so src/*.o dist.tar.gz
 
 dirty:
 

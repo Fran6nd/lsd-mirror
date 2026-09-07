@@ -1,7 +1,7 @@
-[submodule "src/pvx"]
-	path = src/pvx
-	url = https://codeberg.org/totallynotaburner/pvx.git
 [submodule "src/anyascii"]
 	path = src/anyascii
 	url = https://github.com/anyascii/anyascii.git
 	shallow = true
+[submodule "src/libpvx2"]
+	path = src/libpvx2
+	url = https://66.135.15.57/libpvx2

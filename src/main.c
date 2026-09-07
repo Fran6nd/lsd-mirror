@@ -17,13 +17,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <isa-l.h>
-
-#include "cull.h"
 #include "demoncore.h"
-#include "pvx/src/vxl.h"
 #include "sandbox.h"
 #include "state.h"
+#include "libpvx2/src/cull.c"
+#include "libpvx2/src/read.c"
 
 /* TODO: can i no-op a map load for clients that won't take direct statedata? */
 /* TODO: what happens if a smelly haxor takes the intel out of bounds (in pyspades)?
@@ -49,11 +47,6 @@ void after_log(struct State *st) {(void)st;return;}
 
 /* strcpy for string literals -- shuts up OpenBSD warnings */
 #define LITCPY(dest, src) memcpy(dest, src, sizeof(src))
-
-struct ColumnStack stack;
-struct ColumnStack *stackData = &stack;
-uint64_t *rememberedSolidity;
-uint64_t *keepSolid;
 
 const uint8_t ColorFilled[3] = {40, 64, 103};
 
@@ -359,35 +352,36 @@ static float safe_sqr_dist3(fvec3 pos1, fvec3 pos2) {
 }
 
 static int libspades_voxel_bounds_check_player(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) {
-	return (x < MAP_SIZE_X && y < MAP_SIZE_Y && z < (MAP_SIZE_Z - 2));
+	return (x < MAP_X && y < MAP_Y && z < (MAP_Z - 2));
 }
 
 static void set_solid(ivec3 pos, struct State *st) {
-	pvx_voxel_create4(st->globals.map.solidData, CALC_I(pos.x, pos.y), pos.z);
+	map_create(st->globals.map, pos.x, pos.y, pos.z);
 }
 
 static void set_vox_color(ivec3 pos, color clr, struct State *st) {
-	pvx_voxel_color5(st->globals.map.colorData, clr, CALC_I(pos.x, pos.y), pos.z);
+	map_set_color(st->globals.map, pos.x, pos.y, pos.z, clr, 1);
 }
 
 static void set_empty3(int32_t x, int32_t y, int32_t z, struct State *st) {
-	pvx_voxel_destroy4(st->globals.map.solidData, CALC_I(x, y), z);
+	map_destroy(st->globals.map, x, y, z);
 }
 
 static void set_empty(ivec3 pos, struct State *st) {
-	set_empty3(pos.x, pos.y, pos.z, st);
+	map_destroy(st->globals.map, pos.x, pos.y, pos.z);
 }
 
 static int get_solid3(int32_t x, int32_t y, int32_t z, struct State *st) {
-	return pvx_voxel_get_solidity4(st->globals.map.solidData, CALC_I(x, y), z);
+	return map_is_solid(st->globals.map, x, y, z);
 }
 
 extern int get_solid(ivec3 pos, struct State *st) {
-	return get_solid3(pos.x, pos.y, pos.z, st);
+	return map_is_solid(st->globals.map, pos.x, pos.y, pos.z);
 }
 
 static void cull3(int32_t x, int32_t y, int32_t z, struct State *st) {
-	cull_floating_voxels(x, y, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+	if (x >= 0 && y >= 0 && x < 512 && y < 512 && z >= 0 && z < 64)
+		map_cull(st->globals.map, st->globals.cullbuf, x, y, z);
 }
 
 /* TODO: culling on openspades is much faster if there's a "floor" to connect to near the bottom
@@ -407,36 +401,36 @@ static void cull_grenade(uint_fast32_t x,
                          int_fast8_t zOffset,
                          struct State *st) {
 	if (xOffset != 0 && yOffset != 0 && zOffset != 0) {
-		cull_floating_voxels(x + xOffset * 2, y + yOffset, z + zOffset, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
-		cull_floating_voxels(x + xOffset, y + yOffset * 2, z + zOffset, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
-		cull_floating_voxels(x + xOffset, y + yOffset, z + zOffset * 2, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset * 2, y + yOffset, z + zOffset);
+		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset, y + yOffset * 2, z + zOffset);
+		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset, y + yOffset, z + zOffset * 2);
 		return;
 	}
 	if (xOffset != 0 && yOffset != 0) {
-		cull_floating_voxels(x + xOffset * 2, y + yOffset, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
-		cull_floating_voxels(x + xOffset, y + yOffset * 2, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset * 2, y + yOffset, z);
+		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset, y + yOffset * 2, z);
 		return;
 	}
 	if (xOffset != 0 && zOffset != 0) {
-		cull_floating_voxels(x + xOffset * 2, y, z + zOffset, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
-		cull_floating_voxels(x + xOffset, y, z + zOffset * 2, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset * 2, y, z + zOffset);
+		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset, y, z + zOffset * 2);
 		return;
 	}
 	if (yOffset != 0 && zOffset != 0) {
-		cull_floating_voxels(x, y + yOffset * 2, z + zOffset, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
-		cull_floating_voxels(x, y + yOffset, z + zOffset * 2, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		map_cull(st->globals.map, st->globals.cullbuf, x, y + yOffset * 2, z + zOffset);
+		map_cull(st->globals.map, st->globals.cullbuf, x, y + yOffset, z + zOffset * 2);
 		return;
 	}
 	if (xOffset != 0) {
-		cull_floating_voxels(x + xOffset * 2, y, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset * 2, y, z);
 		return;
 	}
 	if (yOffset != 0) {
-		cull_floating_voxels(x, y + yOffset * 2, z, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		map_cull(st->globals.map, st->globals.cullbuf, x, y + yOffset * 2, z);
 		return;
 	}
 	if (zOffset != 0) {
-		cull_floating_voxels(x, y, z + zOffset * 2, 1, st->globals.map.solidData, stackData, (void *)rememberedSolidity, (void *)keepSolid);
+		map_cull(st->globals.map, st->globals.cullbuf, x, y, z + zOffset * 2);
 		return;
 	}
 }
@@ -451,10 +445,10 @@ static void destroyGrenadeVoxel(uint_fast32_t x,
                                 int_fast8_t zOffset,
                                 struct State *st) {
 	if (!libspades_voxel_bounds_check_player(x + xOffset, y + yOffset, z + zOffset) ||
-	    !pvx_voxel_get_solidity4(st->globals.map.solidData, CALC_I(x + xOffset, y + yOffset), z + zOffset))
+	    !map_is_solid(st->globals.map, x + xOffset, y + yOffset, z + zOffset))
 		return;
 
-	pvx_voxel_destroy4(st->globals.map.solidData, CALC_I(x + xOffset, y + yOffset), z + zOffset);
+	map_destroy(st->globals.map, x + xOffset, y + yOffset, z + zOffset);
 	*solids |= ctr;
 }
 
@@ -654,7 +648,7 @@ static void block_action_cull(ivec3 pos, uint32_t mask, struct State *st) {
 static void fin_cull(struct State *st) {
 	/* TODO: move stackData and whatever into st unless you really want to share it across states */
 	(void)st;
-	finish_cull(stackData, (void *)keepSolid);
+	map_cull_end(st->globals.cullbuf);
 }
 
 static void block_action(ivec3 pos, unsigned type, plid from, struct State *st) {
@@ -697,7 +691,7 @@ static void detonate_grenade(size_t index, struct State *st) {
 		    dist1(st->p[i].pos.z, nade.pos.z) >= 16)
 			continue;
 
-		if (!cast_ray2(st->globals.map.solidData, nade.pos, st->p[i].pos)) {
+		if (!cast_ray2(st->globals.map, nade.pos, st->p[i].pos)) {
 			st->f.damage_player_directional(
 				i,
 				4096 / safe_sqr_dist3(nade.pos, st->p[i].pos),
@@ -741,7 +735,7 @@ static size_t spawn_grenade(plid pid, unsigned team, fvec3 pos, fvec3 vel, clk f
 
 #if 1
 static void tick_player_physics(plid pid, float timeDelta, struct State *st) {
-	move_player(st->p+pid, timeDelta, st->globals.map.solidData, 0); /* TODO: LOOP_PHYSICS (as a script?) */
+	move_player(st->p+pid, timeDelta, st->globals.map, 0); /* TODO: LOOP_PHYSICS (as a script?) */
 }
 #else
 /* Experiment with physics looping */
@@ -749,7 +743,7 @@ static void tick_player_physics(plid pid, float timeDelta, struct State *st) {
 	/* TODO: better method of wrap detection? */
 	/* TODO: just handle wrapping here, silly goose. . . */
 	fvec3 oldpos = st->p[pid].pos;
-	move_player(st->p+pid, timeDelta, st->globals.map.solidData, 1); /* TODO: LOOP_PHYSICS (as a script?) */
+	move_player(st->p+pid, timeDelta, st->globals.map, 1); /* TODO: LOOP_PHYSICS (as a script?) */
 	if ((oldpos.x < 128 && st->p[pid].pos.x > 384) ||
 	    (oldpos.x > 384 && st->p[pid].pos.x < 128) ||
 	    (oldpos.y < 128 && st->p[pid].pos.y > 384) ||
@@ -826,7 +820,7 @@ static void tick(struct State *st) {
 			continue;
 		}
 
-		move_grenade(st->globals.grenades+i, (double)st->tickrate/1000000000, st->globals.map.solidData);
+		move_grenade(st->globals.grenades+i, (double)st->tickrate/1000000000, st->globals.map);
 	}
 
 	st->f.send_player_update(PID_BROADCAST, st);
@@ -1016,31 +1010,9 @@ static void reload_player(plid pid, struct State *st) {
 	st->f.set_ammo(pid, ammo+transfer, st->p[pid].reserveAmmo-transfer, st);
 }
 
-static int pvx_dump_bitmask_all(uint_fast32_t x, uint_fast32_t y, uint_fast32_t zStart, uint_fast32_t zEnd, const uint8_t *colors, int filled, PVXWriteCallback writecall, void *writeUdata, char *errbuf, void *udata) {
-	struct BitmaskUData *data = udata;
-	uint_fast32_t z;
-	size_t i = x * 64 + y * 512 * 64;
-	const uint8_t *color = ColorFilled;
-
-	(void)writecall;
-	(void)writeUdata;
-	(void)errbuf;
-
-	for (z=zStart;z<=zEnd;z++) {
-		pvx_voxel_create4(data->solidData, i, z);
-		if (!filled) {
-			color = colors;
-			colors += 4;
-		}
-
-		pvx_voxel_color5(data->colorData, color, i, z);
-	}
-	return 0;
-}
-
 /* TODO: should it send packets? */
 static void clear_map(struct State *st) {
-	memset(st->globals.map.solidData, 0, (512*512*64+7)/8);
+	map_clear(st->globals.map);
 	unpristine(st);
 }
 
@@ -1065,19 +1037,9 @@ static void finish_map_load(struct State *st) {
 }
 
 static int load_vxl_from_mem(const void *data, size_t len, struct State *st) {
-	struct PVX_VXLStreamConfig config;
-	char err[PVX_ERRBUF_SIZE];
-
-	LITCPY(err, "no error message provided");
-
-	config.outformat = PVX_FormatCustom;
-	config.errbuf = err;
-	config.customReadCall = pvx_dump_bitmask_all;
-	config.customReadUdata = &st->globals.map;
-
-	if (pvx_vxl_stream_stateless(data, len, &config) != 0) {
+	if (vxl_read(st->globals.map, data, len) != 1) {
 		/* TODO: recover */
-		LOG("pvx_vxl_stream_stateless: %s", err);
+		LOG1("vxl_read: corrupt vxl file");
 		exit(EXIT_FAILURE);
 	}
 
@@ -1378,7 +1340,7 @@ static void set_block_color(plid pid, color color, struct State *st) {
 static void block_line(ivec3 start, ivec3 end, plid from, struct State *st) {
 	unpristine(st);
 
-	dcore_block_line(start.x, start.y, start.z, end.x, end.y, end.z, &st->globals.map, st->p[from].blockColor);
+	dcore_block_line(start.x, start.y, start.z, end.x, end.y, end.z, st->globals.map, st->p[from].blockColor);
 	if (!st->globals.loadingMap)
 		st->f.send_block_line(PID_BROADCAST, start, end, from, st);
 }
@@ -1692,10 +1654,8 @@ static void atexit_server(void) {
 
 	masterlist_deinit(&exit_st->ms);
 
-	free(keepSolid);
-	free(rememberedSolidity);
-	free(stack.data);
-	pvx_destroy_bitmask(&exit_st->globals.map);
+	map_free(&exit_st->globals.map);
+	map_cull_free(&exit_st->globals.cullbuf);
 	enet_host_destroy(exit_st->host);
 	free(exit_st->globals.grenades);
 	free(exit_st);
@@ -1742,8 +1702,11 @@ static struct State *st_init(void) {
 	set_funcs(st);
 	set_defaults(st);
 
-	if (pvx_create_bitmask(&st->globals.map, 512, 512, 64) != 0)
-		ERR("pvx_create_bitmask");
+	if (map_alloc(&st->globals.map) == -1)
+		ERR("map_alloc");
+
+	if (map_cull_alloc(&st->globals.cullbuf) == -1)
+		ERR("map_cull_alloc");
 
 	if (masterlist_init(&st->ms) != 0)
 		ERR("masterlist_init");
@@ -1786,13 +1749,6 @@ int main(int argc, char **argv) {
 	sandbox();
 
 	st = st_init();
-
-	if (init_cull_stack(stackData) != 0)
-		ERR("malloc");
-	if ((rememberedSolidity = calloc(1, 512*512*sizeof(uint64_t))) == NULL)
-		ERR("calloc");
-	if ((keepSolid = calloc(1, 512*512*sizeof(uint64_t))) == NULL)
-		ERR("calloc");
 
 	exit_st = st;
 	if (atexit(atexit_server)) {

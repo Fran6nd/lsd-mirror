@@ -13,4 +13,3 @@ end
 register_command(cmd, mod);
 
 return mod;
-

@@ -159,7 +159,6 @@ static const uint8_t quirk_prefs[] = {
 /* With my little research into how ENet deals with its datagrams I
  * think it should be possible for the client to send some early data
  * down the wire, before map transfer does anything
- * TODO: get libpvx2 into a usable state already
  */
 /* TODO: QUIRK_PVX */
 /* At least the stats */

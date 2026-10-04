@@ -245,7 +245,7 @@ function mod.late.log(fmt, ...)
 end
 
 function mod.late.server_msg(pid, msg)
-	if (pid == PID_BROADCAST or pidtonick[pid]) then
+	if (pidtonick[pid]) then
 		for line in string.gmatch(msg, "[^\n]+") do
 			sock_send_broadcast(sock, cmd_tostr{[0]="PRIVMSG", irc_console_chan, line});
 		end

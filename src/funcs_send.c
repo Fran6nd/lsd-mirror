@@ -192,7 +192,8 @@ static void send_compressed_map(plid pid, struct State *st) {
 static void send_map(plid pid, struct State *st) {
 	plid i;
 
-	st->f.send_map_start(pid, 0, st);
+	/* Voxlap gets pissed when you advertise a map size of 0 */
+	st->f.send_map_start(pid, 1, st);
 	send_compressed_map(pid, st);
 
 	/* TODO: should the iterator be moved to send_state? */

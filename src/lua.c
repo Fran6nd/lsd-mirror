@@ -4,11 +4,12 @@
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
-#include "state.h"
-#include "demoncore.h"
 #include <poll.h>
 #include <setjmp.h>
 
+#include "state.h"
+#include "demoncore.h"
+#include "commit.h"
 #include "libpvx2/src/write.h"
 
 clk get_time(void);
@@ -1670,6 +1671,9 @@ void hook_lua(const char *cfg, unsigned long port, struct State *st2) {
 	SETMACRO(QUIRK_OS_BACTION_CULL);
 	SETMACRO(QUIRK_UTF8_COLOR_IMG);
 	SETMACRO(QUIRK_INSKY);
+
+	lua_pushliteral(l, GIT_COMMIT);
+	lua_setglobal(l, "GIT_COMMIT");
 
 	if (luaL_loadfile(l, "scripts/core.lua") || lua_pcall(l, 0, 0, 0))
 		LERR(l, "Can't load scripts/core.lua: %s", lua_tostring(l, -1));

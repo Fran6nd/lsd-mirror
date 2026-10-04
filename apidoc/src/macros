@@ -1,3 +1,6 @@
+GIT_COMMIT ->
+Short git commit hash of the server binary.
+
 SPECTATOR ->
 Implementation-defined signed integer value for the spectator team.
 

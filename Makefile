@@ -74,7 +74,7 @@ src/funcs_send.o: src/funcs_send.c src/state.h src/protocol.h \
 src/lua.o: src/lua.c src/state.h \
 	src/protocol.h src/masterlist.h src/libpvx2/src/cull.h \
 	src/libpvx2/src/map.h src/libpvx2/src/map.c src/demoncore.h \
-	src/libpvx2/src/write.h src/luaawk.h
+	src/commit.h src/libpvx2/src/write.h src/luaawk.h
 src/main.o: src/main.c src/demoncore.h src/protocol.h src/state.h \
 	src/masterlist.h src/libpvx2/src/cull.h \
 	src/libpvx2/src/map.h src/libpvx2/src/map.c src/sandbox.h \
@@ -123,6 +123,11 @@ dist.tar.gz: serverstatic exec/libunixsock.so config.lua exec scripts dirty
 
 src/luaawk.h: gen_lua_binding.awk src/state.h
 	$(AWK) -f ./gen_lua_binding.awk src/state.h > src/luaawk.h
+
+# This'll cause make to rebuild even if nothing under src/ is changed,
+# but we'll call that a negligible cost for simplicity.
+src/commit.h: .git
+	printf '#ifndef GIT_COMMIT\n#define GIT_COMMIT "%s"\n#endif\n' "$$(git rev-parse --short=10 HEAD)" > src/commit.h
 
 clean:
 	rm -f server serverstatic serverstatic-crust exec/libunixsock.so src/*.o dist.tar.gz

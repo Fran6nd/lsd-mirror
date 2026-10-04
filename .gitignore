@@ -8,4 +8,5 @@
 /exec/
 /rw/
 
+/src/commit.h
 *.o

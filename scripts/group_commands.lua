@@ -19,6 +19,7 @@ load "command_secspec"
 load "command_switch"
 load "command_tp"
 load "command_ups"
+load "command_version"
 load "command_who"
 -- TODO: these *really* seem out of place. . .
 load "god"

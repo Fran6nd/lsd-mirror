@@ -401,36 +401,36 @@ static void cull_grenade(uint_fast32_t x,
                          int_fast8_t zOffset,
                          struct State *st) {
 	if (xOffset != 0 && yOffset != 0 && zOffset != 0) {
-		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset * 2, y + yOffset, z + zOffset);
-		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset, y + yOffset * 2, z + zOffset);
-		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset, y + yOffset, z + zOffset * 2);
+		cull3(x + xOffset * 2, y + yOffset, z + zOffset, st);
+		cull3(x + xOffset, y + yOffset * 2, z + zOffset, st);
+		cull3(x + xOffset, y + yOffset, z + zOffset * 2, st);
 		return;
 	}
 	if (xOffset != 0 && yOffset != 0) {
-		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset * 2, y + yOffset, z);
-		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset, y + yOffset * 2, z);
+		cull3(x + xOffset * 2, y + yOffset, z, st);
+		cull3(x + xOffset, y + yOffset * 2, z, st);
 		return;
 	}
 	if (xOffset != 0 && zOffset != 0) {
-		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset * 2, y, z + zOffset);
-		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset, y, z + zOffset * 2);
+		cull3(x + xOffset * 2, y, z + zOffset, st);
+		cull3(x + xOffset, y, z + zOffset * 2, st);
 		return;
 	}
 	if (yOffset != 0 && zOffset != 0) {
-		map_cull(st->globals.map, st->globals.cullbuf, x, y + yOffset * 2, z + zOffset);
-		map_cull(st->globals.map, st->globals.cullbuf, x, y + yOffset, z + zOffset * 2);
+		cull3(x, y + yOffset * 2, z + zOffset, st);
+		cull3(x, y + yOffset, z + zOffset * 2, st);
 		return;
 	}
 	if (xOffset != 0) {
-		map_cull(st->globals.map, st->globals.cullbuf, x + xOffset * 2, y, z);
+		cull3(x + xOffset * 2, y, z, st);
 		return;
 	}
 	if (yOffset != 0) {
-		map_cull(st->globals.map, st->globals.cullbuf, x, y + yOffset * 2, z);
+		cull3(x, y + yOffset * 2, z, st);
 		return;
 	}
 	if (zOffset != 0) {
-		map_cull(st->globals.map, st->globals.cullbuf, x, y, z + zOffset * 2);
+		cull3(x, y, z + zOffset * 2, st);
 		return;
 	}
 }

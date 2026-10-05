@@ -12,8 +12,11 @@
 #define PRIuSIZET "zu"
 
 #include <fcntl.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -52,10 +55,14 @@ const uint8_t ColorFilled[3] = {40, 64, 103};
 
 static const char *cfg = "config.lua";
 static const char *root_path = NULL;
+
+/* NULL passed to getaddrinfo(3) results in INADDR_ANY */
+static const char *listen_addr = NULL;
+static const char *listen_port = "32887";
+
 /* TODO: allow changing port from cfg? and maybe allow
  * unsharing/pledging different crap in a special cfg file too */
 static unsigned long memlimit = 0;
-static unsigned long port = 32887;
 
 static volatile sig_atomic_t keepRunning = 1;
 static struct State *exit_st;
@@ -224,7 +231,7 @@ static void handle_event(ENetEvent *event, struct State *st) {
 }
 
 extern jmp_buf lua_panicenv;
-void hook_lua(const char *cfg, unsigned long port, struct State *st);
+void hook_lua(const char *cfg, struct State *st);
 void setpanic_lua(void);
 void close_lua(void);
 
@@ -1610,25 +1617,26 @@ static void set_defaults(struct State *st) {
 
 /* config_path is relative to root_path, root_path defaults to . */
 /* TODO: assert(config_path[0] != '/') */
-#define USAGE "usage: %s [-c config_path] [-d root_path] [-m mem_limit] [-p udp_port]\n"
+#define USAGE "usage: %s [-c config_path] [-d root_path] [-l listen_addr] [-m mem_limit] [-p udp_port]\n"
 static void parse_args(int argc, char **argv) {
 	char *end;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "c:d:m:p:")) != -1) {switch (ch){
+	while ((ch = getopt(argc, argv, "c:d:l:m:p:")) != -1) {switch (ch){
 	case 'c':
 		cfg = optarg;
 		break;
 	case 'd':
 		root_path = optarg;
 		break;
+	case 'l':
+		listen_addr = optarg;
+		break;
 	case 'm':
 		ARG_GET_UL(memlimit, RLIM_INFINITY);
 		break;
 	case 'p':
-		/* TODO: if port can be <1024 you had better setuid off of root */
-		/* TODO: 0 is reserved */
-		ARG_GET_UL(port, 65535);
+		listen_port = optarg;
 		break;
 	default:
 		fprintf(stderr, USAGE, argv[0]);
@@ -1661,6 +1669,29 @@ static void atexit_server(void) {
 	free(exit_st);
 }
 
+/* ENet's own way of doing getaddrinfo is a bit crummy */
+static void get_listen_addr(in_addr_t *addr, in_port_t *port) {
+	struct addrinfo hints = {0};
+	struct addrinfo *res;
+	int status;
+
+	hints.ai_family   = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_protocol = IPPROTO_UDP;
+	hints.ai_flags    = AI_PASSIVE | AI_NUMERICHOST;
+
+	status = getaddrinfo(listen_addr, listen_port, &hints, &res);
+	if (status != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+		exit(EXIT_FAILURE);
+	}
+
+	*addr =       ((struct sockaddr_in *)res->ai_addr)->sin_addr.s_addr;
+	*port = htons(((struct sockaddr_in *)res->ai_addr)->sin_port);
+
+	freeaddrinfo(res);
+}
+
 static struct State *st_init(void) {
 	ENetAddress addr;
 	struct State *st;
@@ -1678,8 +1709,7 @@ static struct State *st_init(void) {
 
 	st->globals.cullPersonality = CULL_PERSONALITY_OPENSPADES;
 
-	addr.host = ENET_HOST_ANY;
-	addr.port = port;
+	get_listen_addr(&addr.host, &addr.port);
 
 	for (i=0;i<sizeof(st->p)/sizeof(st->p[0]);i++)
 		st->p[i].pid = i;
@@ -1757,7 +1787,7 @@ int main(int argc, char **argv) {
 	}
 
 	hook_textcodec_late(st);
-	hook_lua(cfg, port, st);
+	hook_lua(cfg, st);
 	hook_textcodec_early(st);
 
 	st->ms.on_successful_connect = (void (*)(uint32_t, void *))st->f.on_masterlist_successful_connect;

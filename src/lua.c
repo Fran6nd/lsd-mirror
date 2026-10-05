@@ -1638,7 +1638,7 @@ static int panic(lua_State *l) {
 	longjmp(lua_panicenv, 1);
 }
 
-void hook_lua(const char *cfg, unsigned long port, struct State *st2) {
+void hook_lua(const char *cfg, struct State *st2) {
 	l = luaL_newstate();
 	if (l == NULL)
 		ERR("luaL_newstate");
@@ -1656,7 +1656,10 @@ void hook_lua(const char *cfg, unsigned long port, struct State *st2) {
 	lua_pushnumber(l, 256);
 	lua_setglobal(l, "SPECTATOR");
 
-	lua_pushnumber(l, port);
+	lua_pushnumber(l, st->host->address.host);
+	lua_setglobal(l, "ENET_ADDRESS");
+
+	lua_pushnumber(l, st->host->address.port);
 	lua_setglobal(l, "ENET_PORT");
 
 	SETMACRO(CULL_PERSONALITY_VOXLAP);

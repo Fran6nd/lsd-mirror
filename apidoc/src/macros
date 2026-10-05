@@ -11,6 +11,9 @@ MAX_PLAYERS ->
 The most player IDs the implementation and protocol can handle at once. I.e., usually 32.
 Valid player IDs are integers in the range of 0 to MAX_PLAYERS&minus;1 inclusive.
 
+ENET_ADDRESS ->
+Endian-swapped IPv4 address the server is listening for rel=noreferrer href=http://sauerbraten.org/enet/>ENet</a> connections on.
+
 ENET_PORT ->
 UDP port the server is listening for <a rel=noreferrer href=http://sauerbraten.org/enet/>ENet</a> connections on.
 

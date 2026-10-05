@@ -25,11 +25,10 @@ local function on_line(sock, cid, line)
 	-- return something silly like 314.2000.86.0 :p
 	local a, b, c, d = string.match(line, "^(%d+)%.(%d+)%.(%d+)%.(%d+)$");
 	if (a ~= nil) then
-		server_aos_address = string.format(
-			"aos://%u:%u",
-			bit.bor(bit.lshift(d, 24), bit.lshift(c, 16), bit.lshift(b, 8), a),
-			ENET_PORT
-		);
+		addr = bit.bor(bit.lshift(d, 24), bit.lshift(c, 16), bit.lshift(b, 8), a);
+		addr = (2^32 + addr) % 2^32
+
+		server_aos_address = string.format("aos://%u:%u", addr, ENET_PORT);
 
 		log("command_server: got IPv4: %s", line);
 		sock_close(sock);

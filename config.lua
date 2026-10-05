@@ -20,6 +20,11 @@ set_max_score(10);
 fog = {r=128, g=232, b=255}
 set_fog(fog);
 
+-- /server may retrieve the server's IP address from an external source
+-- (Cloudflare's icanhazip.com by default) if not bound explicitly to
+-- an address with the -l option.
+server_get_ip = true
+
 load "group_deps"
 load "group_commands"
 load "group_moderation"

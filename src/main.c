@@ -1045,9 +1045,8 @@ static void finish_map_load(struct State *st) {
 
 static int load_vxl_from_mem(const void *data, size_t len, struct State *st) {
 	if (vxl_read(st->globals.map, data, len) != 1) {
-		/* TODO: recover */
 		LOG1("vxl_read: corrupt vxl file");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
 	return 0;
@@ -1064,7 +1063,10 @@ static int load_vxl_from_file(const char *path, struct State *st) {
 	if (buf == MAP_FILE_ENOENT)
 		return -2;
 
-	st->f.load_vxl_from_mem(buf, size, st);
+	if (st->f.load_vxl_from_mem(buf, size, st) != 0) {
+		munmap(buf, size);
+		return -3;
+	}
 
 	munmap(buf, size);
 
@@ -1082,7 +1084,10 @@ static int begin_load_vxl_from_file(const char *path, struct State *st) {
 		return -2;
 
 	st->f.prepare_map_load(st);
-	st->f.load_vxl_from_mem(buf, size, st);
+	if (st->f.load_vxl_from_mem(buf, size, st) != 0) {
+		munmap(buf, size);
+		return -3;
+	}
 
 	munmap(buf, size);
 

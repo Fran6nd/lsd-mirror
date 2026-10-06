@@ -166,6 +166,8 @@ void sandbox(void) {
 		"getdents64",
 		/* needed for os.rename() */
 		"rename",
+		/* needed for jit.profile */
+		"setitimer",
 #if 0
 		/* needed for openmp */
 		"sched_yield",

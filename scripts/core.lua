@@ -2,7 +2,6 @@
 package.path = "./scripts/?.lua"
 package.cpath = "./exec/?.so"
 
--- TODO: rip out most logging from the C core and implement it as a separate module
 function color_to_ansi(str)
 	local origsiz = #str;
 	local teamcolor = {get_team_color(1), get_team_color(2)};
@@ -34,6 +33,7 @@ function color_to_ansi(str)
 
 	return str;
 end
+server.color_to_ansi = color_to_ansi;
 
 function log(fmt, ...)
 	io.stderr:write(color_to_ansi(string.format(fmt.."\n", ...)));
@@ -46,11 +46,13 @@ function getcfg(key, default)
 	end
 end
 
-callchain_impl = {};
-callchain_late = {};
-callchain_std = {};
-callchain_early = {};
-callchain_xearly = {};
+chains = {
+	{}, -- impl
+	{}, -- late
+	{}, -- "std"
+	{}, -- early
+	{}  -- xearly
+};
 
 modules = {};
 
@@ -60,22 +62,45 @@ if not status then
 	log("HINT: you're probably running regular Lua instead of LuaJIT");
 end
 
+local function getfn(next, name)
+	local fn = next[name];
+
+	if (type(fn) ~= "function") then
+		error(string.format("%s.after.%s: no next in chain", tnam, name));
+	end
+
+	return fn;
+end
+
 local function process_before_after(tbl)
-	if (tbl.before ~= nil) then
-		for x,y in pairs(tbl.before) do
-			if (tbl.after ~= nil and tbl.after[x] ~= nil) then
-				local z = tbl.after[x];
-				tbl[x] = function(...) y(...); local ret = tbl.next[x](...); z(...); return ret; end
-				tbl.after[x] = nil;
-			else
-				tbl[x] = function(...) y(...); return tbl.next[x](...); end
+	local next = tbl.next;
+	local tnam = tbl.name;
+
+	for name, bfunc in pairs(tbl.before) do
+		if (tbl.after[name] ~= nil) then
+			local afunc = tbl.after[name];
+
+			tbl[name] = function(...)
+				bfunc(...);
+				local ret = getfn(next, name)(...);
+				afunc(...);
+				return ret;
+			end
+
+			tbl.after[name] = nil;
+		else
+			tbl[name] = function(...)
+				bfunc(...);
+				return getfn(next, name)(...);
 			end
 		end
 	end
 
-	if (tbl.after ~= nil) then
-		for x,y in pairs(tbl.after) do
-			tbl[x] = function(...) local ret = tbl.next[x](...); y(...); return ret; end
+	for name, afunc in pairs(tbl.after) do
+		tbl[name] = function(...)
+			local ret = getfn(next, name)(...);
+			afunc(...);
+			return ret;
 		end
 	end
 
@@ -83,22 +108,25 @@ local function process_before_after(tbl)
 	tbl.after = nil;
 end
 
-local function init_chains(name)
-	-- TODO: hook callchain boundaries into core?
-	callchain_impl[name] = {server[name]};
-	callchain_late[name] = {function(...) return callchain_impl[name][#callchain_impl[name]](...); end};
-	callchain_std[name] = {function(...) return callchain_late[name][#callchain_late[name]](...); end};
-	callchain_early[name] = {function(...) return callchain_std[name][#callchain_std[name]](...); end};
-	callchain_xearly[name] = {function(...) return callchain_early[name][#callchain_early[name]](...); end};
+local function relink_chains(name)
+	local tbl = {[0]={}};
 
-	_G[name] = function(...)
-		local status, err = pcall(callchain_xearly[name][#callchain_xearly[name]], ...);
-
-		if (not status) then
-			error(err, 2);
+	for _, chain in ipairs(chains) do
+		for _, chain_tbl in ipairs(chain[name]) do
+			table.insert(tbl, chain_tbl);
 		end
+	end
 
-		return err;
+	for i=#tbl,1,-1 do
+		tbl[i].next[name] = tbl[i - 1][name];
+	end
+
+	_G[name] = tbl[#tbl][name];
+end
+
+local function init_chains(name)
+	for _, chain in ipairs(chains) do
+		chain[name] = {};
 	end
 end
 
@@ -109,52 +137,35 @@ local function add_cat(chain, tbl)
 
 	process_before_after(tbl);
 
-	for name,func in pairs(tbl) do
-		if (type(func) == "function") then
-			if (chain[name] == nil) then
-				init_chains(name);
-			end
-
-			tbl.next[name] = chain[name][#chain[name]];
-			table.insert(chain[name], func);
+	for name, func in pairs(tbl) do
+	if (type(func) == "function") then
+		if (chain[name] == nil) then
+			init_chains(name);
 		end
+
+		table.insert(chain[name], tbl);
+		relink_chains(name);
+	end
 	end
 end
 
-local function get_func_owner(func, funcname, chainname)
-	for _,mod in ipairs(modules) do
-		local tbl = chainname and mod[chainname] or mod;
-
-		if (tbl[funcname] == func) then
-			return mod;
-		end
-	end
-end
-
-local function destroy_cat(chain, tbl, chainname)
+local function destroy_cat(chain, tbl)
 	if (tbl == nil) then
 		return;
 	end
 
-	-- Highly-nested code improves egg-laying performance
-	for name,func in pairs(tbl) do
+	for name, func in pairs(tbl) do
 	if (type(func) == "function") then
-	for i,chfunc in ipairs(chain[name]) do
-	if (chfunc == func) then
-		table.remove(chain[name], i);
-		if (chain[name][i] ~= nil) then
-			if (chainname) then
-				get_func_owner(chain[name][i], name, chainname)[chainname].next[name] = chain[name][i-1];
-			else
-				get_func_owner(chain[name][i], name).next[name] = chain[name][i-1];
-			end
+		for i, chain_tbl in ipairs(chain[name]) do
+		if (chain_tbl == tbl) then
+			table.remove(chain[name], i);
+			relink_chains(name);
+			break;
+		end
 		end
 	end
 	end
-	end
-	end
 end
-server.register = register;
 
 local batch_loaded = 0;
 function register(module)
@@ -168,11 +179,11 @@ function register(module)
 
 	table.insert(modules, module);
 
-	add_cat(callchain_impl, module.impl);
-	add_cat(callchain_late, module.late);
-	add_cat(callchain_std, module);
-	add_cat(callchain_early, module.early);
-	add_cat(callchain_xearly, module.xearly);
+	add_cat(chains[1], module.impl);
+	add_cat(chains[2], module.late);
+	add_cat(chains[3], module);
+	add_cat(chains[4], module.early);
+	add_cat(chains[5], module.xearly);
 
 	if (module.on_load ~= nil) then
 		local status, err = pcall(module.on_load);
@@ -183,6 +194,7 @@ function register(module)
 		end
 	end
 end
+server.register = register;
 
 function unregister(module, no_rm)
 	local found = false;
@@ -210,17 +222,11 @@ function unregister(module, no_rm)
 		return;
 	end
 
-	-- TODO:
-	-- impl
-	-- preimpl
-	-- std (what is this?)
-	-- cancel
-	-- precancel
-	destroy_cat(callchain_impl, module.impl, "impl");
-	destroy_cat(callchain_late, module.late, "late");
-	destroy_cat(callchain_std, module);
-	destroy_cat(callchain_early, module.early, "early");
-	destroy_cat(callchain_xearly, module.xearly, "xearly");
+	destroy_cat(chains[1], module.impl);
+	destroy_cat(chains[2], module.late);
+	destroy_cat(chains[3], module);
+	destroy_cat(chains[4], module.early);
+	destroy_cat(chains[5], module.xearly);
 
 	if (not no_rm) then
 		log("Unloaded %s", module.name or module);
@@ -235,10 +241,16 @@ server.unregister = unregister;
 
 -- TODO: remove dependency on require
 function load(modname)
+	if (package.loaded[modname]) then
+		unload(modname);
+	end
+
 	mod = require(modname);
 	if (type(mod) == "table") then
 		mod.name = modname;
 		register(mod);
+	else
+		package.loaded[modname] = nil;
 	end
 end
 
@@ -249,7 +261,13 @@ end
 
 -- Just sets boilerplate
 function init_mod()
-	return {impl={next={}}, late={before={}, after={}, next={}}, early={before={}, after={}, next={}}, xearly={before={}, after={}, next={}}, before={}, after={}, next={}};
+	return {
+		impl   = {before={}, after={}, next={}},
+		late   = {before={}, after={}, next={}},
+		          before={}, after={}, next={} ,
+		early  = {before={}, after={}, next={}},
+		xearly = {before={}, after={}, next={}}
+	};
 end
 
 -- Unregister everything on_shutdown -- most importantly this calls on_unload
@@ -261,15 +279,24 @@ function on_shutdown()
 			log("Error while unloading module at exit: %s", err);
 		end
 	end
+
 	nextshutdown();
 end
 server.on_shutdown = on_shutdown;
 
-local mod = {before={},next={}};
+local mod = init_mod();
 function mod.before.load_initial_map()
 	if (batch_loaded ~= 0) then
 		io.stderr:write("\n");
 	end
+
 	batch_loaded = nil;
 end
-add_cat(callchain_std, mod);
+
+server.before = {};
+server.after  = {};
+server.next   = {};
+server.name   = "server";
+
+add_cat(chains[1], server); -- impl
+add_cat(chains[3], mod);    -- "std"

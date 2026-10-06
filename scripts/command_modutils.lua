@@ -46,9 +46,6 @@ register_command(cmd, mod);
 
 local cmd = {name="load", caps="modutils", fakepid=true, usage="module", desc="Dynamically load a module."};
 function cmd.func(pid, argv)
-	if (package.loaded[argv[1]]) then
-		unload(argv[1]);
-	end
 	load(argv[1]);
 end
 register_command(cmd, mod);

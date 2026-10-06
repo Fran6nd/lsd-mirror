@@ -1,7 +1,6 @@
 -- railgun.lua -- Blast holes in things.
 local mod = init_mod();
 local bit = require("bit");
-require "lib_bulk_destroy";
 
 -- Some swizzle functions
 local function sign1(num)
@@ -73,7 +72,6 @@ local function cast(pid, start, off)
 		if ((step.z == -1 and vox.z < 0) or (step.z == 1 and vox.z > 63) or
 		    vox.x < 0 or vox.x > 511 or
 		    vox.y < 0 or vox.y > 511) then
-			bdestroy_finish();
 			return;
 		end
 
@@ -97,12 +95,6 @@ local function cast(pid, start, off)
 	end
 end
 
-local cmd = {name="bore"};
-function cmd.func(pid)
-	cast(get_position(pid), get_orientation(pid));
-end
-register_command(cmd, mod);
-
 -- TODO: better combined before/after?
 function mod.on_mouse_input(pid, bitmask)
 	local oldinp = get_mouse_inputs(pid);
@@ -114,7 +106,8 @@ function mod.on_mouse_input(pid, bitmask)
 
 	local pos = get_position(pid);
 	send_grenade(PID_BROADCAST, pos, {x=0,y=0,z=0}, 0, pid);
-	cast(pid, pos, get_orientation(pid));
+
+	bdestroy_session(cast, pid, pos, get_orientation(pid))
 end
 
 return mod;

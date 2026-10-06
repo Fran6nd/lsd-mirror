@@ -1,5 +1,4 @@
 -- apoc.lua -- Use /apoc to remove eardrums
-require "lib_bulk_destroy";
 local mod = init_mod();
 local white = {r=255, g=255, b=255};
 local white2 = {r=232, g=232, b=255};
@@ -243,10 +242,12 @@ function build_strike(pos, forkchance)
 end
 
 function destroy_strike()
-	for _,x in ipairs(strikeblocks) do
-		bdestroy_block_action(x, 3);
-	end
-	bdestroy_finish();
+	bdestroy_session(function()
+		for _,x in ipairs(strikeblocks) do
+			bdestroy_block_action(x, 3);
+		end
+	end)
+
 	strikeblocks = {};
 end
 

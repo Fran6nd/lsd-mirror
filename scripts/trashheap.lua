@@ -1,6 +1,5 @@
 -- trashheap.lua -- trash not a burner likes to /exec
 local mod = init_mod();
-require "lib_bulk_destroy";
 
 function sc(x)server_msg(PID_BROADCAST,tostring(x))end
 function scl(x)for y in string.gmatch(x,"[^\n]+")do sc(y)end;end
@@ -114,13 +113,15 @@ function nuketest2()
 end
 
 function nuketest3()
-	local start = get_time();
-	for y=1,511+2,3 do
-		for x=1,511+2,3 do
-			bdestroy_block_action({x=x, y=y, z=32}, 3);
+	bdestroy_session(function()
+		local start = get_time();
+		for y=1,511+2,3 do
+			for x=1,511+2,3 do
+				bdestroy_block_action({x=x, y=y, z=32}, 3);
+			end
 		end
-	end
-	bdestroy_finish();
+	end)
+
 	sc("delta: "..tostring(get_time()-start));
 	log("delta: %.5f", get_time()-start);
 end

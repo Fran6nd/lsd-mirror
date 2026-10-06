@@ -4,5 +4,6 @@
 load "commands"
 load "pid_tables"
 load "caps"
+load "lib_bulk_destroy"
 load "lib_l10n"
 load "lib_sock"

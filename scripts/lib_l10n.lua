@@ -5,14 +5,18 @@ getcfg("l10n_default_lang", "en");
 getcfg("l10n_log_lang", "en");
 
 function mod.impl.l10n_get_lang(pid)
+	return l10n_default_lang;
+end
+
+function mod.l10n_get_lang(pid)
 	if (is_fakepid(pid)) then
-		return l10n_default_lang;
+		return mod.next.l10n_get_lang(pid);
 	end
 
 	local extlang = get_client_ext_language(pid);
 
 	if (#extlang == 0) then
-		return l10n_default_lang;
+		return mod.next.l10n_get_lang(pid);
 	end
 
 	if (#extlang == 5) then

@@ -1,5 +1,5 @@
 -- lib_pyscrape.lua -- Attempt to scrape meaningful information from pyspades sidecar scripts without a real python interpreter
-local mod = {};
+local mod = {mod=init_mod()};
 
 -- TODO: should i use .* as the string instead of [^"']* and just search until the end?
 -- TODO: handle escapes, specifically \'
@@ -63,9 +63,7 @@ function mod.scrape_spawn_locations(str, name)
 	return locs;
 end
 
--- TODO: migrate to real module
-function pyscrape_ext(mod, str, meta)end
-server.pyscrape_ext = pyscrape_ext;
+function mod.mod.impl.pyscrape_ext(mod, str, meta) end
 
 -- You may find this fun:
 -- cut -c 1- aosParty/*.txt | grep = | cut -d = -f 1 | sed '/^[ \t#]/d' | tr -d ' ' | sort | uniq

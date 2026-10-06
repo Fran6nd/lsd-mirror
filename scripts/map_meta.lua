@@ -4,6 +4,10 @@ local mod = init_mod();
 local scraper = require "lib_pyscrape";
 local meta = {};
 
+for k, v in pairs(scraper.mod) do
+	mod[k] = v;
+end
+
 local next_up_msg_noauthor = {
 	en="Next up: %(name)"
 };

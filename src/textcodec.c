@@ -247,11 +247,12 @@ static void on_chat(plid pid, const char *msg, unsigned type, struct State *st) 
 			ERR("malloc");
 
 		for (i=0;i<len+1;i++)
-			utf8[i] = imgtbl[(uint8_t)utf8[i]];
+			utf8[i] = imgtbl[(uint8_t)msg[i]];
 
 		next_on_chat(pid, utf8, type, st);
 
 		free(utf8);
+		return;
 	}
 
 	len = strlen(msg);

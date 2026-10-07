@@ -23,7 +23,7 @@ STRIP=$(STRIP_LLVM$(LLVM))
 
 AWK=awk
 
-PKGCONF_MODULES=luajit libenet libisal "$$(test "x$$(uname -s)" = "xLinux" && printf '%s\n' 'libseccomp')"
+PKGCONF_MODULES=luajit libenet libisal
 LIBS=`pkg-config --libs $(PKGCONF_MODULES)` -lm
 CPPFLAGS=`pkg-config --cflags $(PKGCONF_MODULES)` $(OPTS)
 
@@ -80,7 +80,9 @@ src/main.o: src/main.c src/demoncore.h src/protocol.h src/state.h \
 	src/libpvx2/src/map.h src/libpvx2/src/map.c src/sandbox.h \
 	src/libpvx2/src/cull.c src/libpvx2/src/read.c src/libpvx2/src/read.h
 src/masterlist.o: src/masterlist.c src/masterlist.h
-src/sandbox.o: src/sandbox.c
+src/sandbox.o: src/sandbox.c src/sandbox/linux.c src/sandbox/linux_landlock.c \
+	src/sandbox/linux_no_new_privs.c src/sandbox/linux_seccomp.c \
+	src/sandbox/linux_unshare.c src/sandbox/openbsd.c
 src/textcodec.o: src/textcodec.c src/state.h src/protocol.h \
 	src/masterlist.h src/libpvx2/src/cull.h src/libpvx2/src/map.h \
 	src/libpvx2/src/map.c src/textcodec_utf8.h src/textcodec_cp437.h
@@ -94,10 +96,6 @@ src/textcodec.o: src/textcodec.c src/state.h src/protocol.h \
 # don't bother loading anything in the exec dir, though.
 serverstatic: $(OBJECTS)
 	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
-	$(STRIPBIN) serverstatic
-
-serverstatic-crust: $(OBJECTS)
-	$(CC_USED) $(CFLAGS) $(CPPFLAGS) -DNO_DEFAULT_SANDBOX -DWITH_LIBSECCOMP -o serverstatic $(OBJECTS) $(LDFLAGSSTATIC)
 	$(STRIPBIN) serverstatic
 
 exec/libunixsock.so: src/exec/sha1.c src/exec/websockets.c src/exec/b64.c src/exec/unixsock.c
@@ -130,7 +128,7 @@ src/commit.h: .git
 	printf '#ifndef GIT_COMMIT\n#define GIT_COMMIT "%s"\n#endif\n' "$$(git rev-parse --short=10 HEAD)" > src/commit.h
 
 clean:
-	rm -f server serverstatic serverstatic-crust exec/libunixsock.so src/*.o dist.tar.gz
+	rm -f server serverstatic exec/libunixsock.so src/*.o dist.tar.gz
 
 dirty:
 

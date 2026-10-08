@@ -17,6 +17,8 @@ static int send_packet_flags(plid pid, const void *data, size_t length, unsigned
 	ENetPacket *packet;
 	plid i;
 
+	int sent = 0;
+
 	if ((uint32_t)pid < MAX_PLAYERS && st->p[pid].peer == NULL)
 		return 0;
 
@@ -33,9 +35,14 @@ static int send_packet_flags(plid pid, const void *data, size_t length, unsigned
 		return enet_peer_send(st->p[pid].peer, 0, packet) == 0 ? 0 : -1;
 
 	for (i=0;i<MAX_PLAYERS;i++) {
-		if (pid_matches(pid, i, st) && st->p[i].peer != NULL)
+		if (pid_matches(pid, i, st) && st->p[i].peer != NULL) {
+			sent = 1;
 			enet_peer_send(st->p[i].peer, 0, packet);
+		}
 	}
+
+	if (!sent)
+		enet_packet_destroy(packet);
 
 	return 0;
 }

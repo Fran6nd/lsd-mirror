@@ -8,8 +8,6 @@ void sandbox(void) {
 	unveil("./", "r");
 	unveil("./exec/", "rx");
 	unveil("./rw/", "rwc");
-	unveil("/usr/lib/", "rx");
-	unveil("/usr/local/lib/", "rx");
 	unveil(NULL, NULL);
 
 	if (pledge(

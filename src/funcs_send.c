@@ -15,21 +15,26 @@ clk to_s(clk ts);
 int pid_matches(plid broadcast, plid pid, struct State *st);
 static int send_packet_flags(plid pid, const void *data, size_t length, unsigned flags, struct State *st) {
 	ENetPacket *packet;
+	plid i;
+
+	if ((uint32_t)pid < MAX_PLAYERS && st->p[pid].peer == NULL)
+		return 0;
 
 	packet = enet_packet_create(data, length, flags);
 	if (packet == NULL)
 		return -1;
 
-	if (pid == PID_BROADCAST)
+	if (pid == PID_BROADCAST) {
 		enet_host_broadcast(st->host, 0, packet);
-	else if ((uint32_t)pid < MAX_PLAYERS)
-		return st->p[pid].peer == NULL ? 0 : (enet_peer_send(st->p[pid].peer, 0, packet) == 0 ? 0 : -1);
-	else {
-		plid i;
-		for (i=0;i<MAX_PLAYERS;i++) {
-			if (pid_matches(pid, i, st) && st->p[i].peer != NULL)
-				enet_peer_send(st->p[i].peer, 0, packet);
-		}
+		return 0;
+	}
+
+	if ((uint32_t)pid < MAX_PLAYERS)
+		return enet_peer_send(st->p[pid].peer, 0, packet) == 0 ? 0 : -1;
+
+	for (i=0;i<MAX_PLAYERS;i++) {
+		if (pid_matches(pid, i, st) && st->p[i].peer != NULL)
+			enet_peer_send(st->p[i].peer, 0, packet);
 	}
 
 	return 0;

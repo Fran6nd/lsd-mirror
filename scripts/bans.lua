@@ -220,15 +220,51 @@ DROP TABLE ArchivedBans;
 
 	data_ver = ldb.prepare_1ret(db, "data_ver", "PRAGMA data_version;");
 
-	sel = ldb.prepare_xret(db, "sel", "SELECT id, caps, expires FROM "..tbl.." WHERE ? BETWEEN startaddr AND endaddr AND expires > unixepoch() AND revoked = 0;");
+	sel = ldb.prepare_xret(db, "sel",
+		"SELECT id, caps, expires FROM "..tbl.." WHERE "..
+		"? BETWEEN startaddr AND endaddr AND "..
+		"expires > unixepoch() AND "..
+		"revoked = 0;"
+	);
 
-	ban = ldb.prepare_0ret(db, "ban", "INSERT INTO "..tbl.."(id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps) VALUES(NULL, ?, ?, unixepoch() + ?, 0, unixepoch(), ?, ?, ?, ?, ?);");
-	revoke = ldb.prepare_0ret(db, "revoke", "UPDATE "..tbl.." SET revoked = 1 WHERE id = ?;");
-	unrevoke = ldb.prepare_0ret(db, "unrevoke", "UPDATE "..tbl.." SET revoked = 0 WHERE id = ?;");
+	ban = ldb.prepare_0ret(db, "ban",
+		"INSERT INTO "..tbl.."(id, startaddr, endaddr, expires, "..
+		"revoked, bantime, playername, comment, "..
+		"server, bannedby, caps) VALUES("..
+			"NULL, ?, ?, unixepoch() + ?, "..
+			"0, unixepoch(), ?, ?, "..
+			"?, ?, ?"..
+		");"
+	);
 
-	queryaddr = ldb.prepare_xret(db, "queryaddr", "SELECT id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps FROM "..tbl.." WHERE ? BETWEEN startaddr AND endaddr OR ? BETWEEN startaddr AND endaddr OR startaddr BETWEEN ? and ? OR endaddr BETWEEN ? and ?;");
-	queryname = ldb.prepare_xret(db, "queryname", "SELECT id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps FROM "..tbl.." WHERE playername = ?;");
-	querycomment = ldb.prepare_xret(db, "queryname", "SELECT id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps FROM "..tbl.." WHERE comment = ?;");
+	revoke = ldb.prepare_0ret(db, "revoke",
+		"UPDATE "..tbl.." SET revoked = 1 WHERE id = ?;"
+	);
+	unrevoke = ldb.prepare_0ret(db, "unrevoke",
+		"UPDATE "..tbl.." SET revoked = 0 WHERE id = ?;"
+	);
+
+	queryaddr = ldb.prepare_xret(db, "queryaddr",
+		"SELECT id, startaddr, endaddr, expires, "..
+		"revoked, bantime, playername, comment, "..
+		"server, bannedby, caps FROM "..tbl.." WHERE "..
+		"? BETWEEN startaddr AND endaddr OR "..
+		"? BETWEEN startaddr AND endaddr OR "..
+		"startaddr BETWEEN ? AND ? OR "..
+		"endaddr BETWEEN ? AND ?;"
+	);
+	queryname = ldb.prepare_xret(db, "queryname",
+		"SELECT id, startaddr, endaddr, expires, "..
+		"revoked, bantime, playername, comment, "..
+		"server, bannedby, caps FROM "..tbl.." WHERE "..
+		"LOWER(playername) GLOB LOWER(?);"
+	);
+	querycomment = ldb.prepare_xret(db, "queryname",
+		"SELECT id, startaddr, endaddr, expires, "..
+		"revoked, bantime, playername, comment, "..
+		"server, bannedby, caps FROM "..tbl.." WHERE "..
+		"LOWER(comment) GLOB LOWER(?);"
+	);
 
 	for i in piditer(PID_BROADCAST) do
 		check_bans(i);
@@ -465,7 +501,6 @@ local function fmt_addr(startaddr, endaddr)
 	return str.."/"..masklen;
 end
 
--- TODO: print addr range?
 local function print_query(pid, now, id, startaddr, endaddr, expires, revoked, bantime, playername, comment, server, bannedby, caps)
 	l10n_send_chat(
 		pid,

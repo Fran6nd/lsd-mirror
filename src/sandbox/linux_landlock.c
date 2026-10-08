@@ -134,8 +134,10 @@ static void sandbox_landlock(void)
 	ll_fs(fd, "./exec/", ACCESS_EXEC);
 	ll_fs(fd, "./rw/",   ACCESS_WRITE);
 
-	ll_fs(fd, "/tmp/",   ACCESS_READ | ACCESS_WRITE);
-	ll_fs(fd, "/etc/",   LANDLOCK_ACCESS_FS_READ_FILE);
+	ll_fs(fd, "/tmp/", ACCESS_READ | ACCESS_WRITE);
+
+	ll_fs(fd, "/etc/resolv.conf", LANDLOCK_ACCESS_FS_READ_FILE);
+	ll_fs(fd, "/etc/hosts",       LANDLOCK_ACCESS_FS_READ_FILE);
 
 	ll_apply(fd);
 }

@@ -519,7 +519,8 @@ local function print_query(pid, now, id, startaddr, endaddr, expires, revoked, b
 	);
 end
 
-local cmd = {name="querybanaddr", caps="bans", fakepid=true, usage="range", desc="Query all unexpired, unrevoked bans matching a given IPv4 address or CIDR range."};
+local cmd = {name="querybanaddr", caps="bans", fakepid=true, usage="range",
+	desc="Query all unexpired, unrevoked bans matching a given IPv4 address or CIDR range."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 	local starta, enda = get_arg_cidr("range", pid, cmd, argv[1]);
@@ -533,7 +534,8 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
-local cmd = {name="querybanname", caps="bans", fakepid=true, usage="name", desc="Query all unexpired, unrevoked bans matching a given player name (case-insensitive)."};
+local cmd = {name="querybanname", caps="bans", fakepid=true, usage="name",
+	desc="Query all unexpired, unrevoked bans matching a given player name (case-insensitive glob)."};
 function cmd.func(pid, argv, msg)
 	cmd_assert(pid, cmd, #argv == 1);
 	local name = argv[1];
@@ -547,7 +549,8 @@ function cmd.func(pid, argv, msg)
 end
 register_command(cmd, mod);
 
-local cmd = {name="querybancomment", caps="bans", fakepid=true, usage="comment", desc="Query all unexpired, unrevoked bans matching a given comment (case-insensitive)."};
+local cmd = {name="querybancomment", caps="bans", fakepid=true, usage="comment",
+	desc="Query all unexpired, unrevoked bans matching a given comment (case-insensitive glob)."};
 function cmd.func(pid, argv, msg)
 	cmd_assert(pid, cmd, #argv == 1);
 	local comment = argv[1];
@@ -561,7 +564,8 @@ function cmd.func(pid, argv, msg)
 end
 register_command(cmd, mod);
 
-local cmd = {name="queryallbanaddr", caps="bans", fakepid=true, usage="range", desc="Query all bans matching a given IPv4 address or CIDR range."};
+local cmd = {name="queryallbanaddr", caps="bans", fakepid=true, usage="range",
+	desc="Query all bans matching a given IPv4 address or CIDR range."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 	local starta, enda = get_arg_cidr("range", pid, cmd, argv[1]);
@@ -573,7 +577,8 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
-local cmd = {name="queryallbanname", caps="bans", fakepid=true, usage="name", desc="Query all bans matching a given player name (case-insensitive)."};
+local cmd = {name="queryallbanname", caps="bans", fakepid=true, usage="name",
+	desc="Query all bans matching a given player name (case-insensitive glob)."};
 function cmd.func(pid, argv, msg)
 	cmd_assert(pid, cmd, #argv == 1);
 	local name = argv[1];
@@ -585,7 +590,8 @@ function cmd.func(pid, argv, msg)
 end
 register_command(cmd, mod);
 
-local cmd = {name="queryallbancomment", caps="bans", fakepid=true, usage="comment", desc="Query all bans matching a given comment (case-insensitive)."};
+local cmd = {name="queryallbancomment", caps="bans", fakepid=true, usage="comment",
+	desc="Query all bans matching a given comment (case-insensitive glob)."};
 function cmd.func(pid, argv, msg)
 	cmd_assert(pid, cmd, #argv == 1);
 	local comment = argv[1];

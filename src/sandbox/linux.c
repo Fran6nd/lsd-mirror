@@ -18,19 +18,19 @@
 
 void sandbox(void)
 {
-#ifndef WITH_NO_NEW_PRIVS
+#ifndef WITHOUT_NO_NEW_PRIVS
 	sandbox_no_new_privs();
 #endif
 
-#ifndef WITH_UNSHARE
+#ifndef WITHOUT_UNSHARE
 	sandbox_unshare();
 #endif
 
-#ifndef WITH_LANDLOCK
+#ifndef WITHOUT_LANDLOCK
 	sandbox_landlock();
 #endif
 
-#ifndef WITH_SECCOMP
+#ifndef WITHOUT_SECCOMP
 	sandbox_seccomp();
 #endif
 }

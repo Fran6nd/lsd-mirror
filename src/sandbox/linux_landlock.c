@@ -116,28 +116,30 @@ static void sandbox_landlock(void)
 		LANDLOCK_SCOPE_ABSTRACT_UNIX_SOCKET |
 		LANDLOCK_SCOPE_SIGNAL;
 
+	__u64 fs_mask = -1;
+
 	switch (ll_version()) {
 	case 1:
-		fs &= ~LANDLOCK_ACCESS_FS_REFER;
+		fs_mask &= ~LANDLOCK_ACCESS_FS_REFER;
 	case 2:
-		fs &= ~LANDLOCK_ACCESS_FS_TRUNCATE;
+		fs_mask &= ~LANDLOCK_ACCESS_FS_TRUNCATE;
 	case 3:
 	case 4:
-		fs &= ~LANDLOCK_ACCESS_FS_IOCTL_DEV;
+		fs_mask &= ~LANDLOCK_ACCESS_FS_IOCTL_DEV;
 	case 5:
 		scoped = 0;
 	};
 
-	int fd = ll_begin(fs, 0, scoped);
+	int fd = ll_begin(fs & fs_mask, 0, scoped);
 
-	ll_fs(fd, "./",      ACCESS_READ);
-	ll_fs(fd, "./exec/", ACCESS_EXEC);
-	ll_fs(fd, "./rw/",   ACCESS_WRITE);
+	ll_fs(fd, "./",      ACCESS_READ  & fs_mask);
+	ll_fs(fd, "./exec/", ACCESS_EXEC  & fs_mask);
+	ll_fs(fd, "./rw/",   ACCESS_WRITE & fs_mask);
 
-	ll_fs(fd, "/tmp/", ACCESS_READ | ACCESS_WRITE);
+	ll_fs(fd, "/tmp/", (ACCESS_READ | ACCESS_WRITE) & fs_mask);
 
-	ll_fs(fd, "/etc/resolv.conf", LANDLOCK_ACCESS_FS_READ_FILE);
-	ll_fs(fd, "/etc/hosts",       LANDLOCK_ACCESS_FS_READ_FILE);
+	ll_fs(fd, "/etc/resolv.conf", LANDLOCK_ACCESS_FS_READ_FILE & fs_mask);
+	ll_fs(fd, "/etc/hosts",       LANDLOCK_ACCESS_FS_READ_FILE & fs_mask);
 
 	ll_apply(fd);
 }

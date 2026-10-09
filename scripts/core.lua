@@ -245,7 +245,7 @@ function load(modname)
 		unload(modname);
 	end
 
-	mod = require(modname);
+	local mod = require(modname);
 	if (type(mod) == "table") then
 		mod.name = modname;
 		register(mod);

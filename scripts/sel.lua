@@ -372,17 +372,17 @@ function cmd.func(pid, argv)
 	end
 
 	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
-		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
-			for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
-				local pos = {x=x, y=y, z=z};
-				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
-					if (sel_noise[pid] ~= 0) then
-						set_noised_color(pid, get_block_color(pid));
-					end
-					block_action(pos, 0, get_anon_pid());
-				end
+	for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
+	for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
+		local pos = {x=x, y=y, z=z};
+		if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
+			if (sel_noise[pid] ~= 0) then
+				set_noised_color(pid, get_block_color(pid));
 			end
+			block_action(pos, 0, get_anon_pid());
 		end
+	end
+	end
 	end
 end
 register_command(cmd, mod);
@@ -398,19 +398,19 @@ function cmd.func(pid, argv)
 	end
 
 	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
-		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
-			for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
-				local pos = {x=x, y=y, z=z};
-				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
-					if (sel_noise[pid] ~= 0) then
-						set_noised_color(pid, get_block_color(pid));
-					end
-					block_action(pos, 0, get_anon_pid());
-				else
-					block_action(pos, 1, get_anon_pid());
-				end
+	for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
+	for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
+		local pos = {x=x, y=y, z=z};
+		if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
+			if (sel_noise[pid] ~= 0) then
+				set_noised_color(pid, get_block_color(pid));
 			end
+			block_action(pos, 0, get_anon_pid());
+		else
+			block_action(pos, 1, get_anon_pid());
 		end
+	end
+	end
 	end
 end
 register_command(cmd, mod);
@@ -472,26 +472,26 @@ function cmd.func(pid, argv)
 	end
 	if (sel_shape[pid] == "cube" and sel_noise[pid] == 0) then
 		for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
-			for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
-				linex({x=x1, y=y, z=z}, {x=x2, y=y, z=z});
-			end
+		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
+			linex({x=x1, y=y, z=z}, {x=x2, y=y, z=z});
+		end
 		end
 	elseif (sel_shape[pid] == "box" and sel_noise[pid] == 0) then
 		iter_box(pid);
 	else
 		-- TODO: iter_sphere
 		for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
-			for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
-				for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
-					local pos = {x=x, y=y, z=z};
-					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid) and not is_solid(pos)) then
-						if (sel_noise[pid] ~= 0) then
-							set_noised_color(pid, get_block_color(pid));
-						end
-						block_action(pos, 0, get_anon_pid());
-					end
+		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
+		for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
+			local pos = {x=x, y=y, z=z};
+			if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid) and not is_solid(pos)) then
+				if (sel_noise[pid] ~= 0) then
+					set_noised_color(pid, get_block_color(pid));
 				end
+				block_action(pos, 0, get_anon_pid());
 			end
+		end
+		end
 		end
 	end
 end
@@ -573,18 +573,19 @@ function cmd.func(pid, argv)
 	if (sel_noise[pid] == 0) then
 		set_block_color(get_anon_pid(), get_block_color(pid));
 	end
+
 	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
-		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
-			for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
-				local pos = {x=x, y=y, z=z};
-				if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid) and is_solid(pos)) then
-					if (sel_noise[pid] ~= 0) then
-						set_noised_color(pid, get_block_color(pid));
-					end
-					block_action(pos, 0, get_anon_pid());
-				end
+	for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
+	for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
+		local pos = {x=x, y=y, z=z};
+		if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid) and is_solid(pos)) then
+			if (sel_noise[pid] ~= 0) then
+				set_noised_color(pid, get_block_color(pid));
 			end
+			block_action(pos, 0, get_anon_pid());
 		end
+	end
+	end
 	end
 end
 register_command(cmd, mod);
@@ -672,37 +673,37 @@ local function do_selcpy(cmd, pid, argv, is_solid, get_map_block_color, forceoff
 		end
 
 		for z=z1,z2 do
-			for y=y1,y2 do
-				for x=x1,x2 do
-					local pos = {x=x, y=y, z=z};
-					local newpos = {x=x+off.x, y=y+off.y, z=z+off.z};
+		for y=y1,y2 do
+		for x=x1,x2 do
+			local pos = {x=x, y=y, z=z};
+			local newpos = {x=x+off.x, y=y+off.y, z=z+off.z};
 
-					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
-						if (not is_solid(pos)) then
-							-- TODO: make destroy optional
-							-- TODO: make sure this doesn't allow gravity to be "helpful"
-							-- TODO: bring gravitied blocks back from the dead if you have to
-							block_action(newpos, 1, get_anon_pid());
-						end
-					end
+			if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
+				if (not is_solid(pos)) then
+					-- TODO: make destroy optional
+					-- TODO: make sure this doesn't allow gravity to be "helpful"
+					-- TODO: bring gravitied blocks back from the dead if you have to
+					block_action(newpos, 1, get_anon_pid());
 				end
 			end
 		end
+		end
+		end
 
 		for z=z1,z2 do
-			for y=y1,y2 do
-				for x=x1,x2 do
-					local pos = {x=x, y=y, z=z};
-					local newpos = {x=x+off.x, y=y+off.y, z=z+off.z};
+		for y=y1,y2 do
+		for x=x1,x2 do
+			local pos = {x=x, y=y, z=z};
+			local newpos = {x=x+off.x, y=y+off.y, z=z+off.z};
 
-					if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
-						if (is_solid(pos)) then
-							set_noised_color(pid, get_map_block_color(pos));
-							block_action(newpos, 0, get_anon_pid());
-						end
-					end
+			if (in_shape(pos, sel_start[pid], sel_end[pid], sel_shape[pid], pid)) then
+				if (is_solid(pos)) then
+					set_noised_color(pid, get_map_block_color(pos));
+					block_action(newpos, 0, get_anon_pid());
 				end
 			end
+		end
+		end
 		end
 	end
 
@@ -738,15 +739,15 @@ local function do_selmv(pid, cmd, off)
 
 	local area = {};
 	for z=sel_start[pid].z, sel_end[pid].z, sel_start[pid].z > sel_end[pid].z and -1 or 1 do
-		for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
-			for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
-				local pos = {x=x, y=y, z=z};
-				if (is_solid(pos)) then
-					local clr = get_map_block_color(pos);
-					area[z+x*64+y*512*64] = bit.bor(clr.r, bit.bor(bit.lshift(clr.g, 8), bit.lshift(clr.b, 16)));
-				end
-			end
+	for y=sel_start[pid].y, sel_end[pid].y, sel_start[pid].y > sel_end[pid].y and -1 or 1 do
+	for x=sel_start[pid].x, sel_end[pid].x, sel_start[pid].x > sel_end[pid].x and -1 or 1 do
+		local pos = {x=x, y=y, z=z};
+		if (is_solid(pos)) then
+			local clr = get_map_block_color(pos);
+			area[z+x*64+y*512*64] = bit.bor(clr.r, bit.bor(bit.lshift(clr.g, 8), bit.lshift(clr.b, 16)));
 		end
+	end
+	end
 	end
 
 	do_rm(pid);
@@ -770,22 +771,22 @@ local function do_selmv(pid, cmd, off)
 	local y1, y2 = order(sel_start[pid].y, sel_end[pid].y);
 	local z1, z2 = order(sel_start[pid].z, sel_end[pid].z);
 
+	-- TODO: conform to selshape?
 	for i in piditer(PID_BROADCAST) do
-		-- TODO: conform to selshape?
-		if (is_alive(i) and not is_airborne(i)) then
-			local pos = get_position(i);
-			if (
-				pos.x >= x1 - 0.45 and
-				pos.x < x2 + 1.45 and
-				pos.y >= y1 - 0.45 and
-				pos.y < y2 + 1.45 and
+	if (is_alive(i) and not is_airborne(i)) then
+		local pos = get_position(i);
+		if (
+			pos.x >= x1 - 0.45 and
+			pos.x < x2 + 1.45 and
+			pos.y >= y1 - 0.45 and
+			pos.y < y2 + 1.45 and
 
-				pos.z >= z1 - 2.3 and
-				pos.z < z2 - 0.3
-			) then
-				set_position(i, {x=pos.x+off.x, y=pos.y+off.y, z=pos.z+off.z});
-			end
+			pos.z >= z1 - 2.3 and
+			pos.z < z2 - 0.3
+		) then
+			set_position(i, {x=pos.x+off.x, y=pos.y+off.y, z=pos.z+off.z});
 		end
+	end
 	end
 
 	-- TODO: wouldn't it be "easier" to set off to 0 and just
@@ -880,17 +881,17 @@ local function do_selswiz(pid, cmd, swiz, swizflip)
 
 	local area = {};
 	for z=z1, z2 do
-		for y=y1, y2 do
-			for x=x1, x2 do
-				local pos = {x=x, y=y, z=z};
-				if (is_solid(pos)) then
-					local clr = get_map_block_color(pos);
-					local swizpos = swiz_pos(pos, starts, start, swiz, swizsiz, swizflip);
+	for y=y1, y2 do
+	for x=x1, x2 do
+		local pos = {x=x, y=y, z=z};
+		if (is_solid(pos)) then
+			local clr = get_map_block_color(pos);
+			local swizpos = swiz_pos(pos, starts, start, swiz, swizsiz, swizflip);
 
-					area[swizpos.z+swizpos.x*64+swizpos.y*512*64] = bit.bor(clr.r, bit.bor(bit.lshift(clr.g, 8), bit.lshift(clr.b, 16)));
-				end
-			end
+			area[swizpos.z+swizpos.x*64+swizpos.y*512*64] = bit.bor(clr.r, bit.bor(bit.lshift(clr.g, 8), bit.lshift(clr.b, 16)));
 		end
+	end
+	end
 	end
 
 	do_rm(pid);
@@ -913,23 +914,23 @@ local function do_selswiz(pid, cmd, swiz, swizflip)
 	do_selcpy(cmd, pid, {1}, mv_is_solid, mv_get_map_block_color, {x=0, y=0, z=0});
 
 	-- Move players standing on selection (TODOTODO)
+	-- TODO: conform to selshape?
 	for i in piditer(PID_BROADCAST) do
-		-- TODO: conform to selshape?
-		if (is_alive(i) and not is_airborne(i)) then
-			local pos = get_position(i);
-			if (
-				pos.x >= x1 - 0.45 and
-				pos.x < x2 + 1.45 and
-				pos.y >= y1 - 0.45 and
-				pos.y < y2 + 1.45 and
+	if (is_alive(i) and not is_airborne(i)) then
+		local pos = get_position(i);
+		if (
+			pos.x >= x1 - 0.45 and
+			pos.x < x2 + 1.45 and
+			pos.y >= y1 - 0.45 and
+			pos.y < y2 + 1.45 and
 
-				pos.z >= z1 - 2.3 and
-				pos.z < z2 - 0.3
-			) then
-				set_position(i, swiz_pos(pos, starts, start, swiz, {x=swizsiz.x+1, y=swizsiz.y+1, z=swizsiz.z+1}, swizflip));
-				set_orientation(i, swiz_vec(get_orientation(i), swiz, swizflip));
-			end
+			pos.z >= z1 - 2.3 and
+			pos.z < z2 - 0.3
+		) then
+			set_position(i, swiz_pos(pos, starts, start, swiz, {x=swizsiz.x+1, y=swizsiz.y+1, z=swizsiz.z+1}, swizflip));
+			set_orientation(i, swiz_vec(get_orientation(i), swiz, swizflip));
 		end
+	end
 	end
 end
 

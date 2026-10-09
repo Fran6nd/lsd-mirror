@@ -867,13 +867,13 @@ local function do_selswiz(pid, cmd, swiz, swizflip)
 		z=z2-selsiz.z/2
 	};
 
-	start = {
+	local start = {
 		x=math.floor(selctr.x-swizsiz.x/2),
 		y=math.floor(selctr.y-swizsiz.y/2),
 		z=math.floor(selctr.z-swizsiz.z/2)
 	};
 
-	endp = {
+	local endp = {
 		x=start.x+swizsiz.x,
 		y=start.y+swizsiz.y,
 		z=start.z+swizsiz.z

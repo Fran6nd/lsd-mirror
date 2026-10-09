@@ -58,7 +58,7 @@ local function noclip_phys(pid, delta)
 	right = {x=right.x*rightlen, y=right.y*rightlen, z=right.z*rightlen};
 	down = {x=down.x*downlen, y=down.y*downlen, z=down.z*downlen};
 
-	new = {x=pos.x + ori.x + right.x + down.x, y=pos.y + ori.y + right.y + down.y, z=pos.z + ori.z + right.z + down.z};
+	local new = {x=pos.x + ori.x + right.x + down.x, y=pos.y + ori.y + right.y + down.y, z=pos.z + ori.z + right.z + down.z};
 
 	-- Loop through map borders. TODO: optional?
 	-- is there even a need with the crap packet destroyer (not going to look for haxors in the border)?

@@ -21,8 +21,10 @@ static int send_packet(const void *data, size_t len, ENetPeer *peer) {
 	if (packet == NULL)
 		return -1;
 
-	if (enet_peer_send(peer, 0, packet) < 0)
+	if (enet_peer_send(peer, 0, packet) < 0) {
+		enet_packet_destroy(packet);
 		return -1;
+	}
 
 	return 0;
 }

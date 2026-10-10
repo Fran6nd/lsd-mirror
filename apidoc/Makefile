@@ -39,9 +39,6 @@ apicov: index
 	wc -l apicovtmp_impl
 	rm -f apicovtmp_impl apicovtmp_c apicovtmp_lua
 
-blame:
-	{ cd "$(DIR)"; printf '%s\t%s\t%s\n' "$$(git remote get-url origin)" "$(COMMIT)" "$(NAME)"; git show "$(COMMIT)"; } | sed -f blame.sed
-
 dirty:
-.PHONY: apicov blame clean dirty
-.SILENT: apicov blame
+.PHONY: apicov clean dirty
+.SILENT: apicov

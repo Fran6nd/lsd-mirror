@@ -31,12 +31,12 @@ clean:
 	rm -fR index out
 
 apicov: index
-	sed '/^s:<a href=#/!d;s/^s:<a href=#//;s/>.*//' index | sort > apicovtmp_impl
-	sed '/^#define LUA_CALLS /!d;s/[^{]*{/{/;s/{"\([^"]*\)",[^,]*,/\1\n/g;s/\n$$//' ../src/luaawk.h | sort > apicovtmp_c
-	sed '/^\t{"/!{/lua_setglobal(l, "/!d};s/[^"]*"//;s/".*//' ../src/lua.c | sort > apicovtmp_lua
-	printf '%s\n' 'C:'; comm -13 apicovtmp_impl apicovtmp_c | sed 's/^/\t/'
-	printf '%s\n' 'Lua:'; comm -13 apicovtmp_impl apicovtmp_lua | sed 's/^/\t/'
-	wc -l apicovtmp_impl
+	sed '/^# /!d;s|^# ||;s|[~(].*||' index | sort > apicovtmp_impl
+	sed '/^#define LUA_CALLS /h;x;/./!{x;d;};x;/"/!d;s|.*"\(.*\)".*|\1|' ../src/luaawk.h | sort > apicovtmp_c
+	sed '/lua_setglobal/!{/SETMACRO/!{/^[^ -~]{".*", .*},$$/!d;};};/"server");/d;/#define/d; s|.*"\(.*\)".*|\1|;s|.*(\(.*\)).*|\1|' ../src/lua.c | sort > apicovtmp_lua
+	printf '%s\n' 'C:'; comm -13 apicovtmp_impl apicovtmp_c | sed 's/^/~/' | tr '~' '\t'
+	printf '%s\n' 'Lua:'; comm -13 apicovtmp_impl apicovtmp_lua | sed 's/^/~/' | tr '~' '\t'
+	wc -l apicovtmp_impl | sed 's/^ *//'
 	rm -f apicovtmp_impl apicovtmp_c apicovtmp_lua
 
 dirty:

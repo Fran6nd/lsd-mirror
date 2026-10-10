@@ -27,7 +27,6 @@ Returns a broadcast pid referring to all connected players except for ones curre
 void disconnect(plid pid, integer reason) ->
 Tells the client's ENet peer to disconnect (see <a rel=noreferrer href=http://sauerbraten.org/enet/group__peer.html#ga0e807704b6ecace5004c2cdcfbf813c2><!-- What the fuck is that id? -->enet_peer_disconnect()</a>) and presumably does that eventually. on_disconnect() is called when that happens.
 Valid reasons are screwed up beyond all repair thanks to notafile/piqueserver/BetterSpades.
-<BLAME piqueserver 3b037a042b34738a99bbec43f3db3f193eef6c90>
 
 void disconnect_now(plid pid, integer reason) ->
 Disconnects the client's ENet peer immediately (see <a rel=noreferrer href=http://sauerbraten.org/enet/group__peer.html#ga0e807704b6ecace5004c2cdcfbf813c2>enet_peer_disconnect_now()</a>). on_disconnect() is not called.

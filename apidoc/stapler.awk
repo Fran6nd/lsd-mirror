@@ -3,9 +3,6 @@ BEGIN {
 	autofmt = 1;
 	listjokes = 1;
 
-	if (BLAMEDIR == "")
-		BLAMEDIR = "/tmp/lsd-blame";
-
 	uppertitle = toupper(substr(TITLE, 1, 1)) substr(TITLE, 2);
 	while (match(uppertitle, "_"))
 		uppertitle = substr(uppertitle, 1, RSTART-1) " " toupper(substr(uppertitle, RSTART+1, 1)) substr(uppertitle, RSTART+2);
@@ -45,29 +42,6 @@ BEGIN {
 
 /^<LISTJOKES>$/ {listjokes = 1; next;}
 /^<NOLISTJOKES>$/ {listjokes = 0; next;}
-
-/^<BLAME .*>$/ {
-	gsub(/[\x00-\x1f!-\/:-@[-`{-~]/, "");
-	split($0, blame, " ");
-
-	name = blame[2];
-	dir = BLAMEDIR"/"name;
-	commit = blame[3];
-
-	cmd = "{ cd '"dir"' && printf '%s\t%s\t%s\n' \"$(git remote get-url origin)\" '"commit"' '"name"' && git show '"commit"'; } | sed -f ../blame.sed";
-	# TODO: licensefuckery
-	cmd = "false";
-
-	blamecont = "";
-	while (cmd | getline) {
-		cont = "";
-		printf blamecont"%s", $0;
-		blamecont = "\n";
-	}
-
-	close(cmd);
-	next;
-}
 
 {
 	gsub(/<!--.*-->/, "");

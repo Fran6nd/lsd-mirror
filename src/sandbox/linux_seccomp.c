@@ -1,9 +1,10 @@
 #include <features.h>
-#include <linux/seccomp.h>
-#include <linux/filter.h>
 #include <linux/audit.h>
+#include <linux/filter.h>
+#include <linux/seccomp.h>
 #include <stddef.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 
 /* TODO: fire up QEMU */
 #if   defined(__i386__)

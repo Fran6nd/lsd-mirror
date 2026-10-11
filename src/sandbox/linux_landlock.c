@@ -1,9 +1,11 @@
 #include <errno.h>
+#include <fcntl.h>
 #include <linux/landlock.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 
 #define ERR(func) do {perror(func); exit(EXIT_FAILURE);} while (0)
 

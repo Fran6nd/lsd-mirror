@@ -14,15 +14,15 @@ local banned_msg = {
 };
 
 local query_msg = {
-	en="#%(id): <%(name)>, %(addr), %(date) by %(banner): %(comment) (caps: %(caps))"
+	en="#%(id): <%(name)>, %(addr), %(start_date) -> %(end_date) by %(banner): %(comment) (caps: %(caps))"
 };
 
 local query_msg_expired = {
-	en="#%(id): <%(name)>, %(addr), expired, %(date) by %(banner): %(comment) (caps: %(caps))"
+	en="#%(id): <%(name)>, %(addr), expired, %(start_date) -> %(end_date) by %(banner): %(comment) (caps: %(caps))"
 };
 
 local query_msg_revoked = {
-	en="#%(id): <%(name)>, %(addr), revoked, %(date) by %(banner): %(comment) (caps: %(caps))"
+	en="#%(id): <%(name)>, %(addr), revoked, %(start_date) -> %(end_date) by %(banner): %(comment) (caps: %(caps))"
 };
 
 local ban_id_msg = {
@@ -511,7 +511,8 @@ local function print_query(pid, now, id, startaddr, endaddr, expires, revoked, b
 			id=id,
 			name=playername or "",
 			addr=fmt_addr(startaddr, endaddr),
-			date=os.date("!%Y-%m-%dT%H:%M:%SZ", bantime),
+			start_date=os.date("!%Y-%m-%dT%H:%M:%SZ", bantime),
+			end_date=os.date("!%Y-%m-%dT%H:%M:%SZ", expires),
 			banner=bannedby,
 			comment=comment,
 			caps=caps

@@ -17,10 +17,35 @@ struct Grenade {
 	uint8_t exists;
 };
 
+struct Cast {
+	int remaining;
+	ivec3 vox;
+	ivec3 step;
+	fvec3 side_dist;
+	fvec3 delta;
+};
+
+struct BlockLine {
+	int remaining;
+	ivec3 vox;
+	ivec3 step;
+	ivec3 side_dist;
+	ivec3 delta;
+};
+
+struct Cast cast_start(fvec3 start, fvec3 end);
+int cast_step(struct Cast *cast);
+
+int cast_ray(Map map, fvec3 start, fvec3 end, ivec3 *vox);
+int cast_ray_last(Map map, fvec3 start, fvec3 end, ivec3 *vox);
+
+struct BlockLine block_line_start(ivec3 start, ivec3 end);
+int block_line_step(struct BlockLine *line);
+
+void block_line(Map map, ivec3 start, ivec3 end, color color);
+
 int clip_phys(float ox, float oy, float oz, Map map, int wrap);
-int cast2(Map map, float startX, float startY, float startZ, float endX, float endY, float endZ, float length, int32_t *x, int32_t *y, int32_t *z, int last);
-int cast_ray2(Map map, fvec3p start, fvec3p end);
-void dcore_block_line(int32_t startX, int32_t startY, int32_t startZ, int32_t endX, int32_t endY, int32_t endZ, Map map, const uint8_t *color);
+
 void change_crouch(int crouching, struct Player *p, Map map, int wrap);
 int change_crouch_me(int crouching, struct Player *p, Map map, int wrap);
 int32_t move_player(struct Player *p, float secondsSinceLastUpdate, Map map, int wrap);

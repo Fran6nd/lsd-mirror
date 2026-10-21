@@ -808,128 +808,45 @@ static int input_on_stdin(lua_State *l) {
 }
 
 static int raycast(lua_State *l) {
-	fvec3 start = get_fvec3(l, 1);
-	fvec3 end = get_fvec3(l, 2);
+	fvec3 start  = get_fvec3(l, 1);
+	fvec3 end    = get_fvec3(l, 2);
 	int last = lua_toboolean(l, 3);
 
-	ivec3 hitpos;
-	int32_t x, y, z;
+	ivec3 vox;
 	int hit;
 
-	hit = cast2(st->globals.map, start.x, start.y, start.z, end.x, end.y, end.z, 0, &x, &y, &z, last);
+	if (last)
+		hit = cast_ray_last(st->globals.map, start, end, &vox);
+	else
+		hit = cast_ray     (st->globals.map, start, end, &vox);
+
 	if (!hit)
 		return 0;
 
-	/* TODO: align ivec3 or make push_ivec3_3 */
-	hitpos.x = x;
-	hitpos.y = y;
-	hitpos.z = z;
-	push_ivec3(hitpos);
+	push_ivec3(vox);
 	return 1;
 }
 
-#define MAX(x,y) ((x)>(y) ? (x) : (y))
-typedef struct {uint32_t x, y, z;} ivec3u;
 static int do_iter_block_line(lua_State *l) {
-	lua_Integer len = lua_tointeger(l, lua_upvalueindex(13));
-	ivec3 cur, step;
-	ivec3u d, di;
+	struct BlockLine *line = lua_touserdata(l, lua_upvalueindex(1));
 
-	if (len-- == 0)
+	if (line->remaining == 0)
 		return 0;
 
-	lua_pushinteger(l, len);
-	lua_replace(l, lua_upvalueindex(13));
-
-	cur.x = lua_tointeger(l, lua_upvalueindex(1));
-	cur.y = lua_tointeger(l, lua_upvalueindex(2));
-	cur.z = lua_tointeger(l, lua_upvalueindex(3));
-	push_ivec3(cur);
-
-	d.x = lua_tointeger(l, lua_upvalueindex(4));
-	d.y = lua_tointeger(l, lua_upvalueindex(5));
-	d.z = lua_tointeger(l, lua_upvalueindex(6));
-
-	di.x = lua_tointeger(l, lua_upvalueindex(7));
-	di.y = lua_tointeger(l, lua_upvalueindex(8));
-	di.z = lua_tointeger(l, lua_upvalueindex(9));
-
-	step.x = lua_tointeger(l, lua_upvalueindex(10));
-	step.y = lua_tointeger(l, lua_upvalueindex(11));
-	step.z = lua_tointeger(l, lua_upvalueindex(12));
-
-	#define BITER_CUR(x) lua_upvalueindex(x)
-	#define BITER_D(x) lua_upvalueindex(3+(x))
-	if (d.z <= d.x && d.z <= d.y) {
-		lua_pushinteger(l, cur.z + step.z);
-		lua_pushinteger(l, d.z + di.z);
-		lua_replace(l, BITER_D(3));
-		lua_replace(l, BITER_CUR(3));
-	} else if (d.x < d.y) {
-		lua_pushinteger(l, cur.x + step.x);
-		lua_pushinteger(l, d.x + di.x);
-		lua_replace(l, BITER_D(1));
-		lua_replace(l, BITER_CUR(1));
-	} else {
-		lua_pushinteger(l, cur.y + step.y);
-		lua_pushinteger(l, d.y + di.y);
-		lua_replace(l, BITER_D(2));
-		lua_replace(l, BITER_CUR(2));
-	}
+	push_ivec3(line->vox);
+	block_line_step(line);
 
 	return 1;
 }
 
 static int iter_block_line(lua_State *l) {
 	ivec3 start = get_ivec3(l, 1, 0);
-	ivec3 end = get_ivec3(l, 2, 0);
-	ivec3 step;
-	ivec3u off, d, di;
-	uint32_t maxoff;
+	ivec3 end   = get_ivec3(l, 2, 0);
 
-	step.x = end.x < start.x ? -1 : 1;
-	step.y = end.y < start.y ? -1 : 1;
-	step.z = end.z < start.z ? -1 : 1;
+	struct BlockLine line = block_line_start(start, end);
+	memcpy(lua_newuserdata(l, sizeof(line)), &line, sizeof(line));
 
-	off.x = abs(end.x - start.x);
-	off.y = abs(end.y - start.y);
-	off.z = abs(end.z - start.z);
-	maxoff = MAX(MAX(off.x, off.y), off.z);
-
-	di.x = off.x == 0 ? (uint32_t)-1 : maxoff * 1024 / off.x;
-	di.y = off.y == 0 ? (uint32_t)-1 : maxoff * 1024 / off.y;
-	di.z = off.z == 0 ? (uint32_t)-1 : maxoff * 1024 / off.z;
-
-	d.x = di.x / 2;
-	d.y = di.y / 2;
-	d.z = di.z / 2;
-
-	if (step.x >= 0)
-		d.x = di.x - d.x;
-	if (step.y >= 0)
-		d.y = di.y - d.y;
-	if (step.z >= 0)
-		d.z = di.z - d.z;
-
-	lua_pushinteger(l, start.x);
-	lua_pushinteger(l, start.y);
-	lua_pushinteger(l, start.z);
-
-	lua_pushinteger(l, d.x);
-	lua_pushinteger(l, d.y);
-	lua_pushinteger(l, d.z);
-
-	lua_pushinteger(l, di.x);
-	lua_pushinteger(l, di.y);
-	lua_pushinteger(l, di.z);
-
-	lua_pushinteger(l, step.x);
-	lua_pushinteger(l, step.y);
-	lua_pushinteger(l, step.z);
-
-	lua_pushinteger(l, 1 + off.x + off.y + off.z);
-
-	lua_pushcclosure(l, do_iter_block_line, 13);
+	lua_pushcclosure(l, do_iter_block_line, 1);
 	return 1;
 }
 

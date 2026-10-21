@@ -61,7 +61,7 @@ server: $(OBJECTS)
 
 src/demoncore.o: src/demoncore.c src/demoncore.h src/protocol.h \
 	src/state.h src/masterlist.h src/libpvx2/src/cull.h \
-	src/libpvx2/src/map.h src/libpvx2/src/map.c
+	src/libpvx2/src/map.h src/libpvx2/src/map.c src/veclib.h
 src/funcs_event.o: src/funcs_event.c src/state.h \
 	src/protocol.h src/masterlist.h src/libpvx2/src/cull.h \
 	src/libpvx2/src/map.h src/libpvx2/src/map.c src/demoncore.h

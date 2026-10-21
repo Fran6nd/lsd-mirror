@@ -25,21 +25,17 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define MAX(x,y) ((x)>(y) ? (x) : (y))
+#include "veclib.h"
 
-struct Vector {float x, y, z;};
-struct Vector32 {int32_t x, y, z;};
 struct Vector32u {uint32_t x, y, z;};
-
-typedef struct Vector Vector;
-typedef struct Vector32 Vector32;
 typedef struct Vector32u Vector32u;
 
 #define FALL_SLOW_DOWN 0.24f
 #define FALL_DAMAGE_VELOCITY 0.58f
 #define FALL_DAMAGE_SCALAR 4096
 
-static float fmodulof(float x, float y) {
+static float fmodulof(float x, float y)
+{
 	x = fmodf(x, y);
 	if (x < 0)
 		return x + y;
@@ -47,287 +43,343 @@ static float fmodulof(float x, float y) {
 	return x;
 }
 
-static int phys_solid(float x, float y, float z, Map map) {
+static int phys_solid(int32_t x, int32_t y, int32_t z, Map map)
+{
 	if (z < 0)
 		return 0;
-	if (z >= 64)
+	if (z >= MAP_Z)
 		return 1;
 
 	return map_is_solid(map, x, y, z);
 }
 
-int clip_phys(float x, float y, float z, Map map, int wrap) {
+int clip_phys(float x, float y, float z, Map map, int wrap)
+{
 	x = floorf(x);
 	y = floorf(y);
 	z = floorf(z);
 
 	if (wrap) {
-		x = fmodulof(x, 512);
-		y = fmodulof(y, 512);
+		x = fmodulof(x, MAP_X);
+		y = fmodulof(y, MAP_Y);
 	}
 
-	if (x < 0 || x >= 512 || y < 0 || y >= 512)
+	if (
+		x < 0 || x >= MAP_X ||
+		y < 0 || y >= MAP_Y
+	)
 		return 1;
 
-	if (z == 63)
-		z = 62;
+	if (z == MAP_Z - 1)
+		z = MAP_Z - 2;
 
 	return phys_solid(x, y, z, map);
 }
 
-static int clip_grenade_explode(float x, float y, float z, Map map) {
-	x = fmodulof(floorf(x), 512);
-	y = fmodulof(floorf(y), 512);
-	z = floorf(z);
-
-	return phys_solid(x, y, z, map);
-}
-
-/* Hey, this raycaster actually works properly! */
-/* Relevant:
- * https://www.cs.yorku.ca/~amana/research/grid.pdf
- * https://github.com/fenomas/fast-voxel-raycast
- * https://voxel.wiki/wiki/raytracing/
- * https://voxel.wiki/wiki/raycasting/
+/* See https://www.eecs.yorku.ca/~amana/research/grid.pdf;
+ * https://lodev.org/cgtutor/raycasting.html is also useful.
  */
-int cast2(Map map, float startX, float startY, float startZ, float endX, float endY,
-                float endZ, float length, int32_t *x, int32_t *y, int32_t *z, int last) {
-	int stepx, stepy, stepz;
-	float offx, offy, offz;
-	float deltax, deltay, deltaz;
-	float tmaxx, tmaxy, tmaxz;
-	float distx, disty, distz;
-	(void)length;
+struct Cast cast_start(fvec3 start, fvec3 end)
+{
+	fvec3 off   = vsubv(end, start);
+	fvec3 delta = vabs(divv(1, off));
 
-	/* Position of endX relative to startX */
-	offx = endX - startX;
-	offy = endY - startY;
-	offz = endZ - startZ;
+	fvec3 lower  = vsubv(vfloor(start), start);
+	fvec3 higher = vsubv(vceil (start), start);
+	fvec3 side_dist = vnan_inf(vchoose(higher, lower, vsignbit(off)));
 
-	/* Direction in each axis the ray travels */
-	stepx = offx < 0 ? -1 : 1;
-	stepy = offy < 0 ? -1 : 1;
-	stepz = offz < 0 ? -1 : 1;
+	ivec3 vox  = vtoi(start);
+	ivec3 step = vtoi(vsign(off));
 
-	deltax = fabsf(1 / offx);
-	deltay = fabsf(1 / offy);
-	deltaz = fabsf(1 / offz);
+	int remaining = 1 + vsum(vabs(vsubv(vfloor(end), vfloor(start))));
 
-	/* This magic thing prevents off-by-one errors. */
-	distx = offx < 0 ? ceilf(startX) - startX - 1 : floorf(startX) - startX + 1;
-	disty = offy < 0 ? ceilf(startY) - startY - 1 : floorf(startY) - startY + 1;
-	distz = offz < 0 ? ceilf(startZ) - startZ - 1 : floorf(startZ) - startZ + 1;
+	struct Cast cast = {remaining, vox, step, side_dist, delta};
+	return cast;
+}
 
-	tmaxx = offx == 0 ? HUGE_VAL : distx / offx;
-	tmaxy = offy == 0 ? HUGE_VAL : disty / offy;
-	tmaxz = offz == 0 ? HUGE_VAL : distz / offz;
+int cast_step(struct Cast *cast)
+{
+	int   *remaining = &cast->remaining;
+	ivec3 *vox       = &cast->vox;
+	ivec3  step      =  cast->step;
+	fvec3 *side_dist = &cast->side_dist;
+	fvec3  delta     =  cast->delta;
 
-	int32_t taxilen;
-	int32_t voxx = floorf(startX), voxy = floorf(startY), voxz = floorf(startZ);
-	int32_t lastvoxx = voxx, lastvoxy = voxy, lastvoxz = voxz;
-	taxilen = abs(voxx - (int32_t)floorf(endX)) + abs(voxy - (int32_t)floorf(endY)) + abs(voxz - (int32_t)floorf(endZ));
-	while (1) {
-		if (stepz == -1 && voxz < 0)
-			return 0;
+	if (side_dist->x < side_dist->y &&
+	    side_dist->x < side_dist->z) {
+		      vox->x +=  step.x;
+		side_dist->x += delta.x;
+	} else if (side_dist->y < side_dist->z) {
+		      vox->y +=  step.y;
+		side_dist->y += delta.y;
+	} else {
+		      vox->z +=  step.z;
+		side_dist->z += delta.z;
+	}
 
-		if (clip_grenade_explode(voxx, voxy, voxz, map)) {
-			if (last) {
-				*x = lastvoxx;
-				*y = lastvoxy;
-				*z = lastvoxz;
-			} else {
-				*x = voxx;
-				*y = voxy;
-				*z = voxz;
-			}
+	return --(*remaining) > 0;
+}
+
+int cast_ray(Map map, fvec3 start, fvec3 end, ivec3 *vox)
+{
+	struct Cast cast = cast_start(start, end);
+
+	do {
+		ivec3 vx = cast.vox;
+
+		if (vox != NULL)
+			*vox = vx;
+
+		if (phys_solid(vx.x & 511, vx.y & 511, vx.z, map))
 			return 1;
-		}
+	} while (cast_step(&cast));
 
-		if (taxilen-- == 0)
-			return 0;
+	return 0;
+}
 
-		lastvoxx = voxx;
-		lastvoxy = voxy;
-		lastvoxz = voxz;
+int cast_ray_last(Map map, fvec3 start, fvec3 end, ivec3 *vox)
+{
+	struct Cast cast = cast_start(start, end);
 
-		/* TODO: just <, not <=? */
-		if (tmaxz <= tmaxx && tmaxz <= tmaxy) {
-			voxz += stepz;
-			tmaxz += deltaz;
-			/* TODO: this is not horiz */
-		} else if (tmaxx < tmaxy) {
-			voxx += stepx;
-			tmaxx += deltax;
-		} else {
-			voxy += stepy;
-			tmaxy += deltay;
-		}
+	if (vox != NULL)
+		*vox = cast.vox;
+
+	do {
+		ivec3 vx = cast.vox;
+
+		if (phys_solid(vx.x & 511, vx.y & 511, vx.z, map))
+			return 1;
+
+		if (vox != NULL)
+			*vox = vx;
+	} while (cast_step(&cast));
+
+	return 0;
+}
+
+#define HUGE_INT32 2147483647L
+struct BlockLine block_line_start(ivec3 start, ivec3 end)
+{
+	ivec3 off = isubi(end, start);
+	ivec3 aoff = iabs(off);
+
+	/* otherwise-unnecessary variable needed for AoS compatibility */
+	int32_t maxoff = imax(aoff) * 1024;
+
+	ivec3 delta = {
+		aoff.x == 0 ? HUGE_INT32 : maxoff / aoff.x,
+		aoff.y == 0 ? HUGE_INT32 : maxoff / aoff.y,
+		aoff.z == 0 ? HUGE_INT32 : maxoff / aoff.z
+	};
+	ivec3 side_dist = idiv(delta, 2);
+
+	ivec3 vox = start;
+	ivec3 step = isign(off);
+
+	ivec3 positive = iadd(step, 1);
+	side_dist = ichoose(side_dist, isubi(delta, side_dist), positive);
+
+	int remaining = 1 + isum(iabs(isubi(end, start)));
+
+	struct BlockLine line = {remaining, vox, step, side_dist, delta};
+	return line;
+}
+
+int block_line_step(struct BlockLine *line)
+{
+	int   *remaining = &line->remaining;
+	ivec3 *vox       = &line->vox;
+	ivec3  step      =  line->step;
+	ivec3 *side_dist = &line->side_dist;
+	ivec3  delta     =  line->delta;
+
+	if (side_dist->z <= side_dist->x &&
+	    side_dist->z <= side_dist->y) {
+		      vox->z +=  step.z;
+		side_dist->z += delta.z;
+	} else if (side_dist->x < side_dist->y) {
+		      vox->x +=  step.x;
+		side_dist->x += delta.x;
+	} else {
+		      vox->y +=  step.y;
+		side_dist->y += delta.y;
 	}
+
+	return --(*remaining) > 0;
 }
 
-int cast_ray2(Map map, fvec3p start, fvec3p end) {
-	int32_t trash;
-	return cast2(map, start.x, start.y, start.z, end.x, end.y, end.z, 0, &trash, &trash, &trash, 0);
-}
+void block_line(Map map, ivec3 start, ivec3 end, color color)
+{
+	struct BlockLine line = block_line_start(start, end);
 
-void dcore_block_line(int32_t startX, int32_t startY, int32_t startZ, int32_t endX, int32_t endY, int32_t endZ, Map map, const uint8_t *color) {
-	/* d. . . di. . . diamonds?! */
-	Vector32u off, d, di;
-	Vector32 cursor, step;
-	uint32_t maxoff;
+	do {
+		ivec3 vox = line.vox;
+		size_t xy = map_to_xy(vox.x, vox.y);
 
-	/* End pos's offset relative to the start position. */
-	off.x = abs(endX - startX);
-	off.y = abs(endY - startY);
-	off.z = abs(endZ - startZ);
-
-	maxoff = MAX(MAX(off.x, off.y), off.z);
-
-	/* Axes which don't have any offset don't need to be stepped in. Therefore, some really high value is assigned here to ignore them. */
-	di.x = off.x == 0 ? (uint32_t)-1 : maxoff * 1024 / off.x;
-	di.y = off.y == 0 ? (uint32_t)-1 : maxoff * 1024 / off.y;
-	di.z = off.z == 0 ? (uint32_t)-1 : maxoff * 1024 / off.z;
-
-	d.x = di.x / 2;
-	d.y = di.y / 2;
-	d.z = di.z / 2;
-
-	/* Each iteration of the loop, an axis is chosen to step in. It has to be negative or positive, of course. */
-	step.x = endX < startX ? -1 : 1;
-	step.y = endY < startY ? -1 : 1;
-	step.z = endZ < startZ ? -1 : 1;
-
-	/* Slightly tampers with rounding. I should probably see exactly how. */
-	if (step.x >= 0)
-		d.x = di.x - d.x;
-	if (step.y >= 0)
-		d.y = di.y - d.y;
-	if (step.z >= 0)
-		d.z = di.z - d.z;
-
-	cursor.x = startX;
-	cursor.y = startY;
-	cursor.z = startZ;
-
-	while (1) {
-		size_t xy = map_to_xy(cursor.x, cursor.y);
-
-		if (!map_is_solid_xy(map, xy, cursor.z)) {
-			map_create_xy(map, xy, cursor.z);
-			map_set_color_xy(map, xy, cursor.z, color, 1);
+		if (!map_is_solid_xy(map, xy, vox.z)) {
+			map_create_xy(map, xy, vox.z);
+			map_set_color_xy(map, xy, vox.z, color, 1);
 		}
-
-		if (cursor.x == endX && cursor.y == endY && cursor.z == endZ)
-			return;
-
-		if (d.z <= d.x && d.z <= d.y) {
-			cursor.z += step.z;
-			d.z += di.z;
-		} else if (d.x < d.y) {
-			cursor.x += step.x;
-			d.x += di.x;
-		} else {
-			cursor.y += step.y;
-			d.y += di.y;
-		}
-	}
+	} while (block_line_step(&line));
 }
 
-void try_uncrouch(struct Player *p, Map map, int wrap) {
-	float x1 = p->pos.x + 0.45f;
-	float x2 = p->pos.x - 0.45f;
-	float y1 = p->pos.y + 0.45f;
-	float y2 = p->pos.y - 0.45f;
-	float z1 = p->pos.z + 2.25f;
+#define clip_plane_point(xoff, yoff) \
+	clip_phys(p->pos.x + (xoff), p->pos.y + (yoff), nz + m, map, wrap)
 
-	/* First check if player can lower feet if in midair. */
-	if (p->airborne && !(clip_phys(x1, y1, z1, map, wrap) || clip_phys(x1, y2, z1, map, wrap) || clip_phys(x2, y1, z1, map, wrap) || clip_phys(x2, y2, z1, map, wrap)))
+#define clip_plane() ( \
+	clip_plane_point(-0.45, -0.45) || clip_plane_point(-0.45, 0.45) || \
+	clip_plane_point( 0.45, -0.45) || clip_plane_point( 0.45, 0.45)    \
+)
+
+static void try_uncrouch(struct Player *p, Map map, int wrap)
+{
+	float nz = p->pos.z + 2.25f;
+	float m  = 0;
+
+	/* Try lowering feet */
+	if (p->airborne && clip_plane())
 		return;
 
-	/* By the time this has been reached, the player cannot lower feet, so the best option is to raise the head instead. */
+	/* Raise head */
 	p->pos.z -= 0.9f;
 }
 
-int try_uncrouch_me(struct Player *p, Map map, int wrap) {
-	float x1 = p->pos.x + 0.45f;
-	float x2 = p->pos.x - 0.45f;
-	float y1 = p->pos.y + 0.45f;
-	float y2 = p->pos.y - 0.45f;
-	float z1 = p->pos.z + 2.25f;
-	float z2 = p->pos.z - 1.35f;
+static int try_uncrouch_me(struct Player *p, Map map, int wrap)
+{
+	float nz = p->pos.z + 2.25f;
+	float m  = 0;
 
-	/* First check if player can lower feet if in midair. */
-	if (p->airborne && !(clip_phys(x1, y1, z1, map, wrap) || clip_phys(x1, y2, z1, map, wrap) || clip_phys(x2, y1, z1, map, wrap) || clip_phys(x2, y2, z1, map, wrap)))
+	/* Try lowering feet */
+	if (p->airborne && clip_plane())
 		return 1;
 
-	/* By the time this has been reached, the player cannot lower feet, so raise the head instead if possible. */
-	if (!(clip_phys(x1, y1, z2, map, wrap) || clip_phys(x1, y2, z2, map, wrap) || clip_phys(x2, y1, z2, map, wrap) || clip_phys(x2, y2, z2, map, wrap))) {
+	/* Try raising head */
+	nz = p->pos.z - 1.35f;
+
+	/* TODO: pass nz/m directly to clip_plane */
+	if (!clip_plane()) {
 		p->pos.z -= 0.9f;
 		return 1;
 	}
 
-	/* Nothing seemed possible. */
+	/* Nothing was possible */
 	return 0;
 }
 
 /* Don't call this unless crouch state is actually changing. */
-/* TODO: the else branch of that if looks real dangerous */
-void change_crouch(int crouching, struct Player *p, Map map, int wrap) {
+void change_crouch(int crouching, struct Player *p, Map map, int wrap)
+{
 	if (crouching && !p->airborne)
 		p->pos.z += 0.9;
 	else
 		try_uncrouch(p, map, wrap);
 }
 
-int change_crouch_me(int crouching, struct Player *p, Map map, int wrap) {
+int change_crouch_me(int crouching, struct Player *p, Map map, int wrap)
+{
 	if (crouching && !p->airborne) {
 		p->pos.z += 0.9;
 		return 1;
 	}
+
 	return try_uncrouch_me(p, map, wrap);
 }
 
-static int satan(float z, float zgreaterequal, float x1, float x2, float y1, float y2, float ztest, Map map, int wrap) {
-	for (; z >= zgreaterequal && !clip_phys(x1, y1, ztest + z, map, wrap) && !clip_phys(x2, y2, ztest + z, map, wrap); z -= 0.9);
-	return z < zgreaterequal;
+static int check_collision(
+	float z, float zmax,
+	fvec3 p1, fvec3 p2, float ztest, Map map, int wrap)
+{
+	for (;
+		z >= zmax &&
+		!clip_phys(p1.x, p1.y, ztest + z, map, wrap) &&
+		!clip_phys(p2.x, p2.y, ztest + z, map, wrap);
+			z -= 0.9
+	);
+
+	return z < zmax;
 }
 
-#define SATANIC_LOOP(zstart, zgreaterequal, x1, x2, y1, y2) satan(zstart, zgreaterequal, x1, x2, y1, y2, nz, map, wrap)
-#define MYSTERY_LOOP_OVER_AXIS(axis, x1, x2, y1, y2) do {\
-	nextp = f * p->vel.axis + p->pos.axis; \
-	testp = nextp + copysignf(0.45, p->vel.axis); \
-	if (SATANIC_LOOP(m, -1.36, x1, x2, y1, y2)) \
-		p->pos.axis = nextp; \
-	else if (!climb) { \
-		if (canclimb && SATANIC_LOOP(0.35, -2.36, x1, x2, y1, y2)) { \
-			p->pos.axis = nextp; \
-			climb = 1; \
-		} else \
-			p->vel.axis = 0; \
-	} \
-} while (0);
+static void move_or_collide_on_axis(
+	float nextp, float *apos, float *avel, int *climb, int canclimb,
+	float m, float nz, Map map, fvec3 p1, fvec3 p2, int wrap)
+{
+	if (check_collision(m, -1.36, p1, p2, nz, map, wrap)) {
+		*apos = nextp;
+		return;
+	}
 
-/* Like the demon core, but for player movement. */
-static void boxclipmove(struct Player *p, float secondsSinceLastUpdate, Map map, int wrap) {
-	float f = secondsSinceLastUpdate * 32;
-	float nextp, testp;
+	if (!(*climb)) {
+		if (canclimb &&
+			check_collision(0.35, -2.36, p1, p2, nz, map, wrap)
+		) {
+			*apos = nextp;
+			*climb = 1;
+		} else
+			*avel = 0;
+	}
+}
+
+typedef union {
+	fvec3 v;
+	float f[3];
+} fvec3u;
+
+static void move_axis(
+	int axis, fvec3 *pos, fvec3 *vel, int *climb, int canclimb, float m,
+	float nz, Map map, int wrap, float time_delta)
+{
+	fvec3u p1, p2;
+	fvec3u *posu = (fvec3u *)pos;
+	fvec3u *velu = (fvec3u *)vel;
+
+	fvec3u nextp = {vaddv(vmul(*vel, time_delta * 32), *pos)};
+	fvec3u testp = {{
+		nextp.v.x + copysignf(0.45, (*vel).x),
+		nextp.v.y + copysignf(0.45, (*vel).y),
+		0
+	}};
+
+	p1.v = vadd(*pos, -0.45);
+	p2.v = vadd(*pos,  0.45);
+
+	p1.f[axis] = testp.f[axis];
+	p2.f[axis] = testp.f[axis];
+
+	move_or_collide_on_axis(
+		nextp.f[axis],
+		&posu->f[axis],
+		&velu->f[axis],
+		climb,
+		canclimb,
+		m,
+		nz,
+		map,
+		p1.v,
+		p2.v,
+		wrap
+	);
+}
+
+static void boxclipmove(struct Player *p, float time_delta, Map map, int wrap)
+{
 	float nz;
-	int canclimb = !(p->inputs & (KeyStateTypeCrouch | KeyStateTypeSprint)) && p->ori.z < 0.5;
+	int canclimb =
+		!(p->inputs & (KeyStateTypeCrouch | KeyStateTypeSprint)) &&
+		p->ori.z < 0.5;
 	int climb = 0;
 
 	float offset, m;
-	if (p->inputs & KeyStateTypeCrouch) {
-		offset = 0.45;
-		m = 0.9;
-	} else {
-		offset = 0.9;
-		m = 1.35;
-	}
+
+	m = p->inputs & KeyStateTypeCrouch ?
+		0.9 : 1.35;
+	offset = m - 0.45;
 
 	nz = p->pos.z + offset;
 
-	MYSTERY_LOOP_OVER_AXIS(x, testp, testp, p->pos.y - 0.45, p->pos.y + 0.45);
-	MYSTERY_LOOP_OVER_AXIS(y, p->pos.x - 0.45, p->pos.x + 0.45, testp, testp);
+	move_axis(0, &p->pos, &p->vel,
+		&climb, canclimb, m, nz, map, wrap, time_delta);
+	move_axis(1, &p->pos, &p->vel,
+		&climb, canclimb, m, nz, map, wrap, time_delta);
 
 	if (climb) {
 		p->vel.x /= 2;
@@ -335,16 +387,13 @@ static void boxclipmove(struct Player *p, float secondsSinceLastUpdate, Map map,
 		nz--;
 		m = -1.35;
 	} else {
-		nz += p->vel.z * secondsSinceLastUpdate * 32;
+		nz += p->vel.z * time_delta * 32;
 		m = copysignf(m, p->vel.z);
 	}
 
-#define SCLIP(xoff, yoff) clip_phys(p->pos.x + (xoff), p->pos.y + (yoff), nz + m, map, wrap)
-	/* secondsSinceLastUpdate not being 1/60 can screw with some calculations
-	 * here (see nz). Makes players nice and jittery. Wonder if I can (should)
-	 * force it, somehow, to 1/60 for just the Z axis? */
 	p->airborne = 1;
-	if (SCLIP(-0.45, -0.45) || SCLIP (-0.45, 0.45) || SCLIP(0.45, -0.45) || SCLIP(0.45, 0.45)) {
+
+	if (clip_plane()) {
 		if (p->vel.z >= 0) {
 			p->wade = p->pos.z > 61;
 			p->airborne = 0;
@@ -355,81 +404,90 @@ static void boxclipmove(struct Player *p, float secondsSinceLastUpdate, Map map,
 		p->pos.z = nz - offset;
 }
 
-static float calc_acceleration(struct Player *p, float secondsSinceLastUpdate, int diagonal) {
-	float acceleration = secondsSinceLastUpdate;
+static float calc_acceleration(struct Player *p, float time_delta, int diagonal)
+{
+	float accel = time_delta;
 
-	/* Affect horizontal movement acceleration based on airborne/inputs. */
+	int move  = p->inputs;
+	int mouse = p->mouseInputs;
+	int holding_gun = p->tool == ToolTypeGun;
+
 	if (p->airborne)
-		acceleration *= 0.1;
-	else if (p->inputs & KeyStateTypeCrouch)
-		acceleration *= 0.3;
-	else if ((p->mouseInputs & GunInputTypeSecondary && p->tool == ToolTypeGun) || p->inputs & KeyStateTypeSneak)
-		acceleration *= 0.5;
-	else if (p->inputs & KeyStateTypeSprint)
-		acceleration *= 1.3;
+		accel *= 0.1;
+	else if (move & KeyStateTypeCrouch)
+		accel *= 0.3;
+	else if (mouse & GunInputTypeSecondary && holding_gun)
+		accel *= 0.5;
+	else if (move & KeyStateTypeSneak)
+		accel *= 0.5;
+	else if (move & KeyStateTypeSprint)
+		accel *= 1.3;
 
-	/* If moving diagonally, don't go double the speed. */
 	if (diagonal)
-#ifdef OPENSPADES_SQRT
-		acceleration /= sqrt(2);
-#else
-		acceleration *= 0.70710678f;
-#endif
+		accel *= 0.70710678f;
 
-	return acceleration;
+	return accel;
 }
 
-/* Does physics and crunches bones when applicable. */
-int32_t move_player(struct Player *p, float secondsSinceLastUpdate, Map map, int wrap) {
-	float horizontalHypotenuse, acceleration, friction, oldZVelocity, verticalMove, horizontalMove;
-	Vector rightSide;
+static float calc_friction(struct Player *p, float time_delta)
+{
+	if (p->wade)
+		return 1 + time_delta * 6;
+	if (p->airborne)
+		return 1 + time_delta * 1;
 
-	/* Get the player's right side, but in 2D instead of 3D.
-	 * Trivia time: notice how this is 2D, not 3D.
-	 * This is why looking down and moving left/right is full speed, but moving forward/backward is not.*/
-	horizontalHypotenuse = sqrtf(p->ori.x * p->ori.x + p->ori.y * p->ori.y);
-	if (horizontalHypotenuse == 0)
-		horizontalHypotenuse = 1;
-	rightSide.x = -p->ori.y / horizontalHypotenuse;
-	rightSide.y = p->ori.x / horizontalHypotenuse;
+	return 1 + time_delta * 4;
+}
 
-	/* Vertical/horizontal in a 2D sense. Most other instances of vertical refer to the axis
-	 * which gravity operates along, whereas horizontal refers to the other two axes. */
-	verticalMove = (p->inputs & KeyStateTypeForward) ? 1 : ((p->inputs & KeyStateTypeBackward) ? -1 : 0);
-	horizontalMove = (p->inputs & KeyStateTypeLeft) ? -1 : ((p->inputs & KeyStateTypeRight) ? 1 : 0);
-	acceleration = calc_acceleration(p, secondsSinceLastUpdate, verticalMove && horizontalMove);
+int32_t move_player(struct Player *p, float time_delta, Map map, int wrap)
+{
+	float horiz_len, accel, friction, oldZVelocity, move_vert, move_horz;
+	fvec3 front, right;
 
-	if ((p->inputs & KeyStateTypeJump)) {
+
+	front = p->ori;
+	front.z = 0;
+
+	horiz_len = vlength(front);
+	if (horiz_len == 0)
+		horiz_len = 1;
+
+	right.x = -front.y / horiz_len;
+	right.y =  front.x / horiz_len;
+	right.z = 0;
+
+
+	move_vert = (p->inputs & KeyStateTypeForward)  ? 1 :
+	           ((p->inputs & KeyStateTypeBackward) ? -1 : 0);
+	move_horz = (p->inputs & KeyStateTypeLeft)     ? -1 :
+	           ((p->inputs & KeyStateTypeRight)    ? 1 : 0);
+
+
+	accel = calc_acceleration(p, time_delta, move_vert && move_horz);
+
+	if (p->inputs & KeyStateTypeJump) {
 		p->inputs &= ~KeyStateTypeJump;
 		p->vel.z = -0.36;
 	}
 
-	/* Add to velocity in the direction player is trying to move. Do vertical air friction too. */
-	p->vel.x += p->ori.x * acceleration * verticalMove;
-	p->vel.y += p->ori.y * acceleration * verticalMove;
-	p->vel.x += rightSide.x * acceleration * horizontalMove;
-	p->vel.y += rightSide.y * acceleration * horizontalMove;
-	p->vel.z += secondsSinceLastUpdate;
-	/* All of this adding 1 seems like a fire hazard. */
-	p->vel.z /= secondsSinceLastUpdate + 1;
 
-	/* Horizontal friction, for water, air or ground. */
-	friction = secondsSinceLastUpdate * (p->wade ? 6 : (p->airborne ? 1 : 4)) + 1;
+	p->vel = vaddv(p->vel, vmul(front, accel * move_vert));
+	p->vel = vaddv(p->vel, vmul(right, accel * move_horz));
+
+	p->vel.z += time_delta;
+	p->vel.z /= time_delta + 1;
+
+
+	friction = calc_friction(p, time_delta);
 	p->vel.x /= friction;
 	p->vel.y /= friction;
 
-	/* Call into the demon core. */
-	oldZVelocity = p->vel.z;
-	boxclipmove(p, secondsSinceLastUpdate, map, wrap);
 
-	if (wrap) {
-		p->pos.x = fmodf(p->pos.x, 512);
-		p->pos.y = fmodf(p->pos.y, 512);
-		if (p->pos.x < 0)
-			p->pos.x += 512;
-		if (p->pos.y < 0)
-			p->pos.y += 512;
-	}
+	oldZVelocity = p->vel.z;
+	boxclipmove(p, time_delta, map, wrap);
+
+	if (wrap) /* assumes MAP_X == MAP_Y */
+		p->pos = v2mod(p->pos, MAP_X);
 
 	if (!(p->vel.z == 0 && (oldZVelocity > FALL_SLOW_DOWN)))
 		return -1;
@@ -437,10 +495,10 @@ int32_t move_player(struct Player *p, float secondsSinceLastUpdate, Map map, int
 	p->vel.x /= 2;
 	p->vel.y /= 2;
 
-	if (oldZVelocity <= FALL_DAMAGE_VELOCITY)
-		return 0;
-
 	oldZVelocity -= FALL_DAMAGE_VELOCITY;
+
+	if (oldZVelocity <= 0)
+		return 0;
 
 	/* Wouldn't want an integer to overflow. */
 	if (oldZVelocity >= 724.0774)
@@ -449,48 +507,44 @@ int32_t move_player(struct Player *p, float secondsSinceLastUpdate, Map map, int
 	return oldZVelocity * oldZVelocity * FALL_DAMAGE_SCALAR;
 }
 
-/* Returns 1 if the grenade collides with something, otherwise 0. */
-int move_grenade(struct Grenade *g, float secondsSinceLastUpdate, Map map) {
-	Vector32 newPos;
-	fvec3 fpos = g->pos;
+#define only_axis_differs(a, b, c, altcond) ( \
+	v1.a != v2.a && ((v1.b == v2.b && v1.c == v2.c) || altcond) \
+)
 
-	float velMultiplier = secondsSinceLastUpdate * 32;
-	g->vel.z += secondsSinceLastUpdate;
+/* Returns 1 if the grenade collides with something. */
+int move_grenade(struct Grenade *g, float time_delta, Map map)
+{
+	ivec3 v1, v2;
+	fvec3 pos = g->pos;
 
-	g->pos.x += g->vel.x * velMultiplier;
-	g->pos.y += g->vel.y * velMultiplier;
-	g->pos.z += g->vel.z * velMultiplier;
+	g->vel.z += time_delta;
 
-	newPos.x = floor(g->pos.x);
-	newPos.y = floor(g->pos.y);
-	newPos.z = floor(g->pos.z);
+	v1 = vtoi(pos);
+	pos = vaddv(pos, vmul(g->vel, time_delta * 32));
+	v2 = vtoi(pos);
 
-	if (!clip_phys(newPos.x, newPos.y, newPos.z, map, 1))
-		return 0; /* Grenade does not bounce. It's still in the air. */
-	else { /* Grenade *does* bounce. It smacked into something. */
-		Vector32 oldPos;
+	if (!clip_phys(v2.x, v2.y, v2.z, map, 1)) {
+		g->pos = pos;
+		return 0;
+	}
 
-		g->pos = fpos; /* Set back to old position */
-		g->vel.x *= 0.36;
-		g->vel.y *= 0.36;
-		g->vel.z *= 0.36;
+	pos = g->pos;
+	g->vel = vmul(g->vel, 0.36);
 
-		oldPos.x = floor(g->pos.x);
-		oldPos.y = floor(g->pos.y);
-		oldPos.z = floor(g->pos.z);
-
-		/* Determines which face the grenade collided with. It's only allowed to collide with one for some reason.
-		 * You can tell since it uses both if/else instead of if and also explicitly forbids anything being different except for the face being tested.
-		 * (newPos.a != oldPos.a && theOtherOnesAreUnchanged) || didNotTakeTimeToParseThisOne
-		 * If two faces change, things turn funny. Reminds me of that corner bug that was mentioned in a comment I ripped out.
-		 */
-		if      (newPos.z != oldPos.z && ((newPos.x == oldPos.x && newPos.y == oldPos.y) || !clip_phys(newPos.x, newPos.y, oldPos.z, map, 1)))
-			g->vel.z = -g->vel.z;
-		else if (newPos.x != oldPos.x && ((newPos.y == oldPos.y && newPos.z == oldPos.z) || !clip_phys(oldPos.x, newPos.y, newPos.z, map, 1)))
-			g->vel.x = -g->vel.x;
-		else if (newPos.y != oldPos.y && ((newPos.x == oldPos.x && newPos.z == oldPos.z) || !clip_phys(newPos.x, oldPos.y, newPos.z, map, 1)))
-			g->vel.y = -g->vel.y;
-
+	if (only_axis_differs(z, x, y, !clip_phys(v2.x, v2.y, v1.z, map, 1))) {
+		g->vel.z = -g->vel.z;
 		return 1;
 	}
+
+	if (only_axis_differs(x, y, z, !clip_phys(v2.x, v2.y, v1.z, map, 1))) {
+		g->vel.x = -g->vel.x;
+		return 1;
+	}
+
+	if (only_axis_differs(y, x, z, !clip_phys(v2.x, v2.y, v1.z, map, 1))) {
+		g->vel.y = -g->vel.y;
+		return 1;
+	}
+
+	return 1;
 }

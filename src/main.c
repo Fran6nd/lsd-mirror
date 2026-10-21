@@ -651,8 +651,7 @@ static void block_action_cull(ivec3 pos, uint32_t mask, struct State *st) {
 	}
 }
 
-/* st->f.finish_cull under a different name because the name finish_cull was already taken */
-static void fin_cull(struct State *st) {
+static void finish_cull(struct State *st) {
 	/* TODO: move stackData and whatever into st unless you really want to share it across states */
 	(void)st;
 	map_cull_end(st->globals.cullbuf);
@@ -698,7 +697,7 @@ static void detonate_grenade(size_t index, struct State *st) {
 		    dist1(st->p[i].pos.z, nade.pos.z) >= 16)
 			continue;
 
-		if (!cast_ray2(st->globals.map, nade.pos, st->p[i].pos)) {
+		if (!cast_ray(st->globals.map, nade.pos, st->p[i].pos, NULL)) {
 			st->f.damage_player_directional(
 				i,
 				4096 / safe_sqr_dist3(nade.pos, st->p[i].pos),
@@ -1349,10 +1348,11 @@ static void set_block_color(plid pid, color color, struct State *st) {
 	st->f.send_set_block_color(PID_BROADCAST, color, pid, st);
 }
 
-static void block_line(ivec3 start, ivec3 end, plid from, struct State *st) {
+/* block_line taken by demoncore.h */
+static void srv_block_line(ivec3 start, ivec3 end, plid from, struct State *st) {
 	unpristine(st);
 
-	dcore_block_line(start.x, start.y, start.z, end.x, end.y, end.z, st->globals.map, st->p[from].blockColor);
+	block_line(st->globals.map, start, end, st->p[from].blockColor);
 	if (!st->globals.loadingMap)
 		st->f.send_block_line(PID_BROADCAST, start, end, from, st);
 }
@@ -1546,12 +1546,12 @@ static void set_funcs(struct State *st) {
 	st->f.load_vxl_from_file = load_vxl_from_file;
 	st->f.begin_load_vxl_from_file = begin_load_vxl_from_file;
 	st->f.load_map = load_map;
-	st->f.finish_cull = fin_cull;
+	st->f.finish_cull = finish_cull;
 	st->f.block_action_rm = block_action_rm;
 	st->f.block_action_cull = block_action_cull;
 	st->f.block_action = block_action;
 	st->f.set_position = set_position;
-	st->f.block_line = block_line;
+	st->f.block_line = srv_block_line;
 	st->f.kill = func_kill;
 	st->f.get_hit_damage = get_hit_damage;
 	st->f.set_hp = set_hp;

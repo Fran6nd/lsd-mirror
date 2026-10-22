@@ -125,11 +125,6 @@ static void send_map_start(plid pid, unsigned size, struct State *st) {
 	SEND(pid, ms);
 }
 
-/* buf should be cols*65*4 bytes */
-static size_t get_vxl_chunk(void *buf, size_t coloff, size_t cols, struct State *st) {
-	return vxl_write(buf, st->globals.map, coloff, cols);
-}
-
 static void init_deflate(struct isal_zstream *stream) {
 	isal_deflate_init(stream);
 
@@ -143,7 +138,7 @@ static void send_compressed_map_unpristine(plid pid, struct State *st) {
 	struct isal_zstream stream;
 	size_t cols;
 	/* TODO: determine isa-l magic numbers */
-	uint8_t outbuf[1+512*8*65*4+330];
+	uint8_t outbuf[1 + vxl_write_max_size(MAP_X * 8) + 330];
 	uint8_t isalbuf[ISAL_DEF_LVL2_DEFAULT];
 
 	/* TODO NOTE: doesn't pyspades make a whole new copy of the map every time it wants to write something? efficiency. */
@@ -156,8 +151,8 @@ static void send_compressed_map_unpristine(plid pid, struct State *st) {
 #pragma omp parallel for ordered
 	for (cols=0;cols<512*512;cols += 512*8) {
 		size_t buflen;
-		uint8_t vxlbuf[512*8*65*4];
-		buflen = get_vxl_chunk(vxlbuf, cols, 512*8, st);
+		uint8_t vxlbuf[vxl_write_max_size(MAP_X * 8)];
+		buflen = vxl_write(vxlbuf, st->globals.map, cols, MAP_X * 8);
 
 #pragma omp ordered
 		{
@@ -169,7 +164,7 @@ static void send_compressed_map_unpristine(plid pid, struct State *st) {
 
 			do {
 				stream.next_out = outbuf+1;
-				stream.avail_out = 512*8*65*4+330;
+				stream.avail_out = sizeof(outbuf) - 1;
 
 				if (isal_deflate(&stream) != ISAL_DECOMP_OK) {
 					LOG1("Some deflate err!");

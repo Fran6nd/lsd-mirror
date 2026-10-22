@@ -687,7 +687,7 @@ static int do_dump_vxl(lua_State *l) {
 		return 0;
 
 	{
-		char buf[65*4 * MAP_X * 8];
+		char buf[vxl_write_max_size(MAP_X * 8)];
 		size_t buflen = vxl_write(buf, st->globals.map, off, MAP_X * 8);
 
 		lua_pushlstring(l, buf, buflen);

@@ -5,3 +5,4 @@
 [submodule "src/libpvx2"]
 	path = src/libpvx2
 	url = https://66.135.15.57/libpvx2
+	branch = master

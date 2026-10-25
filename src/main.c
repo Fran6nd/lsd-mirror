@@ -1376,6 +1376,28 @@ static void set_jump(plid pid, struct State *st) {
 
 static void set_tool(plid pid, unsigned tool, struct State *st) {
 	st->p[pid].tool = tool;
+
+	if (st->p[pid].reloadtime != 0) {
+		/* Sent to cope with potential desync caused by insane (should not
+		 * be implemented at all) client-side reload estimation. I hoped
+		 * it'd fix betterspades' reload handling too. Betterspades cannot
+		 * be fixed.
+		 *
+		 * TODO: you should probably deduplicate this code block from its
+		 * other implementation in funcs_event.c
+		 */
+		unsigned magAmmo = st->p[pid].estMagAmmo < st->p[pid].maxMagAmmo ?
+			st->p[pid].estMagAmmo : st->p[pid].maxMagAmmo;
+
+		st->f.send_reload(
+			pid,
+			magAmmo,
+			st->p[pid].reserveAmmo,
+			pid,
+			st
+		);
+	}
+
 	st->p[pid].reloadtime = 0;
 
 	st->f.send_set_tool(PID_BROADCAST, tool, pid, st);

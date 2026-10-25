@@ -7,7 +7,7 @@ getcfg("masterlist_remotes", {
 	-- Default port is 32886
 	-- TODO: add scheme?
 	"66.135.15.57", -- not a burner's secret masterlist
-	--"master.buildandshoot.com"
+	"master.buildandshoot.com"
 });
 
 local masterlist_connect_log_msg = {

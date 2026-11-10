@@ -45,7 +45,7 @@ local function try_gravitate()
 	end
 
 	for team, loc in pairs(tentloc) do
-		gravitate_intel(team, loc);
+		gravitate_tent(team, loc);
 	end
 end
 

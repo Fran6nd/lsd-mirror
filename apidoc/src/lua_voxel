@@ -2,6 +2,15 @@ boolean is_solid(ivec3 pos) ->
 Returns true if the given position contains a solid voxel.
 Out of bounds positions invoke undefined behavior.
 
+integer get_floor(ivec3 pos) ->
+Returns the Z position of the first solid voxel along {x=<var>pos</var>.x, y=<var>pos</var>.y}
+with a Z greater than or equal to <var>pos</var>.z. Returns 64 if no voxels
+below <var>pos</var>.z are solid.
+
+integer get_col_top(ivec3 pos) ->
+Returns the Z position of the last consecutive solid voxel along {x=<var>pos</var>.x, y=<var>pos</var>.y}
+with a Z less than or equal to <var>pos</var>.z. Returns <var>pos</var>.z if <var>pos</var> is not solid.
+
 color get_map_block_color(ivec3 pos) ->
 Returns the color of the voxel at the given position.
 If the voxel is not <a href=#is_solid>solid</a>, return value is implementation-defined.

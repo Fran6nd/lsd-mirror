@@ -984,6 +984,22 @@ static int is_solid(lua_State *l) {
 	return 1;
 }
 
+static int get_floor(lua_State *l) {
+	ivec3 pos = get_ivec3(l, 1, 0);
+	if (pos.z < 0)
+		pos.z = 0;
+
+	lua_pushnumber(l, map_get_floor(st->globals.map, pos.x, pos.y, pos.z));
+	return 1;
+}
+
+static int get_col_top(lua_State *l) {
+	ivec3 pos = get_ivec3(l, 1, 1);
+
+	lua_pushnumber(l, map_get_col_top(st->globals.map, pos.x, pos.y, pos.z));
+	return 1;
+}
+
 static int get_fog(lua_State *l) {
 	(void)l;
 	push_color(st->globals.fog);
@@ -1456,6 +1472,8 @@ static const struct luaL_Reg funcs[] = {
 	{"get_grenade_pid", get_grenade_pid},
 	{"get_grenade_team", get_grenade_team},
 	{"is_solid", is_solid},
+	{"get_floor", get_floor},
+	{"get_col_top", get_col_top},
 	{"get_fog", get_fog},
 	{"get_hp", get_hp},
 	{"get_score", get_score},

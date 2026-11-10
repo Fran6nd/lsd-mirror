@@ -6,82 +6,62 @@ local not_holding_msg = {
 	en="You're not holding the intel!"
 };
 
-local function lower_intel(team, loc)
-	while (loc.z < 63 and not is_solid{x=loc.x, y=loc.y, z=loc.z}) do
-		-- TODO: dedup packets in core
-		loc.z = loc.z + 1;
-		move_intel(team, loc);
+local function gravitate_thing(move, team, loc)
+	local new = {x=loc.x, y=loc.y, z=loc.z};
+
+	-- TODO: not a very nice-looking construction. . .
+	if (new.z >= 64) then
+		if (not is_solid{x=new.x, y=new.y, z=63}) then
+			return;
+		end
+		new.z = 63;
+	end
+
+	new.z = get_floor(loc);
+	if (new.z < 64) then
+		new.z = get_col_top(new);
+	end
+
+	if (new.z ~= loc.z) then
+		move(team, new);
 	end
 end
 
-local function raise_intel(team, loc)
-	while (is_solid{x=loc.x, y=loc.y, z=loc.z}) do
-		move_intel(team, loc);
-		loc.z = loc.z - 1;
-	end
-end
+local function gravitate_intel(team, loc)
+	return gravitate_thing(move_intel, team, loc); end
 
-local function lower_tent(team, loc)
-	while (loc.z < 63 and not is_solid{x=loc.x, y=loc.y, z=loc.z}) do
-		loc.z = loc.z + 1;
-		move_tent(team, loc);
-	end
-end
+local function gravitate_tent(team, loc)
+	return gravitate_thing(move_tent,  team, loc); end
 
-local function raise_tent(team, loc)
-	while (is_solid{x=loc.x, y=loc.y, z=loc.z}) do
-		move_tent(team, loc);
-		loc.z = loc.z - 1;
-	end
-end
-
-local function try_raise()
+local function try_gravitate()
 	local intelloc = get_intelloc();
 	local tentloc = get_tentloc();
 
 	for team, loc in pairs(intelloc) do
 		-- TODO: too much of a pain in the ass to use num/tbl/nil loc, just use tbl/nil and num/nil *separately*
 		if (type(loc) == "table") then
-			raise_intel(team, loc);
+			gravitate_intel(team, loc);
 		end
 	end
 
 	for team, loc in pairs(tentloc) do
-		raise_tent(team, loc);
+		gravitate_intel(team, loc);
 	end
 end
 
-local function try_lower()
-	local intelloc = get_intelloc();
-	local tentloc = get_tentloc();
-
-	for team, loc in pairs(intelloc) do
-		if (type(loc) == "table") then
-			lower_intel(team, loc);
-		end
-	end
-
-	for team, loc in pairs(tentloc) do
-		lower_tent(team, loc);
-	end
-end
-
--- TODO: team += 1
+-- TODO: team += 1 -- TODO: still relevant?
 function mod.after.finish_cull()
-	try_lower();
+	try_gravitate();
 end
 
--- Intel/tent raise on block place
--- TODO: definitely test!!(?)
 function mod.after.block_action(pos, type)
 	if (type == 0) then
-		try_raise();
+		try_gravitate();
 	end
 end
 
--- TODO: raise/lower_tent()
 function mod.after.block_line()
-	try_raise();
+	try_gravitate();
 end
 
 local function length2(vec)
@@ -104,9 +84,9 @@ end
 -- TODO: end game, also redo babel
 function mod.after.capture_intel(pid)
 	if (get_team(pid) == 1) then
-		lower_intel(2, {x=math.random(511-64, 511-64-63)+0.5, y=math.random(256-32, 255+32)+0.5, z=-1});
+		gravitate_intel(2, {x=math.random(511-64, 511-64-63)+0.5, y=math.random(256-32, 255+32)+0.5, z=-1});
 	else
-		lower_intel(1, {x=math.random(64, 64+63)+0.5, y=math.random(256-32, 255+32)+0.5, z=-1});
+		gravitate_intel(1, {x=math.random(64, 64+63)+0.5, y=math.random(256-32, 255+32)+0.5, z=-1});
 	end
 end
 
@@ -152,11 +132,11 @@ local function putback_intel()
 		drop_intel(intelloc[2], {x=math.huge, y=math.huge, z=math.huge});
 	end
 
-	lower_intel(1, {x=math.random(64, 64+63)+0.5, y=math.random(256-32, 255+32)+0.5, z=-1});
-	lower_intel(2, {x=math.random(511-64, 511-64-63)+0.5, y=math.random(256-32, 255+32)+0.5, z=-1});
+	gravitate_intel(1, {x=math.random(64, 64+63)+0.5, y=math.random(256-32, 255+32)+0.5, z=-1});
+	gravitate_intel(2, {x=math.random(511-64, 511-64-63)+0.5, y=math.random(256-32, 255+32)+0.5, z=-1});
 
-	lower_tent(1, {x=64+8, y=256, z=-1});
-	lower_tent(2, {x=512-64-8, y=256, z=-1});
+	gravitate_tent(1, {x=64+8, y=256, z=-1});
+	gravitate_tent(2, {x=512-64-8, y=256, z=-1});
 end
 
 function mod.on_load()
@@ -185,8 +165,7 @@ local function try_drop(pid)
 
 		-- TODO: too many packets
 		drop_intel(pid, intelloc);
-		raise_intel(enemy, intelloc);
-		lower_intel(enemy, intelloc);
+		gravitate_intel(enemy, intelloc);
 
 		drop_timeout = get_time() + 2;
 		return true;

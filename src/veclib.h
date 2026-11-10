@@ -186,10 +186,13 @@ static inline fvec3 vnan_inf(fvec3 v1)
 }
 
 
-static inline fvec3 v2mod(fvec3 v, float val)
+static inline fvec3 v2mod(fvec3 v1, float val)
 {
-	v.x = fmodf(v.x, val);
-	v.y = fmodf(v.y, val);
+	fvec3 v = {
+		fmodf(v1.x, val),
+		fmodf(v1.y, val),
+		v1.z
+	};
 
 	if (v.x < 0)
 		v.x += val;

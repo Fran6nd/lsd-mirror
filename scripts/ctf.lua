@@ -11,10 +11,10 @@ local function gravitate_thing(move, team, loc)
 
 	-- TODO: not a very nice-looking construction. . .
 	if (new.z >= 64) then
-		if (not is_solid{x=new.x, y=new.y, z=63}) then
+		new.z = 63;
+		if (not is_solid(new)) then
 			return;
 		end
-		new.z = 63;
 	end
 
 	new.z = get_floor(loc);

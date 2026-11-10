@@ -65,6 +65,18 @@ static inline ivec3 imul(ivec3 v1, int32_t val)
 }
 
 
+static inline fvec3 vdivv(fvec3 v1, fvec3 v2)
+{
+	fvec3 v = {v1.x / v2.x, v1.y / v2.y, v1.z / v2.z};
+	return v;
+}
+static inline ivec3 idivi(ivec3 v1, ivec3 v2)
+{
+	ivec3 v = {v1.x / v2.x, v1.y / v2.y, v1.z / v2.z};
+	return v;
+}
+
+
 static inline fvec3 divv(float val, fvec3 v2)
 {
 	fvec3 v = {val / v2.x, val / v2.y, val / v2.z};
@@ -77,7 +89,7 @@ static inline ivec3 divi(float val, ivec3 v2)
 }
 
 
-static inline fvec3 fdiv(fvec3 v1, float val)
+static inline fvec3 vdiv(fvec3 v1, float val)
 {
 	fvec3 v = {v1.x / val, v1.y / val, v1.z / val};
 	return v;

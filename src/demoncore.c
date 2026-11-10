@@ -86,7 +86,7 @@ struct Cast cast_start(fvec3 start, fvec3 end)
 
 	fvec3 lower  = vsubv(vfloor(start), start);
 	fvec3 higher = vsubv(vceil (start), start);
-	fvec3 side_dist = vnan_inf(vchoose(higher, lower, vsignbit(off)));
+	fvec3 side_dist = vnan_inf(vdivv(vchoose(higher, lower, vsignbit(off)), off));
 
 	ivec3 vox  = vtoi(start);
 	ivec3 step = vtoi(vsign(off));

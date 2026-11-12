@@ -157,7 +157,9 @@ end
 function mod.after.finish_cull()
 	if (not is_solid{x=plat_start.x, y=plat_start.y, z=plat_z}) then
 		l10n_send_chat(PID_BROADCAST, platform_destroyed_msg);
+		local clr = get_block_color(get_anon_pid());
 		babel_build_platform();
+		set_block_color(get_anon_pid(), clr);
 		-- Most of the clients don't process block line/action immediately when recieved.
 		-- They do some cursed queueing thing that, for instance, lets you break and place
 		-- a block on the same frame to recolor it. Anyway, those ones need some delay before

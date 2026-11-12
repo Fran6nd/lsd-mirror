@@ -15,6 +15,10 @@ end
 function mod.after.pyscrape_ext(scrape, str, meta)
 	local str = scrape.get_ext(str, "boundary_damage");
 
+	if (str == nil) then
+		return;
+	end
+
 	-- TODO: maybe rewrite this to use lpeg if you don't hate yourself
 	--       . . . just make sure it still parses that handful of broken
 	--       maps i remember some time ago

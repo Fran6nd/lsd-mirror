@@ -2,6 +2,7 @@
 
 load "afkick"
 load "base_logging"
+load "boundary_damage"
 load "disco"
 load "fall_damage"
 load "map_meta"

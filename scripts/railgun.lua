@@ -77,7 +77,10 @@ local function cast(pid, start, off)
 
 		-- TODO: original had 4 and 8 reversed; why?
 		killdist = hasdestroyed and 4 or 8;
-		if (bdestroy_block_action(vox, 3)) then
+		if (
+			vox.z >= 0 and vox.z < 64 and
+			bdestroy_block_action(vox, 3)
+		) then
 			hasdestroyed = true;
 		end
 		kill_people(pid, vox, killdist);

@@ -63,5 +63,7 @@ tips = {
 tip_frequency = 5*60
 load "tip_spam"
 
+load "time_limit"
+
 -- Also try "arena", "babel"
 load "ctf"

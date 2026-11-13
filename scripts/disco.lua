@@ -52,6 +52,12 @@ function mod.on_unload()
 	end
 end
 
+function mod.before.load_map()
+	if (disco_timer) then
+		end_disco();
+	end
+end
+
 function mod.early.on_game_end()
 	if (disco_gameend_time > 0) then
 		disco_end_timer = get_time() + disco_gameend_time;

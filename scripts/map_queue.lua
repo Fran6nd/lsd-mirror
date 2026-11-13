@@ -1,15 +1,28 @@
 -- map_queue.lua -- Pops the next map from a queue, and if the queue is empty picks a map from a different queue
 local mod = init_mod();
 local nextqueue = {};
--- TODO: list dirs in lua?
--- TODO: hook into initial map load
+
 getcfg("map_queue", {
 	"hallway",
 	"hallweeb",
 	"normandie",
 	"war",
 });
+
+getcfg("map_queue_shuffle", false);
+getcfg("map_queue_win_advance", true);
+
 local map_queue_idx = 1;
+
+local function shuf(tbl)
+	for i=#tbl,1,-1 do
+		local swapi = math.random(i);
+		local tmp = tbl[i];
+
+		tbl[i] = tbl[swapi];
+		tbl[swapi] = tmp;
+	end
+end
 
 local function tr_map_queue()
 	if (type(map_queue) == "string") then
@@ -34,22 +47,37 @@ local function get_next_map()
 	map_queue_idx = map_queue_idx + 1;
 	if (map_queue_idx > #map_queue) then
 		map_queue_idx = 1;
+
+		if (map_queue_shuffle and #map_queue > 1) then
+			local last_map = map_queue[#map_queue];
+
+			shuf(map_queue);
+			while (map_queue[1] == last_map) do
+				shuf(map_queue);
+			end
+		end
 	end
 
 	return map;
 end
 
--- TODO: on_server_start?
--- TODO: cleanup
--- TODO: should there be a hook for player disconnect/boot to limbo? on_unjoined?
--- TODO: should you combine the boot/load into one function?
--- TODO: what if the map is trash (not real/invalid/EOF)
-function mod.on_game_end()
+function mod.impl.advance_map()
 	load_map(get_next_map());
 end
 
+function mod.on_game_end()
+	if (map_queue_win_advance) then
+		advance_map();
+	end
+end
+
 function mod.late.load_initial_map()
-	load_map(get_next_map());
+	tr_map_queue();
+	if (map_queue_shuffle) then
+		shuf(map_queue);
+	end
+
+	advance_map();
 end
 
 -- TODO: should it be legal to put a space or 30 before the command name? because we have that right now
@@ -81,11 +109,10 @@ function cmd.func(pid, argv)
 end
 register_command(cmd, mod);
 
--- TODO: on_game_end -> end_game?
 local cmd = {name={"advance", "advancemap"}, caps="map_queue", fakepid=true, desc="Load the next queued map."};
 function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 0);
-	on_game_end();
+	advance_map();
 end
 register_command(cmd, mod);
 
@@ -94,7 +121,7 @@ function cmd.func(pid, argv)
 	cmd_assert(pid, cmd, #argv == 1);
 
 	table.insert(nextqueue, argv[1]);
-	on_game_end();
+	advance_map();
 end
 register_command(cmd, mod);
 

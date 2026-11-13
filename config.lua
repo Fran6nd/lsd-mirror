@@ -63,6 +63,7 @@ tips = {
 tip_frequency = 5*60
 load "tip_spam"
 
+load "area_spawns"
 load "time_limit"
 
 -- Also try "arena", "babel"

@@ -62,7 +62,7 @@ local function set_time(new_time)
 		new_announce = end_time - math.max(new_announce, time);
 	end
 
-	explicit_announce_time = now + new_announce;
+	explicit_announce_time = end_time - new_announce;
 end
 
 function mod.after.capture_intel(pid)

@@ -309,6 +309,17 @@ function mod.after.tick()
 	end
 end
 
+-- TODO: definitely move to core
+local function get_ipaddr_str(pid)
+	addr = get_ipaddr(pid);
+	return string.format("%u.%u.%u.%u",
+		bit.band(bit.rshift(addr, 24), 0xff),
+		bit.band(bit.rshift(addr, 16), 0xff),
+		bit.band(bit.rshift(addr,  8), 0xff),
+		bit.band(addr, 0xff)
+	);
+end
+
 function mod.on_any_connect(pid)
 	attemptingconnect = true;
 	check_bans(pid);
@@ -316,7 +327,7 @@ function mod.on_any_connect(pid)
 
 	if (has_cap(pid, "badcap:ban")) then
 		-- TODO: pretty-print the ipaddr
-		log("%s:%u (#%u) attempted to connect but is banned", get_ipaddr(pid), get_udp_port(pid), pid);
+		log("%s:%u (#%u) attempted to connect but is banned", get_ipaddr_str(pid), get_udp_port(pid), pid);
 		disconnect_now(pid, 1);
 		return;
 	end

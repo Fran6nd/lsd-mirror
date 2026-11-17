@@ -256,7 +256,7 @@ static int on_any_packet(plid pid, const void *data, size_t length, struct State
 
 		SBAD(st->p[pid].team != 255);
 
-		SBAD(PACKET.team > 1);
+		SBAD(PACKET.team > 1 && PACKET.team != 255);
 		SBAD(PACKET.gun > 2);
 
 		return 0;

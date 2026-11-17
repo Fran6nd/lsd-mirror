@@ -30,9 +30,9 @@ const char *host_ip(ENetAddress *addr);
 #define SPID() SBAD(((uint8_t *)data)[1] != pid)
 
 #define SCLIP(xoff, yoff, zoff, vec) clip_phys(vec.x + (xoff), vec.y + (yoff), vec.z + (zoff), st->globals.map, 0)
-#define SCLIPB(zoff, vec) (SCLIP(-0.44, -0.44, zoff, vec) || SCLIP (-0.44, 0.44, zoff, vec) || SCLIP(0.44, -0.44, zoff, vec) || SCLIP(0.44, 0.44, zoff, vec))
+#define SCLIPB(zoff, vec) (SCLIP(-0.45, -0.45, zoff, vec) || SCLIP(-0.45, 0.45, zoff, vec) || SCLIP(0.45, -0.45, zoff, vec) || SCLIP(0.45, 0.45, zoff, vec))
 static int stuck_in_a_block(fvec3 pos, struct State *st) {
-		return SCLIPB(1.34, pos) || SCLIPB(0.45, pos) || SCLIPB(-0.44, pos);
+	return SCLIPB(1.35, pos) || SCLIPB(0.45, pos) || SCLIPB(-0.45, pos);
 }
 
 /* TODO: sometimes voxlap and rl trigger this on ori with <0.000001 */

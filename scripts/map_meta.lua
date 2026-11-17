@@ -59,7 +59,7 @@ function mod.before.load_map(name)
 			end
 
 			-- TODO: thanks to betterspades for making a 2nd standard that i have to support
-			server_msg(PID_BROADCAST, "N% "..str);
+			server_msg(i, "N% "..str);
 		end
 	end
 

@@ -23,7 +23,7 @@ function mod.impl.objgrav(pos)
 		end
 	end
 
-	new.z = get_floor(pos);
+	new.z = get_floor(new);
 	if (new.z < 64) then
 		new.z = get_col_top(new);
 	end

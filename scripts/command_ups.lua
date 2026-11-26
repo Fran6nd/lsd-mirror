@@ -1,8 +1,11 @@
 -- command_ups.lua -- Configure your WorldUpdate receive rate
 -- TODO: autoconfigure based on RTT?
 
+-- Must be 60, 30, 20, 15, 12 or 10
+getcfg("ups_default_rate", 60);
+
 local mod = init_mod();
-local rate = pid_connected_table(1);
+local rate = pid_connected_table(60 / ups_default_rate);
 local ctr = 0;
 
 local freq_msg = {
